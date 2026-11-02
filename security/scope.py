@@ -80,7 +80,31 @@ class ScopeManager:
                 else:
                     data = json.load(f)
 
-            self.config = ScopeConfig(**data)
+            # Ensure data is a dict
+            if data is None:
+                data = {}
+            if not isinstance(data, dict):
+                self.logger.error(f"Invalid scope file format: expected dict, got {type(data)}")
+                return False
+
+            # Provide defaults for missing fields
+            scope_data = {
+                "allowed_targets": data.get("allowed_targets", []),
+                "allowed_domains": data.get("allowed_domains", []),
+                "allowed_cidrs": data.get("allowed_cidrs", []),
+                "excluded_targets": data.get("excluded_targets", []),
+                "allowed_ports": data.get("allowed_ports", []),
+                "assessment_window": data.get("assessment_window", {}),
+                "intensity": data.get("intensity", "normal"),
+                "rate_limit": data.get("rate_limit", 100),
+                "request_limit": data.get("request_limit", 10000),
+                "operator_id": data.get("operator_id"),
+                "client_id": data.get("client_id"),
+                "emergency_contact": data.get("emergency_contact"),
+                "notes": data.get("notes", "")
+            }
+
+            self.config = ScopeConfig(**scope_data)
             self._parse_cidrs()
 
             self.logger.info(f"Loaded scope from {self.scope_file}")
@@ -96,7 +120,10 @@ class ScopeManager:
         if not self.config:
             return
 
-        for cidr in self.config.allowed_cidrs:
+        # Ensure allowed_cidrs is a list
+        cidrs = self.config.allowed_cidrs or []
+        
+        for cidr in cidrs:
             try:
                 network = ipaddress.ip_network(cidr, strict=False)
                 self._parsed_cidrs.append(network)
@@ -269,7 +296,7 @@ class ScopeManager:
 
     def _is_excluded(self, target: str) -> bool:
         """Check if target is in exclusion list."""
-        if not self.config:
+        if not self.config or not self.config.excluded_targets:
             return False
 
         for excluded in self.config.excluded_targets:
@@ -284,7 +311,7 @@ class ScopeManager:
             return False
 
         # Check explicit allowlist
-        if ip_str in self.config.allowed_targets:
+        if self.config.allowed_targets and ip_str in self.config.allowed_targets:
             return True
 
         # Check CIDR ranges
@@ -306,30 +333,35 @@ class ScopeManager:
         # Normalize domain
         domain = domain.lower().rstrip(".")
 
-        # Check explicit allowlist
-        if domain in self.config.allowed_domains:
+        # Check explicit allowlist for targets first
+        if self.config.allowed_targets and domain in self.config.allowed_targets:
+            return True
+
+        # Check domain allowlist
+        if self.config.allowed_domains and domain in self.config.allowed_domains:
             return True
 
         # Check subdomain matches with wildcard safety
-        for allowed in self.config.allowed_domains:
-            allowed_norm = allowed.lower().rstrip(".")
+        if self.config.allowed_domains:
+            for allowed in self.config.allowed_domains:
+                allowed_norm = allowed.lower().rstrip(".")
 
-            if allowed_norm.startswith("*."):
-                # Wildcard rule - check safety first
-                base_domain = allowed_norm[2:]
-                if domain == base_domain or domain.endswith(f".{base_domain}"):
-                    # Verify it's actually a subdomain, not the base or unrelated
-                    domain_parts = domain.split(".")
-                    base_parts = base_domain.split(".")
-                    if len(domain_parts) > len(base_parts):
+                if allowed_norm.startswith("*."):
+                    # Wildcard rule - check safety first
+                    base_domain = allowed_norm[2:]
+                    if domain == base_domain or domain.endswith(f".{base_domain}"):
+                        # Verify it's actually a subdomain, not the base or unrelated
+                        domain_parts = domain.split(".")
+                        base_parts = base_domain.split(".")
+                        if len(domain_parts) > len(base_parts):
+                            return True
+                        else:
+                            self.logger.warning(f"Wildcard {allowed} would authorize base domain {domain}")
+                            continue
+                else:
+                    # Exact match or subdomain
+                    if domain == allowed_norm or domain.endswith(f".{allowed_norm}"):
                         return True
-                    else:
-                        self.logger.warning(f"Wildcard {allowed} would authorize base domain {domain}")
-                        continue
-            else:
-                # Exact match or subdomain
-                if domain == allowed_norm or domain.endswith(f".{allowed_norm}"):
-                    return True
 
         return False
 
@@ -338,7 +370,7 @@ class ScopeManager:
         if not self.config:
             return False
 
-        if cidr_str in self.config.allowed_cidrs:
+        if self.config.allowed_cidrs and cidr_str in self.config.allowed_cidrs:
             return True
 
         # Check if CIDR is within an allowed CIDR
@@ -358,6 +390,10 @@ class ScopeManager:
         from urllib.parse import urlparse
         parsed = urlparse(url)
         domain = parsed.netloc.split(":")[0]  # Remove port if present
+
+        # Check if URL is in allowed_targets first
+        if self.config and self.config.allowed_targets and url in self.config.allowed_targets:
+            return True
 
         return self._validate_domain(domain)
 
