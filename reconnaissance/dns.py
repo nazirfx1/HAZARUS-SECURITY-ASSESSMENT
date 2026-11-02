@@ -176,7 +176,7 @@ class DNSRecon:
         domain: str,
         wordlist: Optional[List[str]] = None
     ) -> List[str]:
-        """Brute force subdomain discovery."""
+        """Brute force subdomain discovery with DNS validation."""
         if wordlist is None:
             # Common subdomain wordlist
             wordlist = [
@@ -193,10 +193,18 @@ class DNSRecon:
         for subdomain in wordlist:
             full_domain = f"{subdomain}.{domain}"
             try:
-                await self._query_records(full_domain, 'A')
-                found_subdomains.append(full_domain)
-                self.logger.debug(f"Found subdomain: {full_domain}")
-            except Exception:
+                # Use DNS resolver to check if subdomain resolves
+                loop = asyncio.get_event_loop()
+                answer = await loop.run_in_executor(
+                    None,
+                    lambda: self.resolver.resolve(full_domain, 'A')
+                )
+                if answer and len(answer) > 0:
+                    found_subdomains.append(full_domain)
+                    self.logger.debug(f"Found subdomain: {full_domain}")
+            except Exception as e:
+                # Subdomain doesn't resolve or DNS error
+                self.logger.debug(f"Subdomain {full_domain} not found: {e}")
                 pass
 
         self.logger.info(f"Found {len(found_subdomains)} subdomains")
@@ -235,9 +243,10 @@ class DNSRecon:
         """Query crt.sh for subdomain enumeration."""
         try:
             import httpx
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=30) as client:
+                # Use proper crt.sh API format
                 response = await client.get(
-                    f"https://crt.sh/?q=%.25.{domain}&output=json"
+                    f"https://crt.sh/?q=%.{domain}&output=json"
                 )
                 
                 if response.status_code == 200:
@@ -247,10 +256,16 @@ class DNSRecon:
                     
                     for cert in data:
                         name_value = cert.get('name_value', '')
-                        if name_value and domain in name_value:
-                            subdomains.add(name_value)
+                        # Split by newlines if multiple names
+                        for name in name_value.split('\n'):
+                            name = name.strip()
+                            if name and domain in name and not name.startswith('*'):
+                                subdomains.add(name)
                     
                     return list(subdomains)
+                else:
+                    self.logger.warning(f"crt.sh returned status {response.status_code}")
+                    return []
                     
         except Exception as e:
             self.logger.warning(f"crt.sh query failed: {e}")

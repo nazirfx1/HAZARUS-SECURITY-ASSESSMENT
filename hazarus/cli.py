@@ -544,17 +544,19 @@ def recon(
                     progress.update(task, description="Querying WHOIS...")
                     try:
                         whois_recon = WhoisRecon()
-                        whois_result = await whois_recon.lookup(target)
+                        whois_result = await whois_recon.query(target)
                         if whois_result:
                             console.print(f"\n  [cyan]WHOIS Information:[/cyan]")
-                            if whois_result.get('registrar'):
-                                console.print(f"    Registrar: {whois_result.get('registrar')}")
-                            if whois_result.get('created'):
-                                console.print(f"    Created: {whois_result.get('created')}")
-                            if whois_result.get('expires'):
-                                console.print(f"    Expires: {whois_result.get('expires')}")
-                            if whois_result.get('status'):
-                                console.print(f"    Status: {whois_result.get('status')}")
+                            if whois_result.registrar:
+                                console.print(f"    Registrar: {whois_result.registrar}")
+                            if whois_result.created_date:
+                                console.print(f"    Created: {whois_result.created_date}")
+                            if whois_result.expiration_date:
+                                console.print(f"    Expires: {whois_result.expiration_date}")
+                            if whois_result.status:
+                                console.print(f"    Status: {whois_result.status}")
+                            if whois_result.name_servers:
+                                console.print(f"    Nameservers: {', '.join(whois_result.name_servers[:3])}")
                     except Exception as e:
                         console.print(f"    [yellow]⚠ WHOIS query failed: {e}[/yellow]")
                     
