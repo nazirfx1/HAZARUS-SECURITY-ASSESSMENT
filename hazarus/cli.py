@@ -15,14 +15,9 @@ from rich.panel import Panel
 from rich import print as rprint
 from pathlib import Path as PathType
 
-try:
-    from core import HazarusEngine, AssessmentConfig
-    from security import ScopeManager, AuthorizationManager, AuditLogger
-    from anonymity import AnonsurfManager
-except ImportError:
-    from ..core import HazarusEngine, AssessmentConfig
-    from ..security import ScopeManager, AuthorizationManager, AuditLogger
-    from ..anonymity import AnonsurfManager
+from hazarus.core import HazarusEngine, AssessmentConfig
+from hazarus.security import ScopeManager, AuthorizationManager, AuditLogger
+from hazarus.anonymity import AnonsurfManager
 
 app = typer.Typer(
     name="hazarus",
@@ -203,9 +198,9 @@ def recon(
     console.print(f"Targets: {', '.join(targets)}")
 
     async def _run_recon():
-        from reconnaissance.dns import DNSRecon
-        from reconnaissance.whois import WhoisRecon
-        from security import ScopeManager
+        from hazarus.reconnaissance.dns import DNSRecon
+        from hazarus.reconnaissance.whois import WhoisRecon
+        from hazarus.security import ScopeManager
 
         # Validate scope
         scope_manager = ScopeManager(str(scope_file))
@@ -266,8 +261,8 @@ def scan(
     console.print(f"Ports: {ports}")
 
     async def _run_scan():
-        from scanning.nmap import NmapScanner
-        from security import ScopeManager
+        from hazarus.scanning.nmap import NmapScanner
+        from hazarus.security import ScopeManager
 
         # Validate scope
         scope_manager = ScopeManager(str(scope_file))
@@ -320,8 +315,8 @@ def web(
     console.print(f"Targets: {', '.join(targets)}")
 
     async def _run_web():
-        from scanning.http_scanner import HTTPScanner
-        from security import ScopeManager
+        from hazarus.scanning.http_scanner import HTTPScanner
+        from hazarus.security import ScopeManager
 
         scope_manager = ScopeManager(str(scope_file))
         if not await scope_manager.load_scope():
@@ -380,8 +375,8 @@ def research(
     console.print(Panel.fit("[bold blue]Vulnerability Research[/bold blue]"))
 
     async def _run_research():
-        from vulnerability.cve_matcher import CVEMatcher
-        from vulnerability.exploitdb import ExploitIntelligence
+        from hazarus.vulnerability.cve_matcher import CVEMatcher
+        from hazarus.vulnerability.exploitdb import ExploitIntelligence
 
         if cve_id:
             console.print(f"Researching CVE: {cve_id}")
@@ -416,7 +411,7 @@ def exploit_list() -> None:
     console.print(Panel.fit("[bold blue]Exploit Registry[/bold blue]"))
 
     async def _list_exploits():
-        from exploitation.exploit_registry import ExploitRegistry
+        from hazarus.exploitation.exploit_registry import ExploitRegistry
 
         registry = ExploitRegistry()
         exploits = registry.list_all()
@@ -450,7 +445,7 @@ def exploit_inspect(
     console.print(f"Exploit ID: {exploit_id}")
 
     async def _inspect_exploit():
-        from exploitation.exploit_registry import ExploitRegistry
+        from hazarus.exploitation.exploit_registry import ExploitRegistry
 
         registry = ExploitRegistry()
         exploit = registry.get(exploit_id)
@@ -567,7 +562,7 @@ def report(
     console.print(f"Format: {format}")
 
     async def _generate_report():
-        from reporting.report_engine import ReportEngine, ReportConfig
+        from hazarus.reporting.report_engine import ReportEngine, ReportConfig
 
         engine = ReportEngine()
 
