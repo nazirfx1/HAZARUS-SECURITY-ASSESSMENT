@@ -126,7 +126,7 @@ class AuthorizationManager:
 
         expires_at = None
         if expires_in_days:
-            expires_at = datetime.now(UTC) + datetime.timedelta(days=expires_in_days)
+            expires_at = datetime.now(UTC) + timedelta(days=expires_in_days)
 
         record = AuthorizationRecord(
             auth_id=auth_id,

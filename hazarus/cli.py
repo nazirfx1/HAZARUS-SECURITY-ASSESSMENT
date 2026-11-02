@@ -381,7 +381,7 @@ def research(
 
     async def _run_research():
         from vulnerability.cve_matcher import CVEMatcher
-        from vulnerability.exploitdb import ExploitDBSearch
+        from vulnerability.exploitdb import ExploitIntelligence
 
         if cve_id:
             console.print(f"Researching CVE: {cve_id}")
@@ -396,12 +396,12 @@ def research(
 
         elif service and version:
             console.print(f"Researching: {service} {version}")
-            db_search = ExploitDBSearch()
+            exploit_intel = ExploitIntelligence()
             try:
-                results = await db_search.search(service, version)
+                results = await exploit_intel.search_by_service(service, version)
                 console.print(f"  Exploits found: {len(results)}")
                 for result in results[:5]:
-                    console.print(f"    - {result.get('title', 'N/A')}")
+                    console.print(f"    - {result.title} (EDB-ID: {result.edb_id})")
             except Exception as e:
                 console.print(f"  [red]Error: {e}[/red]")
         else:

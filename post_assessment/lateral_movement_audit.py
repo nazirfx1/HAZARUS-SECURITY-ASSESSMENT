@@ -8,7 +8,7 @@ import logging
 import subprocess
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 @dataclass
@@ -32,7 +32,7 @@ class LateralMovementResult:
 
     def __post_init__(self):
         if self.audited_at is None:
-            self.audited_at = datetime.utcnow()
+            self.audited_at = datetime.now(UTC)
 
 
 class LateralMovementAudit:
@@ -146,8 +146,40 @@ class LateralMovementAudit:
 
     async def _check_cached_credentials(self, result: LateralMovementResult) -> None:
         """Check for cached credentials that could enable lateral movement."""
-        # Placeholder for credential checking
-        pass
+        # Check common credential cache locations for indicators only
+        # Never extract or display actual credentials
+        credential_indicators = [
+            "/root/.dbus-keyrings/",
+            "/home/*/.dbus-keyrings/",
+            "/root/.gnupg/",
+            "/home/*/.gnupg/",
+            "/etc/shadow",
+            "/etc/passwd",
+            "/etc/sudoers"
+        ]
+
+        for pattern in credential_indicators:
+            try:
+                process = await asyncio.create_subprocess_exec(
+                    "bash", "-c", f"ls -la {pattern} 2>/dev/null",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await process.communicate()
+
+                if process.returncode == 0 and stdout.strip():
+                    # Found credential cache indicator - report path only
+                    result.paths.append(LateralPath(
+                        source=result.target,
+                        destination="Credential Cache",
+                        method="Cached Credentials",
+                        accessible=True,
+                        credentials=[f"Indicator found at: {pattern}"]
+                    ))
+                    self.logger.warning(f"Credential cache indicator found: {pattern}")
+
+            except Exception as e:
+                self.logger.debug(f"Could not check {pattern}: {e}")
 
     def to_dict(self, result: LateralMovementResult) -> Dict[str, Any]:
         """Convert result to dictionary."""

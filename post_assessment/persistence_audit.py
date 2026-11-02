@@ -8,7 +8,7 @@ import logging
 import subprocess
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 @dataclass
@@ -33,7 +33,7 @@ class PersistenceAuditResult:
 
     def __post_init__(self):
         if self.audited_at is None:
-            self.audited_at = datetime.utcnow()
+            self.audited_at = datetime.now(UTC)
 
 
 class PersistenceAudit:

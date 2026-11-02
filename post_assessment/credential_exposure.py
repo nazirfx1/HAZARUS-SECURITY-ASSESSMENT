@@ -8,7 +8,7 @@ import logging
 import subprocess
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 import re
 
 
@@ -34,7 +34,7 @@ class CredentialExposureResult:
 
     def __post_init__(self):
         if self.audited_at is None:
-            self.audited_at = datetime.utcnow()
+            self.audited_at = datetime.now(UTC)
 
 
 class CredentialExposure:
@@ -132,7 +132,10 @@ class CredentialExposure:
                 pass
 
     async def _check_config_files(self, result: CredentialExposureResult) -> None:
-        """Check for exposed passwords in config files."""
+        """
+        Check for exposed passwords in config files.
+        Reports file paths and presence indicators only - never extracts actual passwords.
+        """
         config_paths = [
             "/etc/*.conf",
             "/root/.config/*",
@@ -141,23 +144,34 @@ class CredentialExposure:
 
         for path in config_paths:
             try:
+                # Check if files exist that might contain credentials
                 process = await asyncio.create_subprocess_exec(
-                    "grep", "-r", "-i", "password", path,
+                    "bash", "-c", f"ls {path} 2>/dev/null | head -5",
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE
                 )
                 stdout, stderr = await process.communicate()
 
-                if process.returncode == 0:
-                    matches = stdout.decode().strip().split("\n")
-                    for match in matches[:10]:
-                        result.findings.append(CredentialFinding(
-                            type="config_password",
-                            location=path,
-                            description="Password found in config file",
-                            severity="high",
-                            evidence=match
-                        ))
+                if process.returncode == 0 and stdout.strip():
+                    files = stdout.decode().strip().split("\n")
+                    for file in files:
+                        if file:
+                            # Check if file contains password-related keywords (without showing values)
+                            check_process = await asyncio.create_subprocess_exec(
+                                "bash", "-c", f"grep -qi -E '(password|passwd|secret|key|token)' {path}/{file} 2>/dev/null && echo 'KEYWORDS_FOUND'",
+                                stdout=asyncio.subprocess.PIPE,
+                                stderr=asyncio.subprocess.PIPE
+                            )
+                            check_stdout, check_stderr = await check_process.communicate()
+
+                            if b"KEYWORDS_FOUND" in check_stdout:
+                                result.findings.append(CredentialFinding(
+                                    type="config_password",
+                                    location=f"{path}/{file}",
+                                    description="Config file contains credential-related keywords",
+                                    severity="medium",
+                                    evidence="File path only - no values extracted"
+                                ))
 
             except Exception:
                 pass
