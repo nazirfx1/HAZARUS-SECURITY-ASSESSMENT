@@ -504,22 +504,52 @@ def web(
 
         scanner = HTTPScanner()
         for target in valid_targets:
-            console.print(f"Scanning {target}...")
-            try:
-                result = await scanner.scan(target)
-                console.print(f"  Server: {result.target}")
-                console.print(f"  Security Headers: {len(result.security_headers)}")
-                console.print(f"  Cookies: {len(result.cookies)}")
-                console.print(f"  Vulnerabilities: {len(result.vulnerabilities)}")
-                if result.vulnerabilities:
-                    for vuln in result.vulnerabilities:
-                        console.print(f"    - {vuln}")
-                if result.recommendations:
-                    console.print(f"  Recommendations: {len(result.recommendations)}")
-                    for rec in result.recommendations:
-                        console.print(f"    - {rec}")
-            except Exception as e:
-                console.print(f"  [red]Error: {e}[/red]")
+            console.print(f"\n[bold]Scanning {target}...[/bold]")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Initializing scan...", total=None)
+                
+                try:
+                    progress.update(task, description="Connecting to target...")
+                    result = await scanner.scan(target)
+                    
+                    progress.update(task, description="Analyzing results...")
+                    
+                    console.print(f"\n  [cyan]Target:[/cyan] {result.target}")
+                    console.print(f"  [cyan]Security Headers:[/cyan] {len(result.security_headers)}")
+                    console.print(f"  [cyan]Cookies:[/cyan] {len(result.cookies)}")
+                    console.print(f"  [cyan]Vulnerabilities:[/cyan] {len(result.vulnerabilities)}")
+                    
+                    if result.security_headers:
+                        console.print(f"\n  [yellow]Security Headers Found:[/yellow]")
+                        for header in result.security_headers:
+                            status = "✓" if header.present else "✗"
+                            console.print(f"    {status} {header.name}")
+                    
+                    if result.vulnerabilities:
+                        console.print(f"\n  [red]Vulnerabilities:[/red]")
+                        for vuln in result.vulnerabilities:
+                            console.print(f"    • {vuln}")
+                    
+                    if result.recommendations:
+                        console.print(f"\n  [green]Recommendations:[/green]")
+                        for rec in result.recommendations:
+                            console.print(f"    • {rec}")
+                    
+                    if result.cors_config:
+                        console.print(f"\n  [cyan]CORS Configuration:[/cyan]")
+                        for key, value in result.cors_config.items():
+                            console.print(f"    {key}: {value}")
+                    
+                    progress.update(task, description="Scan complete")
+                    
+                except Exception as e:
+                    console.print(f"  [red]Error: {e}[/red]")
+                    console.print(f"  [yellow]Error type: {type(e).__name__}[/yellow]")
 
         console.print("[green]✓ Web assessment complete[/green]")
 

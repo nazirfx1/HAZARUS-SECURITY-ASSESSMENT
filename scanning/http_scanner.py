@@ -69,29 +69,39 @@ class HTTPScanner:
             target = f"https://{target}"
 
         try:
+            self.logger.info(f"Connecting to {target}...")
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+                self.logger.info(f"Sending HTTP request to {target}...")
                 response = await client.get(target)
                 headers = dict(response.headers)
+                self.logger.info(f"Response received: {response.status_code}")
 
                 # Check security headers
+                self.logger.info("Checking security headers...")
                 await self._check_security_headers(headers, result)
 
                 # Analyze cookies
+                self.logger.info("Analyzing cookies...")
                 await self._analyze_cookies(headers, result)
 
                 # Check CORS configuration
+                self.logger.info("Checking CORS configuration...")
                 await self._check_cors(headers, result)
 
                 # Check for common vulnerabilities
+                self.logger.info("Checking for common vulnerabilities...")
                 await self._check_vulnerabilities(response, result)
 
                 # Generate recommendations
+                self.logger.info("Generating recommendations...")
                 self._generate_recommendations(result)
 
             # Run Nikto scan if available
+            self.logger.info("Checking for Nikto scanner...")
             nikto_results = await self._run_nikto(target)
             if nikto_results:
                 result.vulnerabilities.extend(nikto_results)
+                self.logger.info(f"Nikto scan complete: {len(nikto_results)} findings")
 
         except httpx.ConnectError as e:
             self.logger.error(f"HTTP scan failed - connection error: {e}")
