@@ -471,18 +471,68 @@ def recon(
                         except:
                             pass
                     
-                    # Amass enumeration
+                    # Amass enumeration with advanced OSINT capabilities
+                    progress.update(task, description="Amass comprehensive enumeration...")
+                    amass_available = False
+                    try:
+                        proc = await asyncio.create_subprocess_exec(
+                            "command", "-v", "amass",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        await proc.communicate()
+                        amass_available = proc.returncode == 0
+                    except:
+                        try:
+                            # Fallback to which on some systems
+                            proc = await asyncio.create_subprocess_exec(
+                                "which", "amass",
+                                stdout=asyncio.subprocess.PIPE,
+                                stderr=asyncio.subprocess.PIPE
+                            )
+                            await proc.communicate()
+                            amass_available = proc.returncode == 0
+                        except:
+                            pass
+                    
+                    amass_result = {}
                     amass_subdomains = []
                     if amass_available:
-                        progress.update(task, description="Subdomain enumeration (Amass)...")
                         try:
-                            amass_subdomains = await dns_recon.query_amass(target)
+                            amass_result = await dns_recon.query_amass_advanced(target)
+                            amass_subdomains = amass_result.get("subdomains", [])
+                            
                             if amass_subdomains:
                                 console.print(f"    [green]✓ Amass: {len(amass_subdomains)} subdomains[/green]")
                             else:
                                 console.print(f"    [yellow]⚠ Amass: No subdomains found[/yellow]")
+                            
+                            # Display ASN information
+                            if amass_result.get("asn_info"):
+                                console.print(f"\n  [cyan]ASN Information:[/cyan]")
+                                for asn in amass_result["asn_info"][:5]:
+                                    console.print(f"    • {asn}")
+                            
+                            # Display certificates
+                            if amass_result.get("certificates"):
+                                console.print(f"\n  [cyan]Certificates:[/cyan]")
+                                for cert in amass_result["certificates"][:5]:
+                                    console.print(f"    • {cert}")
+                            
+                            # Display related domains
+                            if amass_result.get("related_domains"):
+                                console.print(f"\n  [cyan]Related Domains:[/cyan]")
+                                for rel in amass_result["related_domains"][:5]:
+                                    console.print(f"    • {rel}")
+                            
+                            # Display infrastructure
+                            if amass_result.get("infrastructure"):
+                                console.print(f"\n  [cyan]Infrastructure:[/cyan]")
+                                for infra in amass_result["infrastructure"][:5]:
+                                    console.print(f"    • {infra}")
+                            
                         except Exception as e:
-                            console.print(f"    [red]✗ Amass failed: {e}[/red]")
+                            console.print(f"    [red]✗ Amass advanced query failed: {e}[/red]")
                     else:
                         console.print(f"    [yellow]⚠ Amass: Not installed[/yellow]")
                     
