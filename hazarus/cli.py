@@ -674,12 +674,50 @@ def scan(
         "--ports",
         "-p",
         help="Port range to scan (e.g., 1-1000, 22,80,443)"
+    ),
+    advanced: bool = typer.Option(
+        False,
+        "--advanced",
+        "-a",
+        help="Enable advanced deep scanning with OS detection, scripts, and vulnerability scanning"
+    ),
+    udp: bool = typer.Option(
+        False,
+        "--udp",
+        "-u",
+        help="Enable UDP scanning (slower but more comprehensive)"
+    ),
+    vuln: bool = typer.Option(
+        False,
+        "--vuln",
+        "-v",
+        help="Enable vulnerability detection scripts"
+    ),
+    aggressive: bool = typer.Option(
+        False,
+        "--aggressive",
+        "-A",
+        help="Enable aggressive scanning (includes OS detection, version detection, script scanning, and traceroute)"
+    ),
+    timing: int = typer.Option(
+        4,
+        "--timing",
+        "-T",
+        help="Timing template (0-5, 4 is normal, higher is faster but more detectable)"
     )
 ) -> None:
     """Run network scan on targets."""
     console.print(Panel.fit("[bold blue]Network Scanning[/bold blue]"))
     console.print(f"Targets: {', '.join(targets)}")
     console.print(f"Ports: {ports}")
+    if advanced:
+        console.print("[yellow]Advanced scanning enabled[/yellow]")
+    if udp:
+        console.print("[yellow]UDP scanning enabled[/yellow]")
+    if vuln:
+        console.print("[yellow]Vulnerability detection enabled[/yellow]")
+    if aggressive:
+        console.print("[yellow]Aggressive scanning enabled[/yellow]")
 
     async def _run_scan():
         from scanning.nmap import NmapScanner
@@ -710,15 +748,52 @@ def scan(
         for target in valid_targets:
             console.print(f"Scanning {target}...")
             try:
-                result = await scanner.scan(target, ports=ports)
-                # Extract open ports from hosts
-                open_ports = []
-                for host in result.hosts:
-                    for port in host.ports:
-                        if port.state == "open":
-                            open_ports.append(port.port)
-                console.print(f"  Ports found: {len(open_ports)}")
-                console.print(f"  Open ports: {open_ports[:10]}")
+                if advanced or aggressive or vuln or udp:
+                    # Use advanced scan
+                    result = await scanner.advanced_scan(
+                        targets=[target],
+                        ports=ports,
+                        tcp_scan=True,
+                        udp_scan=udp,
+                        service_detection=True,
+                        os_detection=advanced or aggressive,
+                        script_scan=advanced or aggressive or vuln,
+                        vuln_scan=vuln,
+                        traceroute=advanced or aggressive,
+                        aggressive=aggressive,
+                        timing=timing
+                    )
+                else:
+                    # Use standard scan
+                    result = await scanner.scan(
+                        targets=[target],
+                        ports=ports,
+                        scan_type="sT",
+                        service_detection=True,
+                        os_detection=False,
+                        aggressive=False
+                    )
+
+                # Display results
+                if result.exit_status == 0:
+                    for host in result.hosts:
+                        console.print(f"  Host: {host.ip}")
+                        if host.hostname:
+                            console.print(f"    Hostname: {host.hostname}")
+                        if host.os:
+                            console.print(f"    OS: {host.os}")
+                        if host.ports:
+                            console.print(f"    Open ports ({len(host.ports)}):")
+                            for port in host.ports:
+                                if port.state == "open":
+                                    service_info = f"{port.service}" if port.service else "unknown"
+                                    version_info = f" ({port.version})" if port.version else ""
+                                    console.print(f"      {port.port}/{port.protocol}: {service_info}{version_info}")
+                        else:
+                            console.print("    No open ports found")
+                else:
+                    console.print(f"  [red]Scan failed with exit code {result.exit_status}[/red]")
+
             except Exception as e:
                 console.print(f"  [red]Error: {e}[/red]")
 

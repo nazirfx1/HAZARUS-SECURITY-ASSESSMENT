@@ -82,9 +82,8 @@ class NmapScanner:
 
         try:
             # Execute nmap
-            loop = asyncio.get_event_loop()
             process = await asyncio.create_subprocess_exec(
-                *command.split(),
+                *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -239,12 +238,11 @@ class NmapScanner:
         """Quick scan for open ports."""
         self.logger.info(f"Quick scanning {target}")
 
-        command = f"nmap -sT --open -oX - {target}"
+        command = ["nmap", "-sT", "--open", "-oX", "-", target]
 
         try:
-            loop = asyncio.get_event_loop()
             process = await asyncio.create_subprocess_exec(
-                *command.split(),
+                *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -260,6 +258,152 @@ class NmapScanner:
             self.logger.error(f"Quick scan failed: {e}")
 
         return []
+
+    async def advanced_scan(
+        self,
+        targets: List[str],
+        ports: str = "1-65535",
+        tcp_scan: bool = True,
+        udp_scan: bool = False,
+        service_detection: bool = True,
+        os_detection: bool = True,
+        script_scan: bool = True,
+        vuln_scan: bool = True,
+        traceroute: bool = True,
+        aggressive: bool = False,
+        timing: int = 4,
+        timeout: int = 600
+    ) -> NmapResult:
+        """Advanced deep scan with comprehensive enumeration."""
+        self.logger.info(f"Advanced scanning {len(targets)} targets, ports {ports}")
+
+        result = NmapResult(targets=targets, scan_start=datetime.utcnow())
+
+        # Build advanced nmap command
+        command = self._build_advanced_command(
+            targets,
+            ports,
+            tcp_scan,
+            udp_scan,
+            service_detection,
+            os_detection,
+            script_scan,
+            vuln_scan,
+            traceroute,
+            aggressive,
+            timing
+        )
+
+        result.command = command
+        self.logger.debug(f"Nmap advanced command: {command}")
+
+        try:
+            # Execute nmap
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=timeout
+            )
+
+            result.exit_status = process.returncode
+            result.scan_end = datetime.utcnow()
+
+            # Parse XML output
+            if process.returncode == 0:
+                xml_output = stdout.decode()
+                result.hosts = self._parse_xml(xml_output)
+                self.logger.info(f"Advanced scan complete: {len(result.hosts)} hosts scanned")
+            else:
+                self.logger.error(f"Nmap advanced scan failed with status {process.returncode}")
+                self.logger.error(f"stderr: {stderr.decode()}")
+
+        except asyncio.TimeoutError:
+            self.logger.error("Nmap advanced scan timed out")
+            result.exit_status = -1
+        except Exception as e:
+            self.logger.error(f"Nmap advanced scan failed: {e}")
+            result.exit_status = -1
+
+        return result
+
+    def _build_advanced_command(
+        self,
+        targets: List[str],
+        ports: str,
+        tcp_scan: bool,
+        udp_scan: bool,
+        service_detection: bool,
+        os_detection: bool,
+        script_scan: bool,
+        vuln_scan: bool,
+        traceroute: bool,
+        aggressive: bool,
+        timing: int
+    ) -> List[str]:
+        """Build advanced nmap command."""
+        cmd = ["nmap"]
+
+        # Scan types
+        if tcp_scan and udp_scan:
+            cmd.append("-sS")  # SYN scan for TCP
+            cmd.append("-sU")  # UDP scan
+        elif tcp_scan:
+            cmd.append("-sS")  # SYN scan (default for advanced)
+        elif udp_scan:
+            cmd.append("-sU")  # UDP scan only
+
+        # Port specification
+        cmd.append("-p")
+        cmd.append(ports)
+
+        # Service detection
+        if service_detection:
+            cmd.append("-sV")
+            cmd.append("--version-intensity")  # Default: 7
+            cmd.append("7")
+
+        # OS detection
+        if os_detection:
+            cmd.append("-O")
+
+        # Script scanning
+        if script_scan:
+            if vuln_scan:
+                # Vulnerability detection scripts
+                cmd.append("--script")
+                cmd.append("vuln")
+            else:
+                # Default safe scripts
+                cmd.append("--script")
+                cmd.append("default,safe")
+
+        # Traceroute
+        if traceroute:
+            cmd.append("--traceroute")
+
+        # Aggressive scan
+        if aggressive:
+            cmd.append("-A")
+
+        # Timing template (0-5, 4 is normal)
+        cmd.append(f"-T{timing}")
+
+        # XML output
+        cmd.append("-oX")
+        cmd.append("-")  # stdout
+
+        # Verbosity
+        cmd.append("-v")
+
+        # Add targets
+        cmd.extend(targets)
+
+        return cmd
 
     def to_dict(self, result: NmapResult) -> Dict[str, Any]:
         """Convert NmapResult to dictionary."""
