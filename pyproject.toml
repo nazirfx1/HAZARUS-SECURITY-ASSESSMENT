@@ -1,0 +1,105 @@
+[project]
+name = "hazarus"
+version = "2.0.0"
+description = "HAZARUS Security Assessment Framework - Professional-grade modular security assessment platform"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "HAZARUS Security Team", email = "security@hazarus.org"}
+]
+keywords = [
+    "security",
+    "pentesting",
+    "vulnerability-assessment",
+    "cybersecurity",
+    "exploitation",
+    "reconnaissance"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "rich>=13.7.0",
+    "sqlalchemy>=2.0.25",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "httpx>=0.26.0",
+    "aiohttp>=3.9.0",
+    "click>=8.1.0",
+    "python-dateutil>=2.8.2",
+    "python-dotenv>=1.0.0",
+    "jinja2>=3.1.3",
+    "weasyprint>=60.0",
+    "reportlab>=4.0.0",
+    "markupsafe>=2.1.4",
+    "pyyaml>=6.0.1",
+    "toml>=0.10.2",
+    "cryptography>=41.0.7",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "dnspython>=2.4.2",
+    "ipaddress>=1.0.23",
+    "netaddr>=1.2.1",
+    "psutil>=5.9.7",
+    "validators>=0.22.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.14",
+    "mypy>=1.8.0",
+    "black>=23.12.0",
+    "isort>=5.13.0",
+]
+dashboard = [
+    "react>=18.2.0",
+    "typescript>=5.3.0",
+    "vite>=5.0.0",
+    "tailwindcss>=3.4.0",
+]
+
+[project.scripts]
+hazarus = "hazarus.cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "ARG", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
