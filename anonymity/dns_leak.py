@@ -29,33 +29,88 @@ class DNSLeakChecker:
             "using_tor": False
         }
 
-        # Check current DNS configuration
-        try:
-            import subprocess
-            proc = await asyncio.create_subprocess_exec(
-                "resolvectl", "status",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await proc.communicate()
-            output = stdout.decode()
-            
-            # Extract DNS servers from output
-            if "DNS Servers:" in output:
-                lines = output.split('\n')
-                for line in lines:
-                    if "DNS Servers:" in line:
-                        continue
-                    if line.strip() and not line.startswith(' '):
-                        result["dns_servers"].append(line.strip())
-        except Exception as e:
-            self.logger.warning(f"Failed to check DNS configuration: {e}")
+        # Try multiple methods to check DNS configuration
+        methods = [
+            self._check_resolvectl,
+            self._check_resolv_conf,
+            self._check_nmcli
+        ]
 
-        # Simple heuristic: if no DNS servers detected, assume potential issue
+        for method in methods:
+            try:
+                dns_servers = await method()
+                if dns_servers:
+                    result["dns_servers"] = dns_servers
+                    break
+            except Exception as e:
+                self.logger.debug(f"DNS check method failed: {e}")
+                continue
+
+        # If no DNS servers detected and method failed, assume potential issue
         if not result["dns_servers"]:
             result["leaking"] = True
+            result["consistent"] = False
         
         return result
+
+    async def _check_resolvectl(self) -> list:
+        """Check DNS using resolvectl (systemd)."""
+        proc = await asyncio.create_subprocess_exec(
+            "resolvectl", "status",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+        output = stdout.decode()
+        
+        dns_servers = []
+        if "DNS Servers:" in output:
+            lines = output.split('\n')
+            for line in lines:
+                if "DNS Servers:" in line:
+                    continue
+                if line.strip() and not line.startswith(' '):
+                    dns_servers.append(line.strip())
+        return dns_servers
+
+    async def _check_resolv_conf(self) -> list:
+        """Check DNS using /etc/resolv.conf."""
+        proc = await asyncio.create_subprocess_exec(
+            "cat", "/etc/resolv.conf",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+        output = stdout.decode()
+        
+        dns_servers = []
+        for line in output.split('\n'):
+            line = line.strip()
+            if line.startswith('nameserver'):
+                parts = line.split()
+                if len(parts) >= 2:
+                    dns_servers.append(parts[1])
+        return dns_servers
+
+    async def _check_nmcli(self) -> list:
+        """Check DNS using nmcli (NetworkManager)."""
+        proc = await asyncio.create_subprocess_exec(
+            "nmcli", "device", "show",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+        output = stdout.decode()
+        
+        dns_servers = []
+        for line in output.split('\n'):
+            if 'IP4.DNS' in line or 'DNS' in line:
+                parts = line.split(':')
+                if len(parts) >= 2:
+                    dns = parts[1].strip()
+                    if dns:
+                        dns_servers.append(dns)
+        return dns_servers
         current_dns = self._get_current_dns()
         result["dns_servers"] = current_dns
 
