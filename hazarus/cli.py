@@ -347,8 +347,17 @@ def web(
             console.print(f"Scanning {target}...")
             try:
                 result = await scanner.scan(target)
-                console.print(f"  Server: {result.get('server', 'N/A')}")
-                console.print(f"  Headers: {len(result.get('headers', {}))}")
+                console.print(f"  Server: {result.target}")
+                console.print(f"  Security Headers: {len(result.security_headers)}")
+                console.print(f"  Cookies: {len(result.cookies)}")
+                console.print(f"  Vulnerabilities: {len(result.vulnerabilities)}")
+                if result.vulnerabilities:
+                    for vuln in result.vulnerabilities:
+                        console.print(f"    - {vuln}")
+                if result.recommendations:
+                    console.print(f"  Recommendations: {len(result.recommendations)}")
+                    for rec in result.recommendations:
+                        console.print(f"    - {rec}")
             except Exception as e:
                 console.print(f"  [red]Error: {e}[/red]")
 
