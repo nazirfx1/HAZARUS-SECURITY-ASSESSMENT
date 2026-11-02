@@ -520,6 +520,10 @@ def web(
                     progress.update(task, description="Analyzing results...")
                     
                     console.print(f"\n  [cyan]Target:[/cyan] {result.target}")
+                    console.print(f"  [cyan]Scan Duration:[/cyan] {result.scan_duration:.2f}s")
+                    console.print(f"  [cyan]DNS Resolution:[/cyan] {result.dns_resolution_time:.2f}s")
+                    console.print(f"  [cyan]Connection Time:[/cyan] {result.connection_time:.2f}s")
+                    console.print(f"  [cyan]Response Time:[/cyan] {result.response_time:.2f}s")
                     console.print(f"  [cyan]Security Headers:[/cyan] {len(result.security_headers)}")
                     console.print(f"  [cyan]Cookies:[/cyan] {len(result.cookies)}")
                     console.print(f"  [cyan]Vulnerabilities:[/cyan] {len(result.vulnerabilities)}")

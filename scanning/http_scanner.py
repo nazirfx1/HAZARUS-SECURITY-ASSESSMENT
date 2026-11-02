@@ -8,6 +8,7 @@ import logging
 import httpx
 import subprocess
 import json
+import time
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -38,6 +39,10 @@ class HTTPSecurityResult:
     open_directories: List[str] = field(default_factory=list)
     waf_detected: Optional[str] = None
     nuclei_findings: List[str] = field(default_factory=list)
+    scan_duration: float = 0.0  # Scan duration in seconds
+    dns_resolution_time: float = 0.0
+    connection_time: float = 0.0
+    response_time: float = 0.0
 
     def __post_init__(self):
         if self.scanned_at is None:
@@ -69,16 +74,28 @@ class HTTPScanner:
         self.logger.info(f"Scanning HTTP target {target}")
 
         result = HTTPSecurityResult(target=target)
+        scan_start = time.time()
 
         # Ensure target has protocol
         if not target.startswith(("http://", "https://")):
             target = f"https://{target}"
 
         try:
+            dns_start = time.time()
             self.logger.info(f"Resolving DNS for {target}...")
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+                dns_end = time.time()
+                result.dns_resolution_time = dns_end - dns_start
+                self.logger.info(f"DNS resolved in {result.dns_resolution_time:.2f}s")
+                
+                conn_start = time.time()
                 self.logger.info(f"Establishing connection to {target}...")
                 response = await client.get(target)
+                conn_end = time.time()
+                result.connection_time = conn_end - conn_start
+                result.response_time = conn_end - dns_start
+                self.logger.info(f"Connection established in {result.connection_time:.2f}s (total: {result.response_time:.2f}s)")
+                
                 headers = dict(response.headers)
                 self.logger.info(f"HTTP response received: {response.status_code} {response.reason_phrase}")
 
@@ -143,6 +160,10 @@ class HTTPScanner:
             self.logger.error(f"HTTP scan failed: {e}")
             result.vulnerabilities.append(f"Scan failed: {str(e)}")
             result.vulnerabilities.append(f"Error type: {type(e).__name__}")
+
+        scan_end = time.time()
+        result.scan_duration = scan_end - scan_start
+        self.logger.info(f"Total scan duration: {result.scan_duration:.2f}s")
 
         return result
 
