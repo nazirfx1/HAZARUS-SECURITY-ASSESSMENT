@@ -398,6 +398,8 @@ def recon(
         # Run comprehensive reconnaissance
         from reconnaissance.dns import DNSRecon
         from reconnaissance.subdomains import SubdomainDiscovery
+        from reconnaissance.whois import WhoisRecon
+        from scanning.nmap import NmapScanner
         
         for target in valid_targets:
             console.print(f"\n[bold]Scanning {target}...[/bold]")
@@ -444,32 +446,91 @@ def recon(
                             console.print(f"    • {txt}")
                     
                     # Subdomain enumeration with advanced tools
-                    progress.update(task, description="Subdomain enumeration (Amass)...")
-                    amass_subdomains = await dns_recon.query_amass(target)
+                    progress.update(task, description="Checking tool availability...")
                     
+                    # Check Amass availability
+                    amass_available = False
+                    try:
+                        proc = await asyncio.create_subprocess_exec(
+                            "which", "amass",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        await proc.communicate()
+                        amass_available = proc.returncode == 0
+                    except:
+                        pass
+                    
+                    # Amass enumeration
+                    amass_subdomains = []
+                    if amass_available:
+                        progress.update(task, description="Subdomain enumeration (Amass)...")
+                        try:
+                            amass_subdomains = await dns_recon.query_amass(target)
+                            if amass_subdomains:
+                                console.print(f"    [green]✓ Amass: {len(amass_subdomains)} subdomains[/green]")
+                            else:
+                                console.print(f"    [yellow]⚠ Amass: No subdomains found[/yellow]")
+                        except Exception as e:
+                            console.print(f"    [red]✗ Amass failed: {e}[/red]")
+                    else:
+                        console.print(f"    [yellow]⚠ Amass: Not installed[/yellow]")
+                    
+                    # crt.sh enumeration
+                    crtsh_subdomains = []
                     progress.update(task, description="Subdomain enumeration (crt.sh)...")
-                    crtsh_subdomains = await dns_recon.query_crtsh(target)
+                    try:
+                        crtsh_subdomains = await dns_recon.query_crtsh(target)
+                        if crtsh_subdomains:
+                            console.print(f"    [green]✓ crt.sh: {len(crtsh_subdomains)} subdomains[/green]")
+                        else:
+                            console.print(f"    [yellow]⚠ crt.sh: No subdomains found[/yellow]")
+                    except Exception as e:
+                        console.print(f"    [red]✗ crt.sh failed: {e}[/red]")
                     
+                    # Brute force enumeration with DNS validation
                     progress.update(task, description="Subdomain enumeration (brute force)...")
                     subdiscovery = SubdomainDiscovery()
                     bruteforce_result = await subdiscovery.discover(target)
                     bruteforce_subdomains = list(bruteforce_result.subdomains)
                     
+                    # Validate brute force subdomains actually resolve
+                    validated_subdomains = []
+                    if bruteforce_subdomains:
+                        progress.update(task, description="Validating subdomains...")
+                        for sub in bruteforce_subdomains:
+                            try:
+                                import dns.resolver
+                                dns.resolver.resolve(sub, 'A')
+                                validated_subdomains.append(sub)
+                            except:
+                                pass  # Subdomain doesn't resolve, skip it
+                    
+                    if validated_subdomains:
+                        console.print(f"    [green]✓ Brute force: {len(validated_subdomains)} resolving subdomains[/green]")
+                    else:
+                        console.print(f"    [yellow]⚠ Brute force: No resolving subdomains found[/yellow]")
+                    
                     # Combine all subdomain sources
                     all_subdomains = set()
                     all_subdomains.update(amass_subdomains)
                     all_subdomains.update(crtsh_subdomains)
-                    all_subdomains.update(bruteforce_subdomains)
+                    all_subdomains.update(validated_subdomains)
                     
                     if all_subdomains:
                         console.print(f"\n  [cyan]Subdomains Found:[/cyan] ({len(all_subdomains)} total)")
                         
+                        # Show breakdown by source
+                        breakdown = []
                         if amass_subdomains:
-                            console.print(f"    Amass: {len(amass_subdomains)}")
+                            breakdown.append(f"Amass: {len(amass_subdomains)}")
                         if crtsh_subdomains:
-                            console.print(f"    crt.sh: {len(crtsh_subdomains)}")
-                        if bruteforce_subdomains:
-                            console.print(f"    Brute force: {len(bruteforce_subdomains)}")
+                            breakdown.append(f"crt.sh: {len(crtsh_subdomains)}")
+                        if validated_subdomains:
+                            breakdown.append(f"Brute force: {len(validated_subdomains)}")
+                        
+                        if breakdown:
+                            console.print(f"  Sources: {', '.join(breakdown)}")
                         
                         console.print(f"\n  [cyan]Subdomain List:[/cyan]")
                         for sub in sorted(all_subdomains)[:20]:  # Show first 20
@@ -478,6 +539,45 @@ def recon(
                             console.print(f"    ... and {len(all_subdomains) - 20} more")
                     else:
                         console.print(f"\n  [yellow]No subdomains found[/yellow]")
+                    
+                    # WHOIS information
+                    progress.update(task, description="Querying WHOIS...")
+                    try:
+                        whois_recon = WhoisRecon()
+                        whois_result = await whois_recon.lookup(target)
+                        if whois_result:
+                            console.print(f"\n  [cyan]WHOIS Information:[/cyan]")
+                            if whois_result.get('registrar'):
+                                console.print(f"    Registrar: {whois_result.get('registrar')}")
+                            if whois_result.get('created'):
+                                console.print(f"    Created: {whois_result.get('created')}")
+                            if whois_result.get('expires'):
+                                console.print(f"    Expires: {whois_result.get('expires')}")
+                            if whois_result.get('status'):
+                                console.print(f"    Status: {whois_result.get('status')}")
+                    except Exception as e:
+                        console.print(f"    [yellow]⚠ WHOIS query failed: {e}[/yellow]")
+                    
+                    # Port scanning (basic ports)
+                    progress.update(task, description="Port scanning...")
+                    try:
+                        nmap = NmapScanner()
+                        # Scan common ports only for reconnaissance
+                        nmap_result = await nmap.scan(target, ports="22,80,443,8080,8443")
+                        open_ports = []
+                        for host in nmap_result.hosts:
+                            for port in host.ports:
+                                if port.state == "open":
+                                    open_ports.append(f"{port.port}/{port.service or 'unknown'}")
+                        
+                        if open_ports:
+                            console.print(f"\n  [cyan]Open Ports:[/cyan]")
+                            for port in open_ports:
+                                console.print(f"    • {port}")
+                        else:
+                            console.print(f"\n  [yellow]No common ports detected[/yellow]")
+                    except Exception as e:
+                        console.print(f"    [yellow]⚠ Port scan failed: {e}[/yellow]")
                     
                     progress.update(task, description="Reconnaissance complete")
                     
