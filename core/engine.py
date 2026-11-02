@@ -4,7 +4,7 @@ Central orchestration engine for the security assessment framework.
 """
 
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, UTC
 import asyncio
 import logging
 from dataclasses import dataclass, field
@@ -162,7 +162,7 @@ class HazarusEngine:
         """
         self.logger.info(f"Starting assessment {self.config.assessment_id}")
         self._running = True
-        self._start_time = datetime.utcnow()
+        self._start_time = datetime.now(UTC)
 
         # Verify privacy before starting
         privacy_report = await self.verify_privacy()
@@ -209,7 +209,7 @@ class HazarusEngine:
             raise
         finally:
             self._running = False
-            self._end_time = datetime.utcnow()
+            self._end_time = datetime.now(UTC)
             results["end_time"] = self._end_time.isoformat()
             results["duration_seconds"] = (self._end_time - self._start_time).total_seconds()
 

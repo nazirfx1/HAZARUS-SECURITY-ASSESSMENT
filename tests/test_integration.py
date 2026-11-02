@@ -5,7 +5,7 @@ Test core framework functionality.
 
 import pytest
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@ Manages task scheduling and execution timing.
 """
 
 from typing import Optional, Dict, Any, List, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import asyncio
 import logging
 from dataclasses import dataclass, field
@@ -30,7 +30,7 @@ class ScheduledTask:
     scheduled_time: Optional[datetime] = None
     interval: Optional[timedelta] = None
     status: ScheduleStatus = ScheduleStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     result: Any = None
@@ -84,7 +84,7 @@ class Scheduler:
         **kwargs
     ) -> ScheduledTask:
         """Schedule a task for immediate execution."""
-        return self.schedule_task(task_id, func, datetime.utcnow(), None, *args, **kwargs)
+        return self.schedule_task(task_id, func, datetime.now(UTC), None, *args, **kwargs)
 
     def schedule_delayed(
         self,
@@ -95,7 +95,7 @@ class Scheduler:
         **kwargs
     ) -> ScheduledTask:
         """Schedule a task for delayed execution."""
-        return self.schedule_task(task_id, func, datetime.utcnow() + delay, None, *args, **kwargs)
+        return self.schedule_task(task_id, func, datetime.now(UTC) + delay, None, *args, **kwargs)
 
     def schedule_periodic(
         self,
@@ -106,7 +106,7 @@ class Scheduler:
         **kwargs
     ) -> ScheduledTask:
         """Schedule a periodic task."""
-        return self.schedule_task(task_id, func, datetime.utcnow(), interval, *args, **kwargs)
+        return self.schedule_task(task_id, func, datetime.now(UTC), interval, *args, **kwargs)
 
     async def start(self) -> None:
         """Start the scheduler."""
@@ -135,7 +135,7 @@ class Scheduler:
     async def _scheduler_loop(self) -> None:
         """Main scheduler loop."""
         while self._running:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
 
             for task_id, task in list(self._tasks.items()):
                 if task.status == ScheduleStatus.PENDING and task.scheduled_time:
@@ -157,18 +157,18 @@ class Scheduler:
         """Execute a scheduled task."""
         self.logger.debug(f"Executing task: {task.task_id}")
         task.status = ScheduleStatus.RUNNING
-        task.started_at = datetime.utcnow()
+        task.started_at = datetime.now(UTC)
 
         try:
             result = await task.func(*task.args, **task.kwargs)
             task.result = result
             task.status = ScheduleStatus.COMPLETED
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(UTC)
 
         except Exception as e:
             task.error = str(e)
             task.status = ScheduleStatus.FAILED
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(UTC)
             self.logger.error(f"Task {task.task_id} failed: {e}")
 
     def cancel_task(self, task_id: str) -> bool:

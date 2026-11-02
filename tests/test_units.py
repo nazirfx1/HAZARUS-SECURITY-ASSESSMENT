@@ -4,7 +4,7 @@ Test individual modules.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 def test_cvss_calculation():

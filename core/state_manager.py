@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 import json
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 from dataclasses import dataclass, asdict
 
 
@@ -134,12 +134,12 @@ class StateManager:
     def set_start_time(self, timestamp: Optional[datetime] = None) -> None:
         """Set assessment start time."""
         if self.state:
-            self.state.start_time = (timestamp or datetime.utcnow()).isoformat()
+            self.state.start_time = (timestamp or datetime.now(UTC)).isoformat()
 
     def set_end_time(self, timestamp: Optional[datetime] = None) -> None:
         """Set assessment end time."""
         if self.state:
-            self.state.end_time = (timestamp or datetime.utcnow()).isoformat()
+            self.state.end_time = (timestamp or datetime.now(UTC)).isoformat()
 
     async def cleanup(self) -> None:
         """Clean up state file."""

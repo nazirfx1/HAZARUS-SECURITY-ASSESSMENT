@@ -4,7 +4,7 @@ Coordinates assessment phases and module execution.
 """
 
 from typing import Dict, Any, List, Optional, Callable
-from datetime import datetime
+from datetime import datetime, UTC
 import asyncio
 import logging
 from dataclasses import dataclass
@@ -63,7 +63,7 @@ class Orchestrator:
         self.logger.info(f"Executing phase: {phase.value}")
         self._current_phase = phase
 
-        result = PhaseResult(phase=phase, status="running", start_time=datetime.utcnow())
+        result = PhaseResult(phase=phase, status="running", start_time=datetime.now(UTC))
 
         # Emit phase start event
         await self.event_bus.emit("phase_start", {"phase": phase.value})
@@ -95,7 +95,7 @@ class Orchestrator:
             })
 
         finally:
-            result.end_time = datetime.utcnow()
+            result.end_time = datetime.now(UTC)
             self._phase_results[phase] = result
             self._current_phase = None
 

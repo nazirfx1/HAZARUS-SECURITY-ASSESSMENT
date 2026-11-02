@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional, Set
 import ipaddress
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 from dataclasses import dataclass, field
 from enum import Enum
 import json
@@ -261,7 +261,7 @@ class ScopeManager:
             return True
 
         try:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             start = datetime.fromisoformat(window["start"])
             end = datetime.fromisoformat(window["end"])
 

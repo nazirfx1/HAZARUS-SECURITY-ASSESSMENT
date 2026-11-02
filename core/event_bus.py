@@ -7,7 +7,7 @@ from typing import Dict, Any, Callable, List, Optional
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 @dataclass
@@ -15,7 +15,7 @@ class Event:
     """An event in the system."""
     event_type: str
     data: Dict[str, Any]
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     source: Optional[str] = None
 
 

@@ -5,7 +5,7 @@ Generates comprehensive privacy readiness reports.
 
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 @dataclass
@@ -23,7 +23,7 @@ class PrivacyReport:
     tool_proxy_support: Dict[str, bool] = field(default_factory=dict)
     privacy_status: str = "unknown"  # pass, warning, failed
     recommendations: list = field(default_factory=list)
-    generated_at: datetime = field(default_factory=datetime.utcnow)
+    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""

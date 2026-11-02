@@ -106,9 +106,29 @@ class SafetyGate:
 
     def _is_lab_target(self, target: str) -> bool:
         """Check if target is in a lab environment."""
-        # Placeholder - implement lab target validation
-        # This should check against configured lab IP ranges
-        return True
+        import ipaddress
+
+        # Default lab CIDR ranges
+        lab_ranges = [
+            "192.168.100.0/24",
+            "10.0.100.0/24",
+            "172.16.100.0/24"
+        ]
+
+        try:
+            target_ip = ipaddress.ip_address(target)
+            for lab_range in lab_ranges:
+                network = ipaddress.ip_network(lab_range)
+                if target_ip in network:
+                    return True
+        except ValueError:
+            # Not an IP address, check against domain list
+            lab_domains = ["lab.local", "test.local", "internal.lab"]
+            for domain in lab_domains:
+                if target.endswith(domain):
+                    return True
+
+        return False
 
     def emergency_stop(self) -> None:
         """Emergency stop - block all further operations."""

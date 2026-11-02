@@ -1,0 +1,74 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.4, pytest-9.1.1, pluggy-1.7.0 -- C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe
+cachedir: .pytest_cache
+rootdir: H:\Projects\HAZARUS SECURITY ASSESSMENT
+configfile: pyproject.toml
+plugins: anyio-4.14.2, cov-7.1.0
+collecting ... collected 14 items
+
+tests/test_core.py::test_event_bus FAILED                                [  7%]
+tests/test_core.py::test_state_manager PASSED                            [ 14%]
+tests/test_integration.py::test_event_bus FAILED                         [ 21%]
+tests/test_integration.py::test_state_manager PASSED                     [ 28%]
+tests/test_integration.py::test_scope_validation PASSED                  [ 35%]
+tests/test_integration.py::test_privacy_report PASSED                    [ 42%]
+tests/test_integration.py::test_exploit_engine PASSED                    [ 50%]
+tests/test_integration.py::test_report_config PASSED                     [ 57%]
+tests/test_units.py::test_cvss_calculation PASSED                        [ 64%]
+tests/test_units.py::test_dns_recon FAILED                               [ 71%]
+tests/test_units.py::test_nmap_scanner PASSED                            [ 78%]
+tests/test_units.py::test_exploit_registry PASSED                        [ 85%]
+tests/test_units.py::test_privilege_audit PASSED                         [ 92%]
+tests/test_units.py::test_secret_analysis PASSED                         [100%]
+
+================================== FAILURES ===================================
+_______________________________ test_event_bus ________________________________
+async def functions are not natively supported.
+You need to install a suitable plugin for your async framework, for example:
+  - anyio
+  - pytest-asyncio
+  - pytest-tornasync
+  - pytest-trio
+  - pytest-twisted
+_______________________________ test_event_bus ________________________________
+async def functions are not natively supported.
+You need to install a suitable plugin for your async framework, for example:
+  - anyio
+  - pytest-asyncio
+  - pytest-tornasync
+  - pytest-trio
+  - pytest-twisted
+_______________________________ test_dns_recon ________________________________
+tests\test_units.py:37: in test_dns_recon
+    from reconnaissance.dns import DNSRecon
+reconnaissance\__init__.py:6: in <module>
+    from .dns import DNSRecon
+reconnaissance\dns.py:8: in <module>
+    import dns.resolver
+E   ModuleNotFoundError: No module named 'dns'
+============================== warnings summary ===============================
+C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\_pytest\config\__init__.py:1464
+  C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\_pytest\config\__init__.py:1464: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+tests\test_core.py:13
+  H:\Projects\HAZARUS SECURITY ASSESSMENT\tests\test_core.py:13: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests\test_integration.py:11
+  H:\Projects\HAZARUS SECURITY ASSESSMENT\tests\test_integration.py:11: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.asyncio
+
+tests/test_integration.py::test_privacy_report
+  <string>:15: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/test_units.py::test_exploit_registry
+  <string>:18: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_core.py::test_event_bus - Failed: async def functions are n...
+FAILED tests/test_integration.py::test_event_bus - Failed: async def function...
+FAILED tests/test_units.py::test_dns_recon - ModuleNotFoundError: No module n...
+================== 3 failed, 11 passed, 5 warnings in 1.70s ===================

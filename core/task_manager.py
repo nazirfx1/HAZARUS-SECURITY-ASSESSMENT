@@ -8,7 +8,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class TaskStatus(Enum):
@@ -30,7 +30,7 @@ class Task:
     args: tuple = field(default_factory=tuple)
     kwargs: dict = field(default_factory=dict)
     status: TaskStatus = TaskStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     result: Any = None
@@ -79,7 +79,7 @@ class TaskManager:
         """Execute a task with semaphore control."""
         async with self._semaphore:
             task.status = TaskStatus.RUNNING
-            task.started_at = datetime.utcnow()
+            task.started_at = datetime.now(UTC)
 
             await self.event_bus.emit("task_start", {
                 "task_id": task.task_id,
@@ -90,7 +90,7 @@ class TaskManager:
                 result = await task.func(*task.args, **task.kwargs)
                 task.result = result
                 task.status = TaskStatus.COMPLETED
-                task.completed_at = datetime.utcnow()
+                task.completed_at = datetime.now(UTC)
 
                 await self.event_bus.emit("task_complete", {
                     "task_id": task.task_id,
@@ -100,7 +100,7 @@ class TaskManager:
 
             except asyncio.CancelledError:
                 task.status = TaskStatus.CANCELLED
-                task.completed_at = datetime.utcnow()
+                task.completed_at = datetime.now(UTC)
                 self.logger.debug(f"Task cancelled: {task.task_id}")
 
                 await self.event_bus.emit("task_cancelled", {
@@ -111,7 +111,7 @@ class TaskManager:
             except Exception as e:
                 task.error = str(e)
                 task.status = TaskStatus.FAILED
-                task.completed_at = datetime.utcnow()
+                task.completed_at = datetime.now(UTC)
                 self.logger.error(f"Task {task.task_id} failed: {e}")
 
                 await self.event_bus.emit("task_failed", {

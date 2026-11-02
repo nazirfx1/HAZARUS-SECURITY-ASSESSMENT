@@ -4,7 +4,7 @@ Comprehensive logging for security auditing and compliance.
 """
 
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 import json
 from pathlib import Path
@@ -16,7 +16,7 @@ class AuditEvent:
     """An audit event."""
     event_type: str
     details: Dict[str, Any]
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     assessment_id: Optional[str] = None
     operator_id: Optional[str] = None
     severity: str = "info"  # info, warning, error, critical
@@ -194,7 +194,7 @@ class AuditLogger:
             "assessment_id": self.assessment_id,
             "total_events": len(self._events),
             "critical_events": len(self.get_critical_events()),
-            "finalized_at": datetime.utcnow().isoformat()
+            "finalized_at": datetime.now(UTC).isoformat()
         }
 
         summary_file = self.log_dir / f"{self.assessment_id}_summary.json"
