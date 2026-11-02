@@ -75,12 +75,12 @@ class HTTPScanner:
             target = f"https://{target}"
 
         try:
-            self.logger.info(f"Connecting to {target}...")
+            self.logger.info(f"Resolving DNS for {target}...")
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-                self.logger.info(f"Sending HTTP request to {target}...")
+                self.logger.info(f"Establishing connection to {target}...")
                 response = await client.get(target)
                 headers = dict(response.headers)
-                self.logger.info(f"Response received: {response.status_code}")
+                self.logger.info(f"HTTP response received: {response.status_code} {response.reason_phrase}")
 
                 # Check security headers
                 self.logger.info("Checking security headers...")
