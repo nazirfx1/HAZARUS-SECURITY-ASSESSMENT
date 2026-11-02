@@ -82,10 +82,11 @@ requires = ["setuptools>=68.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["hazarus*"]
+where = ["."]
+include = ["hazarus*", "core", "security", "anonymity", "reconnaissance", "scanning", "vulnerability", "exploitation", "post_assessment", "code_analysis", "reporting", "dashboard", "integrations"]
 
 [tool.setuptools.package-data]
-hazarus = ["config/*.yaml", "config/*.json"]
+config = ["*.yaml", "*.json"]
 
 [tool.ruff]
 line-length = 100
