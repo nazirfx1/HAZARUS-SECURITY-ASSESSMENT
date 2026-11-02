@@ -41,7 +41,13 @@ class AnonsurfManager:
             )
             stdout, stderr = await result.communicate()
             output = stdout.decode().lower()
-            return "running" in output or "started" in output
+            # Check for various status indicators
+            return (
+                "running" in output or 
+                "started" in output or 
+                "active" in output or
+                "enabled" in output
+            )
         except Exception as e:
             self.logger.error(f"Error checking Anonsurf status: {e}")
             return False
