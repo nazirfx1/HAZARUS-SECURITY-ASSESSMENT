@@ -390,17 +390,73 @@ def recon(
 
         console.print(f"[green]✓ Validated {len(valid_targets)} targets[/green]")
 
-        # Run DNS reconnaissance
-        dns_recon = DNSRecon()
+        # Run comprehensive reconnaissance
+        from reconnaissance.dns import DNSRecon
+        from reconnaissance.subdomains import SubdomainDiscovery
+        
         for target in valid_targets:
-            console.print(f"Scanning {target}...")
-            try:
-                result = await dns_recon.enumerate(target)
-                console.print(f"  A records: {result.get('a', [])}")
-                console.print(f"  AAAA records: {result.get('aaaa', [])}")
-                console.print(f"  MX records: {result.get('mx', [])}")
-            except Exception as e:
-                console.print(f"  [red]Error: {e}[/red]")
+            console.print(f"\n[bold]Scanning {target}...[/bold]")
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("DNS enumeration...", total=None)
+                
+                dns_recon = DNSRecon()
+                try:
+                    result = await dns_recon.enumerate_records(target)
+                    progress.update(task, description="DNS enumeration complete")
+                    
+                    # Display DNS results
+                    console.print(f"\n  [cyan]DNS Records:[/cyan]")
+                    if result.records:
+                        for record in result.records[:10]:  # Show first 10
+                            console.print(f"    {record.record_type}: {record.value}")
+                    
+                    if result.nameservers:
+                        console.print(f"\n  [cyan]Nameservers:[/cyan]")
+                        for ns in result.nameservers:
+                            console.print(f"    • {ns}")
+                    
+                    if result.mx_records:
+                        console.print(f"\n  [cyan]MX Records:[/cyan]")
+                        for mx in result.mx_records:
+                            console.print(f"    • {mx.get('exchange', 'N/A')}")
+                    
+                    if result.spf_record:
+                        console.print(f"\n  [cyan]SPF Record:[/cyan]")
+                        console.print(f"    {result.spf_record}")
+                    
+                    if result.dmarc_record:
+                        console.print(f"\n  [cyan]DMARC Record:[/cyan]")
+                        console.print(f"    {result.dmarc_record}")
+                    
+                    if result.txt_records:
+                        console.print(f"\n  [cyan]TXT Records:[/cyan]")
+                        for txt in result.txt_records[:5]:
+                            console.print(f"    • {txt}")
+                    
+                    # Subdomain enumeration
+                    progress.update(task, description="Subdomain enumeration...")
+                    subdiscovery = SubdomainDiscovery()
+                    subdomains = await subdiscovery.enumerate_subdomains(target)
+                    
+                    if subdomains:
+                        console.print(f"\n  [cyan]Subdomains Found:[/cyan] ({len(subdomains)})")
+                        for sub in subdomains[:15]:  # Show first 15
+                            console.print(f"    • {sub}")
+                        if len(subdomains) > 15:
+                            console.print(f"    ... and {len(subdomains) - 15} more")
+                    else:
+                        console.print(f"\n  [yellow]No subdomains found[/yellow]")
+                    
+                    progress.update(task, description="Reconnaissance complete")
+                    
+                except Exception as e:
+                    console.print(f"  [red]Error: {e}[/red]")
+                    console.print(f"  [yellow]Error type: {type(e).__name__}[/yellow]")
 
         console.print("[green]✓ Reconnaissance complete[/green]")
 
