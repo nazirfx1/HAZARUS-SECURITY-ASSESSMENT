@@ -524,6 +524,29 @@ def web(
                     console.print(f"  [cyan]Cookies:[/cyan] {len(result.cookies)}")
                     console.print(f"  [cyan]Vulnerabilities:[/cyan] {len(result.vulnerabilities)}")
                     
+                    if result.waf_detected:
+                        console.print(f"\n  [yellow]WAF Detected:[/yellow] {result.waf_detected}")
+                    
+                    if result.technologies:
+                        console.print(f"\n  [cyan]Technologies Detected:[/cyan]")
+                        for tech in result.technologies:
+                            console.print(f"    • {tech}")
+                    
+                    if result.ssl_info:
+                        console.print(f"\n  [cyan]SSL/TLS Information:[/cyan]")
+                        for key, value in result.ssl_info.items():
+                            console.print(f"    {key}: {value}")
+                    
+                    if result.open_directories:
+                        console.print(f"\n  [yellow]Open/Restricted Directories:[/yellow]")
+                        for directory in result.open_directories:
+                            console.print(f"    • {directory}")
+                    
+                    if result.nuclei_findings:
+                        console.print(f"\n  [red]Nuclei Findings:[/red]")
+                        for finding in result.nuclei_findings:
+                            console.print(f"    • {finding}")
+                    
                     if result.security_headers:
                         console.print(f"\n  [yellow]Security Headers Found:[/yellow]")
                         for header in result.security_headers:

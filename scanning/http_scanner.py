@@ -7,6 +7,7 @@ import asyncio
 import logging
 import httpx
 import subprocess
+import json
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -32,6 +33,11 @@ class HTTPSecurityResult:
     vulnerabilities: List[str] = field(default_factory=list)
     recommendations: List[str] = field(default_factory=list)
     scanned_at: datetime = None
+    ssl_info: Dict[str, Any] = field(default_factory=dict)
+    technologies: List[str] = field(default_factory=list)
+    open_directories: List[str] = field(default_factory=list)
+    waf_detected: Optional[str] = None
+    nuclei_findings: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         if self.scanned_at is None:
@@ -96,6 +102,26 @@ class HTTPScanner:
                 self.logger.info("Generating recommendations...")
                 self._generate_recommendations(result)
 
+                # Run advanced scans
+                self.logger.info("Running SSL/TLS analysis...")
+                await self._analyze_ssl(target, result)
+                
+                self.logger.info("Detecting technologies...")
+                await self._detect_technologies(headers, response, result)
+                
+                self.logger.info("Checking for WAF...")
+                await self._detect_waf(headers, result)
+                
+                self.logger.info("Scanning for open directories...")
+                await self._scan_directories(target, result)
+
+            # Run external tool scans
+            self.logger.info("Checking for Nuclei scanner...")
+            nuclei_results = await self._run_nuclei(target)
+            if nuclei_results:
+                result.nuclei_findings.extend(nuclei_results)
+                self.logger.info(f"Nuclei scan complete: {len(nuclei_results)} findings")
+            
             # Run Nikto scan if available
             self.logger.info("Checking for Nikto scanner...")
             nikto_results = await self._run_nikto(target)
@@ -162,6 +188,185 @@ class HTTPScanner:
             
         except Exception as e:
             self.logger.warning(f"Nikto scan failed: {e}")
+            return []
+
+    async def _analyze_ssl(self, target: str, result: HTTPSecurityResult) -> None:
+        """Analyze SSL/TLS configuration."""
+        try:
+            # Use openssl s_client to get SSL info
+            proc = await asyncio.create_subprocess_exec(
+                "openssl", "s_client", "-connect", target.replace("https://", "").replace("http://", "") + ":443",
+                "-servername", target.replace("https://", "").replace("http://", ""),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            
+            output = stdout.decode()
+            
+            # Extract SSL info
+            if "Protocol" in output:
+                for line in output.split('\n'):
+                    if "Protocol" in line:
+                        result.ssl_info["protocol"] = line.split(":")[1].strip()
+                    elif "Cipher" in line:
+                        result.ssl_info["cipher"] = line.split(":")[1].strip()
+                    elif "Verify return code" in line:
+                        result.ssl_info["verify_code"] = line.split(":")[1].strip()
+            
+            if result.ssl_info:
+                self.logger.info(f"SSL/TLS analysis complete: {result.ssl_info}")
+                
+        except Exception as e:
+            self.logger.warning(f"SSL analysis failed: {e}")
+
+    async def _detect_technologies(self, headers: Dict[str, str], response: httpx.Response, result: HTTPSecurityResult) -> None:
+        """Detect technologies used by the target."""
+        technologies = []
+        
+        # Check headers for technology indicators
+        server = headers.get("server", "").lower()
+        if "nginx" in server:
+            technologies.append("Nginx")
+        if "apache" in server:
+            technologies.append("Apache")
+        if "iis" in server:
+            technologies.append("IIS")
+        if "cloudflare" in server:
+            technologies.append("Cloudflare")
+        
+        powered_by = headers.get("x-powered-by", "").lower()
+        if "php" in powered_by:
+            technologies.append("PHP")
+        if "asp.net" in powered_by:
+            technologies.append("ASP.NET")
+        if "express" in powered_by:
+            technologies.append("Express")
+        if "django" in powered_by:
+            technologies.append("Django")
+        if "flask" in powered_by:
+            technologies.append("Flask")
+        
+        # Check response body for indicators
+        content = response.text.lower()
+        if "wordpress" in content:
+            technologies.append("WordPress")
+        if "drupal" in content:
+            technologies.append("Drupal")
+        if "joomla" in content:
+            technologies.append("Joomla")
+        if "react" in content:
+            technologies.append("React")
+        if "vue" in content:
+            technologies.append("Vue.js")
+        if "angular" in content:
+            technologies.append("Angular")
+        
+        result.technologies = list(set(technologies))
+        if result.technologies:
+            self.logger.info(f"Technologies detected: {result.technologies}")
+
+    async def _detect_waf(self, headers: Dict[str, str], result: HTTPSecurityResult) -> None:
+        """Detect Web Application Firewall (WAF)."""
+        waf_indicators = {
+            "cloudflare": "Cloudflare WAF",
+            "aws": "AWS WAF",
+            "akamai": "Akamai WAF",
+            "fastly": "Fastly WAF",
+            "incapsula": "Incapsula WAF",
+            "sucuri": "Sucuri WAF",
+            "modsecurity": "ModSecurity",
+            "x-sucuri-id": "Sucuri WAF",
+            "cf-ray": "Cloudflare",
+            "x-amz-cf-id": "AWS CloudFront"
+        }
+        
+        for key, value in headers.items():
+            key_lower = key.lower()
+            value_lower = value.lower()
+            
+            for indicator, waf_name in waf_indicators.items():
+                if indicator in key_lower or indicator in value_lower:
+                    result.waf_detected = waf_name
+                    self.logger.info(f"WAF detected: {waf_name}")
+                    return
+
+    async def _scan_directories(self, target: str, result: HTTPSecurityResult) -> None:
+        """Scan for common open directories."""
+        common_dirs = [
+            "/admin", "/administrator", "/wp-admin", "/login", "/config",
+            "/backup", "/db", "/sql", "/uploads", "/files", "/tmp",
+            "/.git", "/.env", "/api", "/test", "/debug"
+        ]
+        
+        async with httpx.AsyncClient(timeout=3) as client:
+            for directory in common_dirs:
+                try:
+                    url = target.rstrip("/") + directory
+                    response = await client.get(url)
+                    
+                    if response.status_code == 200:
+                        result.open_directories.append(f"{directory} ({response.status_code})")
+                        self.logger.info(f"Found open directory: {directory}")
+                    elif response.status_code == 403:
+                        result.open_directories.append(f"{directory} (403 Forbidden)")
+                        self.logger.info(f"Found restricted directory: {directory}")
+                        
+                except Exception:
+                    continue
+        
+        if result.open_directories:
+            self.logger.info(f"Directory scan complete: {len(result.open_directories)} directories found")
+
+    async def _run_nuclei(self, target: str) -> List[str]:
+        """Run Nuclei vulnerability scanner if available."""
+        try:
+            # Check if Nuclei is installed
+            proc = await asyncio.create_subprocess_exec(
+                "which", "nuclei",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await proc.communicate()
+            
+            if proc.returncode != 0:
+                self.logger.info("Nuclei not installed, skipping Nuclei scan")
+                return []
+
+            # Run Nuclei scan
+            self.logger.info(f"Running Nuclei scan on {target}")
+            proc = await asyncio.create_subprocess_exec(
+                "nuclei",
+                "-u", target,
+                "-severity", "critical,high,medium",
+                "-json",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            
+            output = stdout.decode()
+            findings = []
+            
+            # Parse Nuclei JSON output
+            for line in output.split('\n'):
+                if line.strip():
+                    try:
+                        finding = json.loads(line)
+                        template_id = finding.get("templateID", "unknown")
+                        severity = finding.get("info", {}).get("severity", "unknown")
+                        name = finding.get("info", {}).get("name", "unknown")
+                        findings.append(f"Nuclei [{severity}] {name} ({template_id})")
+                    except json.JSONDecodeError:
+                        pass
+            
+            if findings:
+                self.logger.info(f"Nuclei found {len(findings)} vulnerabilities")
+            
+            return findings
+            
+        except Exception as e:
+            self.logger.warning(f"Nuclei scan failed: {e}")
             return []
 
     async def _check_security_headers(self, headers: Dict[str, str], result: HTTPSecurityResult) -> None:
