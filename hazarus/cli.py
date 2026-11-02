@@ -131,7 +131,13 @@ def privacy_check() -> None:
     console.print(Panel.fit("[bold blue]Privacy Check[/bold blue]"))
 
     async def _check():
+        from anonymity.anonsurf import AnonsurfManager
+        from anonymity.dns_leak import DNSLeakChecker
+        from anonymity.ipv6_check import IPv6Checker
+
         anonsurf = AnonsurfManager()
+        dns_checker = DNSLeakChecker()
+        ipv6_checker = IPv6Checker()
 
         with Progress(
             SpinnerColumn(),
@@ -149,10 +155,12 @@ def privacy_check() -> None:
             tor_available = await anonsurf.check_tor_connectivity()
             progress.update(task, description="Checking for DNS leaks...")
 
-            dns_leak = await anonsurf.check_dns_leak()
+            dns_result = await dns_checker.check_leaks()
+            dns_leak = dns_result.get("leaking", False)
             progress.update(task, description="Checking IPv6 exposure...")
 
-            ipv6_exposed = await anonsurf.check_ipv6_exposure()
+            ipv6_enabled = await ipv6_checker.check_ipv6_enabled()
+            ipv6_exposed = ipv6_enabled
 
         table = Table(title="Privacy Status")
         table.add_column("Check", style="cyan")

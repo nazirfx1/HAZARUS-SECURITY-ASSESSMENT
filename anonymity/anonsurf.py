@@ -95,25 +95,3 @@ class AnonsurfManager:
         except Exception as e:
             self.logger.error(f"Error checking Tor connectivity: {e}")
             return False
-
-    async def check_dns_leak(self) -> bool:
-        """Check for DNS leaks."""
-        # Placeholder - implement actual DNS leak detection
-        self.logger.warning("DNS leak detection not yet implemented")
-        return False
-
-    async def check_ipv6_exposure(self) -> bool:
-        """Check for IPv6 exposure."""
-        try:
-            result = await asyncio.create_subprocess_exec(
-                "ip", "-6", "addr",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await result.communicate()
-            output = stdout.decode()
-            # Check if IPv6 is enabled and has global addresses
-            return "global" in output.lower()
-        except Exception as e:
-            self.logger.error(f"Error checking IPv6 exposure: {e}")
-            return False
