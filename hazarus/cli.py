@@ -611,7 +611,7 @@ def recon(
                     except Exception as e:
                         console.print(f"    [yellow]⚠ WHOIS query failed: {e}[/yellow]")
                     
-                    # Port scanning (basic ports)
+                    # Port scanning (advanced deep scan)
                     progress.update(task, description="Port scanning...")
                     try:
                         # Check if Nmap is available (Linux/Parrot OS)
@@ -626,23 +626,41 @@ def recon(
                             nmap_available = proc.returncode == 0
                         except:
                             pass
-                        
+
                         if nmap_available:
                             nmap = NmapScanner()
-                            # Scan common ports only for reconnaissance
-                            nmap_result = await nmap.scan([target], ports="22,80,443,8080,8443")
+                            # Use advanced deep scan by default
+                            nmap_result = await nmap.advanced_scan(
+                                targets=[target],
+                                ports="1-65535",
+                                tcp_scan=True,
+                                udp_scan=True,
+                                service_detection=True,
+                                os_detection=True,
+                                script_scan=True,
+                                vuln_scan=True,
+                                traceroute=True,
+                                aggressive=False,
+                                timing=4
+                            )
                             open_ports = []
                             for host in nmap_result.hosts:
+                                if host.os:
+                                    console.print(f"\n  [cyan]OS Detection:[/cyan] {host.os}")
                                 for port in host.ports:
                                     if port.state == "open":
-                                        open_ports.append(f"{port.port}/{port.service or 'unknown'}")
-                            
+                                        service_info = f"{port.service or 'unknown'}"
+                                        version_info = f" ({port.version})" if port.version else ""
+                                        open_ports.append(f"{port.port}/{port.protocol}: {service_info}{version_info}")
+
                             if open_ports:
-                                console.print(f"\n  [cyan]Open Ports:[/cyan]")
-                                for port in open_ports:
+                                console.print(f"\n  [cyan]Open Ports:[/cyan] ({len(open_ports)} found)")
+                                for port in open_ports[:20]:  # Show first 20
                                     console.print(f"    • {port}")
+                                if len(open_ports) > 20:
+                                    console.print(f"    ... and {len(open_ports) - 20} more")
                             else:
-                                console.print(f"\n  [yellow]No common ports detected (22,80,443,8080,8443)[/yellow]")
+                                console.print(f"\n  [yellow]No open ports detected[/yellow]")
                         else:
                             console.print(f"\n  [yellow]⚠ Nmap not installed - skipping port scan[/yellow]")
                             console.print(f"    Install Nmap for port scanning capabilities")
@@ -670,34 +688,22 @@ def scan(
         help="Path to scope configuration file"
     ),
     ports: str = typer.Option(
-        "1-1000",
+        "1-65535",
         "--ports",
         "-p",
-        help="Port range to scan (e.g., 1-1000, 22,80,443)"
+        help="Port range to scan (e.g., 1-65535, 22,80,443)"
     ),
-    advanced: bool = typer.Option(
+    basic: bool = typer.Option(
         False,
-        "--advanced",
-        "-a",
-        help="Enable advanced deep scanning with OS detection, scripts, and vulnerability scanning"
-    ),
-    udp: bool = typer.Option(
-        False,
-        "--udp",
-        "-u",
-        help="Enable UDP scanning (slower but more comprehensive)"
-    ),
-    vuln: bool = typer.Option(
-        False,
-        "--vuln",
-        "-v",
-        help="Enable vulnerability detection scripts"
+        "--basic",
+        "-b",
+        help="Use basic scanning instead of advanced deep scan"
     ),
     aggressive: bool = typer.Option(
         False,
         "--aggressive",
         "-A",
-        help="Enable aggressive scanning (includes OS detection, version detection, script scanning, and traceroute)"
+        help="Enable aggressive scanning (even more comprehensive)"
     ),
     timing: int = typer.Option(
         4,
@@ -706,16 +712,23 @@ def scan(
         help="Timing template (0-5, 4 is normal, higher is faster but more detectable)"
     )
 ) -> None:
-    """Run network scan on targets."""
+    """Run network scan on targets (advanced deep scan by default)."""
     console.print(Panel.fit("[bold blue]Network Scanning[/bold blue]"))
     console.print(f"Targets: {', '.join(targets)}")
     console.print(f"Ports: {ports}")
-    if advanced:
-        console.print("[yellow]Advanced scanning enabled[/yellow]")
-    if udp:
-        console.print("[yellow]UDP scanning enabled[/yellow]")
-    if vuln:
-        console.print("[yellow]Vulnerability detection enabled[/yellow]")
+
+    if basic:
+        console.print("[yellow]Basic scanning mode[/yellow]")
+    else:
+        console.print("[green]Advanced deep scanning enabled (default)[/green]")
+        console.print("  - TCP SYN scan")
+        console.print("  - UDP scan")
+        console.print("  - Service detection")
+        console.print("  - OS detection")
+        console.print("  - Script scanning")
+        console.print("  - Vulnerability detection")
+        console.print("  - Traceroute")
+
     if aggressive:
         console.print("[yellow]Aggressive scanning enabled[/yellow]")
 
@@ -748,23 +761,8 @@ def scan(
         for target in valid_targets:
             console.print(f"Scanning {target}...")
             try:
-                if advanced or aggressive or vuln or udp:
-                    # Use advanced scan
-                    result = await scanner.advanced_scan(
-                        targets=[target],
-                        ports=ports,
-                        tcp_scan=True,
-                        udp_scan=udp,
-                        service_detection=True,
-                        os_detection=advanced or aggressive,
-                        script_scan=advanced or aggressive or vuln,
-                        vuln_scan=vuln,
-                        traceroute=advanced or aggressive,
-                        aggressive=aggressive,
-                        timing=timing
-                    )
-                else:
-                    # Use standard scan
+                if basic:
+                    # Use basic scan
                     result = await scanner.scan(
                         targets=[target],
                         ports=ports,
@@ -772,6 +770,21 @@ def scan(
                         service_detection=True,
                         os_detection=False,
                         aggressive=False
+                    )
+                else:
+                    # Use advanced deep scan by default
+                    result = await scanner.advanced_scan(
+                        targets=[target],
+                        ports=ports,
+                        tcp_scan=True,
+                        udp_scan=True,
+                        service_detection=True,
+                        os_detection=True,
+                        script_scan=True,
+                        vuln_scan=True,
+                        traceroute=True,
+                        aggressive=aggressive,
+                        timing=timing
                     )
 
                 # Display results

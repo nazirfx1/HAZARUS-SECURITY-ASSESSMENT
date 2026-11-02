@@ -55,14 +55,14 @@ class NmapScanner:
     async def scan(
         self,
         targets: List[str],
-        ports: str = "1-1000",
-        scan_type: str = "sT",  # sT (TCP connect), sS (SYN)
+        ports: str = "1-65535",
+        scan_type: str = "sS",  # sS (SYN), sT (TCP connect)
         service_detection: bool = True,
-        os_detection: bool = False,
+        os_detection: bool = True,
         aggressive: bool = False,
-        timeout: int = 300
+        timeout: int = 600
     ) -> NmapResult:
-        """Scan targets with Nmap."""
+        """Scan targets with Nmap (defaults to advanced settings)."""
         self.logger.info(f"Scanning {len(targets)} targets, ports {ports}")
 
         result = NmapResult(targets=targets, scan_start=datetime.utcnow())
@@ -122,7 +122,7 @@ class NmapScanner:
         service_detection: bool,
         os_detection: bool,
         aggressive: bool
-    ) -> str:
+    ) -> List[str]:
         """Build nmap command."""
         cmd = ["nmap"]
 
@@ -133,7 +133,8 @@ class NmapScanner:
             cmd.append("-sT")  # Default to TCP connect (no root required)
 
         # Port specification
-        cmd.append(f"-p{ports}")
+        cmd.append("-p")
+        cmd.append(ports)
 
         # Service detection
         if service_detection:
@@ -154,7 +155,7 @@ class NmapScanner:
         # Add targets
         cmd.extend(targets)
 
-        return " ".join(cmd)
+        return cmd
 
     def _parse_xml(self, xml_data: str) -> List[Host]:
         """Parse Nmap XML output."""
@@ -433,6 +434,6 @@ class NmapScanner:
             ],
             "scan_start": result.scan_start.isoformat() if result.scan_start else None,
             "scan_end": result.scan_end.isoformat() if result.scan_end else None,
-            "command": result.command,
+            "command": " ".join(result.command) if isinstance(result.command, list) else result.command,
             "exit_status": result.exit_status
         }
