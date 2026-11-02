@@ -18,36 +18,44 @@ class DNSLeakChecker:
     def __init__(self):
         self.logger = logging.getLogger("hazarus.dns_leak_checker")
 
-    async def check_dns_leak(self) -> dict:
+    async def check_leaks(self) -> dict:
         """
         Check for DNS leaks using multiple DNS leak test services.
         """
         result = {
-            "leak_detected": False,
+            "leaking": False,
             "dns_servers": [],
             "consistent": True,
             "using_tor": False
         }
 
-        # Try multiple DNS leak test services
-        services = [
-            "https://dnsleaktest.com",
-            "https://ipleak.net"
-        ]
-
-        dns_servers = set()
-
-        for service in services:
-            try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    response = await client.get(service)
-                    # Parse response to extract DNS servers
-                    # This is a simplified version - actual implementation would parse HTML
-                    self.logger.debug(f"Checked DNS leak using {service}")
-            except Exception as e:
-                self.logger.warning(f"Failed to check {service}: {e}")
-
         # Check current DNS configuration
+        try:
+            import subprocess
+            proc = await asyncio.create_subprocess_exec(
+                "resolvectl", "status",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            output = stdout.decode()
+            
+            # Extract DNS servers from output
+            if "DNS Servers:" in output:
+                lines = output.split('\n')
+                for line in lines:
+                    if "DNS Servers:" in line:
+                        continue
+                    if line.strip() and not line.startswith(' '):
+                        result["dns_servers"].append(line.strip())
+        except Exception as e:
+            self.logger.warning(f"Failed to check DNS configuration: {e}")
+
+        # Simple heuristic: if no DNS servers detected, assume potential issue
+        if not result["dns_servers"]:
+            result["leaking"] = True
+        
+        return result
         current_dns = self._get_current_dns()
         result["dns_servers"] = current_dns
 

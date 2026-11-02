@@ -20,16 +20,37 @@ class IPv6Checker:
     async def check_ipv6_enabled(self) -> bool:
         """Check if IPv6 is enabled on the system."""
         try:
+            # Check sysctl settings for IPv6 disable
             result = await asyncio.create_subprocess_exec(
-                "test", "-f", "/proc/net/if_inet6",
+                "sysctl", "-n", "net.ipv6.conf.all.disable_ipv6",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            await result.communicate()
-            return result.returncode == 0
+            stdout, stderr = await result.communicate()
+            output = stdout.decode().strip()
+            
+            # If net.ipv6.conf.all.disable_ipv6 = 1, IPv6 is disabled
+            if output == "1":
+                return False
+            
+            # Also check default
+            result2 = await asyncio.create_subprocess_exec(
+                "sysctl", "-n", "net.ipv6.conf.default.disable_ipv6",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout2, stderr2 = await result2.communicate()
+            output2 = stdout2.decode().strip()
+            
+            if output2 == "1":
+                return False
+            
+            # If either is 0, IPv6 is enabled
+            return True
         except Exception as e:
             self.logger.error(f"Error checking IPv6: {e}")
-            return False
+            # Default to assuming enabled if check fails
+            return True
 
     async def get_ipv6_addresses(self) -> List[str]:
         """Get all IPv6 addresses on the system."""
