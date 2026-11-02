@@ -5,6 +5,8 @@ Command-line interface for the HAZARUS Security Assessment Framework.
 
 import asyncio
 import sys
+import os
+import subprocess
 from pathlib import Path
 from typing import Optional
 import typer
@@ -82,6 +84,7 @@ privacy:
     console.print(Panel.fit("[green]Initialization complete![/green]"))
     console.print("\nNext steps:")
     console.print("1. Edit config/scope.yaml to define your assessment scope")
+    console.print("   Or use: hazarus scope add-target <domain>")
     console.print("2. Run 'hazarus scope validate' to verify your scope")
     console.print("3. Run 'hazarus privacy check' to verify anonymity")
     console.print("4. Run 'hazarus recon' to start reconnaissance")
@@ -116,6 +119,163 @@ def scope_validate(
             table.add_row(key, str(value))
 
         console.print(table)
+
+        console.print("[green]✓ Scope configuration is valid[/green]")
+
+    asyncio.run(_validate())
+
+
+@app.command()
+def scope_edit(
+    scope_file: Path = typer.Option(
+        "config/scope.yaml",
+        "--scope-file",
+        "-s",
+        help="Path to scope configuration file"
+    )
+) -> None:
+    """Edit scope configuration in default editor."""
+    console.print(Panel.fit("[bold blue]Scope Edit[/bold blue]"))
+    
+    if not scope_file.exists():
+        console.print(f"[yellow]Scope file {scope_file} does not exist. Creating template...[/yellow]")
+        scope_manager = ScopeManager(str(scope_file))
+        scope_manager.create_scope_template(scope_file)
+    
+    console.print(f"Opening {scope_file} in your default editor...")
+    
+    # Use EDITOR environment variable or default to nano
+    editor = os.environ.get("EDITOR", "nano")
+    
+    try:
+        subprocess.run([editor, str(scope_file)], check=True)
+        console.print("[green]✓ Scope file saved[/green]")
+        console.print("\nRun 'hazarus scope validate' to verify your changes")
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]✗ Editor failed: {e}[/red]")
+    except FileNotFoundError:
+        console.print(f"[yellow]Editor '{editor}' not found. Trying nano...[/yellow]")
+        try:
+            subprocess.run(["nano", str(scope_file)], check=True)
+            console.print("[green]✓ Scope file saved[/green]")
+        except:
+            console.print("[red]✗ Could not open editor. Please edit the file manually:[/red]")
+            console.print(f"  {scope_file}")
+
+
+@app.command()
+def scope_add_target(
+    target: str = typer.Argument(..., help="Target to add (domain, IP, or URL)"),
+    scope_file: Path = typer.Option(
+        "config/scope.yaml",
+        "--scope-file",
+        "-s",
+        help="Path to scope configuration file"
+    )
+) -> None:
+    """Add a target to the scope configuration."""
+    console.print(Panel.fit("[bold blue]Add Target to Scope[/bold blue]"))
+    
+    # Load existing scope
+    import yaml
+    if scope_file.exists():
+        with open(scope_file, "r") as f:
+            scope_data = yaml.safe_load(f) or {}
+    else:
+        scope_data = {}
+        console.print(f"[yellow]Creating new scope file at {scope_file}[/yellow]")
+    
+    # Initialize lists if they don't exist
+    if "allowed_targets" not in scope_data:
+        scope_data["allowed_targets"] = []
+    if "allowed_domains" not in scope_data:
+        scope_data["allowed_domains"] = []
+    
+    # Determine target type and add to appropriate list
+    target_lower = target.lower()
+    
+    if target_lower.startswith(("http://", "https://")):
+        # URL - add to allowed_targets
+        if target not in scope_data["allowed_targets"]:
+            scope_data["allowed_targets"].append(target)
+            console.print(f"[green]✓ Added URL to allowed_targets: {target}[/green]")
+        else:
+            console.print(f"[yellow]⚠ Target already in scope: {target}[/yellow]")
+    elif "/" in target:
+        # CIDR - add to allowed_targets
+        if "allowed_cidrs" not in scope_data:
+            scope_data["allowed_cidrs"] = []
+        if target not in scope_data["allowed_cidrs"]:
+            scope_data["allowed_cidrs"].append(target)
+            console.print(f"[green]✓ Added CIDR to allowed_cidrs: {target}[/green]")
+        else:
+            console.print(f"[yellow]⚠ CIDR already in scope: {target}[/yellow]")
+    else:
+        # Domain or IP - add to both
+        if target not in scope_data["allowed_targets"]:
+            scope_data["allowed_targets"].append(target)
+            console.print(f"[green]✓ Added to allowed_targets: {target}[/green]")
+        
+        # If it looks like a domain (not an IP), add to allowed_domains
+        if not target.replace(".", "").isdigit():
+            if target not in scope_data["allowed_domains"]:
+                scope_data["allowed_domains"].append(target)
+                console.print(f"[green]✓ Added to allowed_domains: {target}[/green]")
+    
+    # Save the updated scope
+    with open(scope_file, "w") as f:
+        yaml.dump(scope_data, f, default_flow_style=False, sort_keys=False)
+    
+    console.print(f"\nScope file updated: {scope_file}")
+    console.print("Run 'hazarus scope validate' to verify")
+
+
+@app.command()
+def scope_list(
+    scope_file: Path = typer.Option(
+        "config/scope.yaml",
+        "--scope-file",
+        "-s",
+        help="Path to scope configuration file"
+    )
+) -> None:
+    """List all targets in the scope configuration."""
+    console.print(Panel.fit("[bold blue]Scope Targets[/bold blue]"))
+    
+    import yaml
+    if not scope_file.exists():
+        console.print(f"[red]✗ Scope file not found: {scope_file}[/red]")
+        console.print("Run 'hazarus init' to create a scope file")
+        return
+    
+    with open(scope_file, "r") as f:
+        scope_data = yaml.safe_load(f) or {}
+    
+    # Display targets
+    if scope_data.get("allowed_targets"):
+        console.print("\n[bold]Allowed Targets:[/bold]")
+        for target in scope_data["allowed_targets"]:
+            console.print(f"  • {target}")
+    
+    if scope_data.get("allowed_domains"):
+        console.print("\n[bold]Allowed Domains:[/bold]")
+        for domain in scope_data["allowed_domains"]:
+            console.print(f"  • {domain}")
+    
+    if scope_data.get("allowed_cidrs"):
+        console.print("\n[bold]Allowed CIDRs:[/bold]")
+        for cidr in scope_data["allowed_cidrs"]:
+            console.print(f"  • {cidr}")
+    
+    if scope_data.get("excluded_targets"):
+        console.print("\n[bold]Excluded Targets:[/bold]")
+        for target in scope_data["excluded_targets"]:
+            console.print(f"  • {target}")
+    
+    if scope_data.get("allowed_ports"):
+        console.print("\n[bold]Allowed Ports:[/bold]")
+        for port in scope_data["allowed_ports"]:
+            console.print(f"  • {port}")
 
         if summary:
             console.print("[green]✓ Scope configuration is valid[/green]")
