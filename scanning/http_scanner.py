@@ -52,9 +52,10 @@ class HTTPSecurityResult:
 class HTTPScanner:
     """HTTP scanning module."""
 
-    def __init__(self, timeout: int = 10, connect_timeout: int = 5):
+    def __init__(self, timeout: int = 10, connect_timeout: int = 5, skip_advanced: bool = False):
         self.timeout = timeout
         self.connect_timeout = connect_timeout
+        self.skip_advanced = skip_advanced
         self.logger = logging.getLogger("hazarus.http_scanner")
 
         # Important security headers
@@ -139,29 +140,32 @@ class HTTPScanner:
                 self._generate_recommendations(result)
 
                 # Run advanced scans (optional, don't fail on errors)
-                try:
-                    self.logger.info("Running SSL/TLS analysis...")
-                    await self._analyze_ssl(target, result)
-                except Exception as e:
-                    self.logger.warning(f"SSL analysis skipped: {e}")
-                
-                try:
-                    self.logger.info("Detecting technologies...")
-                    await self._detect_technologies(headers, response, result)
-                except Exception as e:
-                    self.logger.warning(f"Technology detection skipped: {e}")
-                
-                try:
-                    self.logger.info("Checking for WAF...")
-                    await self._detect_waf(headers, result)
-                except Exception as e:
-                    self.logger.warning(f"WAF detection skipped: {e}")
-                
-                try:
-                    self.logger.info("Scanning for open directories...")
-                    await self._scan_directories(target, result)
-                except Exception as e:
-                    self.logger.warning(f"Directory scan skipped: {e}")
+                if not self.skip_advanced:
+                    try:
+                        self.logger.info("Running SSL/TLS analysis...")
+                        await self._analyze_ssl(target, result)
+                    except Exception as e:
+                        self.logger.warning(f"SSL analysis skipped: {e}")
+                    
+                    try:
+                        self.logger.info("Detecting technologies...")
+                        await self._detect_technologies(headers, response, result)
+                    except Exception as e:
+                        self.logger.warning(f"Technology detection skipped: {e}")
+                    
+                    try:
+                        self.logger.info("Checking for WAF...")
+                        await self._detect_waf(headers, result)
+                    except Exception as e:
+                        self.logger.warning(f"WAF detection skipped: {e}")
+                    
+                    try:
+                        self.logger.info("Scanning for open directories...")
+                        await self._scan_directories(target, result)
+                    except Exception as e:
+                        self.logger.warning(f"Directory scan skipped: {e}")
+                else:
+                    self.logger.info("Advanced scans skipped (--skip-advanced flag)")
 
             # Run external tool scans
             self.logger.info("Checking for Nuclei scanner...")

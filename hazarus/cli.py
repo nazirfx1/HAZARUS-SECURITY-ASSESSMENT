@@ -482,12 +482,19 @@ def web(
         "--timeout",
         "-t",
         help="Connection timeout in seconds (default: 10)"
+    ),
+    skip_advanced: bool = typer.Option(
+        False,
+        "--skip-advanced",
+        help="Skip advanced scans (SSL, directories, WAF) for faster results"
     )
 ) -> None:
     """Run web application security assessment."""
     console.print(Panel.fit("[bold blue]Web Assessment[/bold blue]"))
     console.print(f"Targets: {', '.join(targets)}")
     console.print(f"Timeout: {timeout}s")
+    if skip_advanced:
+        console.print("[yellow]Advanced scans disabled (faster mode)[/yellow]")
 
     async def _run_web():
         from scanning.http_scanner import HTTPScanner
@@ -509,7 +516,7 @@ def web(
             console.print("[red]✗ No valid targets in scope[/red]")
             raise typer.Exit(1)
 
-        scanner = HTTPScanner(timeout=timeout, connect_timeout=min(timeout, 5))
+        scanner = HTTPScanner(timeout=timeout, connect_timeout=min(timeout, 5), skip_advanced=skip_advanced)
         for target in valid_targets:
             console.print(f"\n[bold]Scanning {target}...[/bold]")
             
