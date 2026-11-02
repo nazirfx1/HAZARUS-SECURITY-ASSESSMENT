@@ -81,6 +81,12 @@ hazarus = "hazarus.cli:main"
 requires = ["setuptools>=68.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+include = ["hazarus*"]
+
+[tool.setuptools.package-data]
+hazarus = ["config/*.yaml", "config/*.json"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
