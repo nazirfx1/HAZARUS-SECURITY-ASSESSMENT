@@ -277,12 +277,17 @@ def scope_list(
         for port in scope_data["allowed_ports"]:
             console.print(f"  • {port}")
 
-        if summary:
-            console.print("[green]✓ Scope configuration is valid[/green]")
-        else:
-            console.print("[yellow]⚠ Scope is empty[/yellow]")
+    # Check if scope has any targets
+    has_targets = any([
+        scope_data.get("allowed_targets"),
+        scope_data.get("allowed_domains"),
+        scope_data.get("allowed_cidrs")
+    ])
 
-    asyncio.run(_validate())
+    if has_targets:
+        console.print("\n[green]✓ Scope configuration is valid[/green]")
+    else:
+        console.print("\n[yellow]⚠ Scope is empty[/yellow]")
 
 
 @app.command()
@@ -447,7 +452,8 @@ def recon(
                     
                     progress.update(task, description="Subdomain enumeration (brute force)...")
                     subdiscovery = SubdomainDiscovery()
-                    bruteforce_subdomains = await subdiscovery.enumerate_subdomains(target)
+                    bruteforce_result = await subdiscovery.discover(target)
+                    bruteforce_subdomains = list(bruteforce_result.subdomains)
                     
                     # Combine all subdomain sources
                     all_subdomains = set()
@@ -535,8 +541,14 @@ def scan(
             console.print(f"Scanning {target}...")
             try:
                 result = await scanner.scan(target, ports=ports)
-                console.print(f"  Ports found: {len(result.open_ports)}")
-                console.print(f"  Open ports: {result.open_ports[:10]}")
+                # Extract open ports from hosts
+                open_ports = []
+                for host in result.hosts:
+                    for port in host.ports:
+                        if port.state == "open":
+                            open_ports.append(port.port)
+                console.print(f"  Ports found: {len(open_ports)}")
+                console.print(f"  Open ports: {open_ports[:10]}")
             except Exception as e:
                 console.print(f"  [red]Error: {e}[/red]")
 
@@ -695,7 +707,84 @@ def api(
     """Run API security assessment."""
     console.print(Panel.fit("[bold blue]API Security Assessment[/bold blue]"))
     console.print(f"Targets: {', '.join(targets)}")
-    console.print("[yellow]API assessment feature - basic implementation[/yellow]")
+
+    async def _run_api():
+        from scanning.api_discovery import APIDiscovery
+        from security import ScopeManager
+
+        scope_manager = ScopeManager(str(scope_file))
+        if not await scope_manager.load_scope():
+            console.print("[red]✗ Failed to load scope file[/red]")
+            raise typer.Exit(1)
+
+        valid_targets = []
+        for target in targets:
+            if await scope_manager.validate_target(target):
+                valid_targets.append(target)
+            else:
+                console.print(f"[yellow]⚠ Target {target} not in authorized scope[/yellow]")
+
+        if not valid_targets:
+            console.print("[red]✗ No valid targets in scope[/red]")
+            raise typer.Exit(1)
+
+        console.print(f"[green]✓ Validated {len(valid_targets)} targets[/green]")
+
+        api_discovery = APIDiscovery()
+        for target in valid_targets:
+            console.print(f"\n[bold]Scanning {target}...[/bold]")
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("Discovering API endpoints...", total=None)
+
+                try:
+                    result = await api_discovery.discover(target)
+                    progress.update(task, description="Analyzing results...")
+
+                    console.print(f"\n  [cyan]Target:[/cyan] {result.target}")
+                    console.print(f"  [cyan]Endpoints Discovered:[/cyan] {len(result.endpoints)}")
+
+                    if result.openapi_spec:
+                        console.print(f"\n  [green]✓ OpenAPI Specification Found[/green]")
+                        console.print(f"    Paths: {len(result.openapi_spec.get('paths', {}))}")
+
+                    if result.graphql_endpoints:
+                        console.print(f"\n  [cyan]GraphQL Endpoints:[/cyan]")
+                        for endpoint in result.graphql_endpoints:
+                            console.print(f"    • {endpoint}")
+
+                    if result.rest_endpoints:
+                        console.print(f"\n  [cyan]REST Endpoints:[/cyan]")
+                        for endpoint in result.rest_endpoints[:10]:
+                            console.print(f"    • {endpoint}")
+                        if len(result.rest_endpoints) > 10:
+                            console.print(f"    ... and {len(result.rest_endpoints) - 10} more")
+
+                    if result.endpoints:
+                        console.print(f"\n  [cyan]Detailed Endpoints:[/cyan]")
+                        for endpoint in result.endpoints[:15]:
+                            console.print(f"    {endpoint.method} {endpoint.path}")
+                        if len(result.endpoints) > 15:
+                            console.print(f"    ... and {len(result.endpoints) - 15} more")
+
+                    if result.security_issues:
+                        console.print(f"\n  [red]Security Issues:[/red]")
+                        for issue in result.security_issues:
+                            console.print(f"    • {issue}")
+
+                    progress.update(task, description="Scan complete")
+
+                except Exception as e:
+                    console.print(f"  [red]Error: {e}[/red]")
+                    console.print(f"  [yellow]Error type: {type(e).__name__}[/yellow]")
+
+        console.print("[green]✓ API assessment complete[/green]")
+
+    asyncio.run(_run_api())
 
 
 @app.command()
@@ -815,7 +904,106 @@ def exploit_check(
     console.print(Panel.fit("[bold blue]Exploit Compatibility Check[/bold blue]"))
     console.print(f"Exploit: {exploit_id}")
     console.print(f"Target: {target}")
-    console.print("[yellow]Exploit check feature - basic implementation[/yellow]")
+
+    async def _check_compatibility():
+        from exploitation.exploit_registry import ExploitRegistry
+        from exploitation.exploit_matcher import ExploitMatcher
+        from scanning.service_detection import ServiceDetection
+
+        registry = ExploitRegistry()
+        exploit = registry.get(exploit_id)
+
+        if not exploit:
+            console.print(f"[red]✗ Exploit {exploit_id} not found[/red]")
+            raise typer.Exit(1)
+
+        # Get exploit details
+        table = Table(title="Exploit Details")
+        table.add_column("Field", style="cyan")
+        table.add_column("Value", style="green")
+
+        table.add_row("ID", exploit.exploit_id)
+        table.add_row("Name", exploit.name)
+        table.add_row("Description", exploit.description)
+        table.add_row("Target Service", exploit.target_service or "N/A")
+        table.add_row("Target Version", exploit.target_version or "Any")
+        table.add_row("Platform", ", ".join(exploit.platform))
+        table.add_row("Risk Level", exploit.risk_level)
+        table.add_row("Requires Lab", "Yes" if exploit.requires_lab else "No")
+
+        console.print(table)
+
+        # Detect services on target
+        console.print(f"\n[bold]Detecting services on {target}...[/bold]")
+
+        # Try common ports
+        common_ports = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 5900, 6379, 8080, 8443]
+
+        service_detection = ServiceDetection()
+        detected_services = await service_detection.detect_multiple(target, common_ports)
+
+        if detected_services:
+            console.print(f"\n[cyan]Detected Services:[/cyan]")
+            for port, result in detected_services.items():
+                for service in result.services:
+                    console.print(f"  Port {port}: {service.service} {service.version or ''} (confidence: {service.confidence:.2f})")
+
+            # Check compatibility
+            console.print(f"\n[bold]Compatibility Check:[/bold]")
+
+            compatible = False
+            compatibility_score = 0.0
+
+            # Check platform
+            if "linux" in [p.lower() for p in exploit.platform]:
+                compatibility_score += 0.3
+                console.print(f"  ✓ Platform: Linux (compatible)")
+            elif "windows" in [p.lower() for p in exploit.platform]:
+                compatibility_score += 0.3
+                console.print(f"  ✓ Platform: Windows (compatible)")
+            else:
+                console.print(f"  ? Platform: {', '.join(exploit.platform)} (unknown compatibility)")
+
+            # Check service
+            if exploit.target_service:
+                service_match = False
+                for port, result in detected_services.items():
+                    for service in result.services:
+                        if exploit.target_service.lower() in service.service.lower():
+                            service_match = True
+                            compatibility_score += 0.4
+                            console.print(f"  ✓ Service: {service.service} matches {exploit.target_service}")
+
+                            # Check version
+                            if exploit.target_version and service.version:
+                                if exploit.target_version in service.version:
+                                    compatibility_score += 0.3
+                                    console.print(f"  ✓ Version: {service.version} matches {exploit.target_version}")
+                                else:
+                                    console.print(f"  ⚠ Version: {service.version} (target: {exploit.target_version})")
+                            else:
+                                console.print(f"  ✓ Version: Any (no specific requirement)")
+
+                if not service_match:
+                    console.print(f"  ✗ Service: {exploit.target_service} not detected")
+
+            if compatibility_score >= 0.7:
+                console.print(f"\n[green]✓ Exploit is COMPATIBLE (score: {compatibility_score:.2f})[/green]")
+                compatible = True
+            elif compatibility_score >= 0.4:
+                console.print(f"\n[yellow]⚠ Exploit is PARTIALLY COMPATIBLE (score: {compatibility_score:.2f})[/yellow]")
+                compatible = True
+            else:
+                console.print(f"\n[red]✗ Exploit is NOT COMPATIBLE (score: {compatibility_score:.2f})[/red]")
+
+            if exploit.requires_lab:
+                console.print(f"\n[yellow]⚠ This exploit requires a lab environment for execution[/yellow]")
+
+        else:
+            console.print(f"\n[yellow]⚠ No services detected on {target}[/yellow]")
+            console.print(f"[red]✗ Cannot determine compatibility - no service information[/red]")
+
+    asyncio.run(_check_compatibility())
 
 
 @app.command()
@@ -839,7 +1027,74 @@ def post_audit(
     """Run post-exploitation security audit."""
     console.print(Panel.fit("[bold blue]Post-Exploitation Audit[/bold blue]"))
     console.print(f"Target: {target}")
-    console.print("[yellow]Post-assessment feature - basic implementation[/yellow]")
+    console.print("[yellow]⚠ This command runs on the local system for audit purposes[/yellow]")
+
+    async def _run_audit():
+        from post_assessment.lateral_movement_audit import LateralMovementAudit
+        from post_assessment.persistence_audit import PersistenceAudit
+        from post_assessment.credential_exposure import CredentialExposure
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            # Lateral Movement Audit
+            task = progress.add_task("Running lateral movement audit...", total=None)
+            lateral_audit = LateralMovementAudit()
+            lateral_result = await lateral_audit.audit(target)
+            progress.update(task, description="Lateral movement audit complete")
+
+            # Persistence Audit
+            task = progress.add_task("Running persistence audit...", total=None)
+            persistence_audit = PersistenceAudit()
+            persistence_result = await persistence_audit.audit(target)
+            progress.update(task, description="Persistence audit complete")
+
+            # Credential Exposure Audit
+            task = progress.add_task("Running credential exposure audit...", total=None)
+            credential_audit = CredentialExposure()
+            credential_result = await credential_audit.detect(target)
+            progress.update(task, description="Credential exposure audit complete")
+
+        # Display results
+        console.print(f"\n[bold]Lateral Movement Audit:[/bold]")
+        console.print(f"  Network hosts discovered: {len(lateral_result.network_hosts)}")
+        if lateral_result.network_hosts:
+            console.print(f"  [cyan]Hosts:[/cyan]")
+            for host in lateral_result.network_hosts[:10]:
+                console.print(f"    • {host}")
+
+        console.print(f"  Lateral paths found: {len(lateral_result.paths)}")
+        if lateral_result.paths:
+            console.print(f"  [cyan]Paths:[/cyan]")
+            for path in lateral_result.paths[:10]:
+                console.print(f"    {path.method}: {path.source} -> {path.destination}")
+
+        console.print(f"\n[bold]Persistence Audit:[/bold]")
+        console.print(f"  Persistence mechanisms: {len(persistence_result.mechanisms)}")
+        if persistence_result.mechanisms:
+            console.print(f"  [cyan]Mechanisms:[/cyan]")
+            for mech in persistence_result.mechanisms[:10]:
+                console.print(f"    [{mech.severity}] {mech.type}: {mech.location}")
+
+        console.print(f"  Systemd services: {len(persistence_result.systemd_services)}")
+        console.print(f"  Cron jobs: {len(persistence_result.cron_jobs)}")
+        console.print(f"  Startup files: {len(persistence_result.startup_files)}")
+
+        console.print(f"\n[bold]Credential Exposure Audit:[/bold]")
+        console.print(f"  Findings: {len(credential_result.findings)}")
+        if credential_result.findings:
+            console.print(f"  [cyan]Findings:[/cyan]")
+            for finding in credential_result.findings[:10]:
+                console.print(f"    [{finding.severity}] {finding.type}: {finding.location}")
+
+        console.print(f"  SSH keys found: {len(credential_result.ssh_keys)}")
+        console.print(f"  Password files found: {len(credential_result.password_files)}")
+
+        console.print("\n[green]✓ Post-exploitation audit complete[/green]")
+
+    asyncio.run(_run_audit())
 
 
 @app.command()
@@ -849,7 +1104,30 @@ def lateral_audit(
     """Run lateral movement audit."""
     console.print(Panel.fit("[bold blue]Lateral Movement Audit[/bold blue]"))
     console.print(f"Target: {target}")
-    console.print("[yellow]Lateral movement audit feature - basic implementation[/yellow]")
+
+    async def _run_audit():
+        from post_assessment.lateral_movement_audit import LateralMovementAudit
+
+        audit = LateralMovementAudit()
+        result = await audit.audit(target)
+
+        console.print(f"\n[cyan]Network Hosts:[/cyan] {len(result.network_hosts)}")
+        for host in result.network_hosts[:20]:
+            console.print(f"  • {host}")
+
+        console.print(f"\n[cyan]Lateral Paths:[/cyan] {len(result.paths)}")
+        for path in result.paths[:20]:
+            console.print(f"  {path.method}: {path.source} -> {path.destination}")
+            if path.credentials:
+                console.print(f"    Credentials: {', '.join(path.credentials)}")
+
+        console.print(f"\n[cyan]Trust Relationships:[/cyan] {len(result.trust_relationships)}")
+        for trust in result.trust_relationships[:10]:
+            console.print(f"  • {trust}")
+
+        console.print("\n[green]✓ Lateral movement audit complete[/green]")
+
+    asyncio.run(_run_audit())
 
 
 @app.command()
@@ -859,7 +1137,33 @@ def persistence_audit(
     """Run persistence mechanism audit."""
     console.print(Panel.fit("[bold blue]Persistence Audit[/bold blue]"))
     console.print(f"Target: {target}")
-    console.print("[yellow]Persistence audit feature - basic implementation[/yellow]")
+
+    async def _run_audit():
+        from post_assessment.persistence_audit import PersistenceAudit
+
+        audit = PersistenceAudit()
+        result = await audit.audit(target)
+
+        console.print(f"\n[cyan]Persistence Mechanisms:[/cyan] {len(result.mechanisms)}")
+        for mech in result.mechanisms[:20]:
+            console.print(f"  [{mech.severity}] {mech.type}: {mech.location}")
+            console.print(f"    {mech.description}")
+
+        console.print(f"\n[cyan]Systemd Services:[/cyan] {len(result.systemd_services)}")
+        for service in result.systemd_services[:10]:
+            console.print(f"  • {service}")
+
+        console.print(f"\n[cyan]Cron Jobs:[/cyan] {len(result.cron_jobs)}")
+        for job in result.cron_jobs[:10]:
+            console.print(f"  • {job}")
+
+        console.print(f"\n[cyan]Startup Files:[/cyan] {len(result.startup_files)}")
+        for file in result.startup_files[:10]:
+            console.print(f"  • {file}")
+
+        console.print("\n[green]✓ Persistence audit complete[/green]")
+
+    asyncio.run(_run_audit())
 
 
 @app.command()
@@ -869,18 +1173,182 @@ def exfil_simulate(
     """Run data exfiltration simulation."""
     console.print(Panel.fit("[bold blue]Data Exfiltration Simulation[/bold blue]"))
     console.print(f"Target: {target}")
-    console.print("[yellow]Exfiltration simulation feature - basic implementation[/yellow]")
+    console.print("[yellow]⚠ This is a simulation only - no actual data exfiltration occurs[/yellow]")
+
+    async def _run_simulation():
+        from post_assessment.exfiltration_simulation import ExfiltrationSimulation
+
+        sim = ExfiltrationSimulation()
+        result = await sim.simulate(target)
+
+        console.print(f"\n[cyan]Exfiltration Tests:[/cyan] {len(result.tests)}")
+        for test in result.tests:
+            status = "✓" if test.successful else "✗"
+            blocked_status = " (blocked)" if test.blocked else ""
+            console.print(f"  {status} {test.method.upper()}: {test.details}{blocked_status}")
+            console.print(f"    Data size: {test.data_size} bytes, Duration: {test.duration:.2f}s")
+
+        console.print(f"\n[cyan]Egress Status:[/cyan]")
+        console.print(f"  DNS egress: {'✓ Allowed' if result.dns_egress_allowed else '✗ Blocked'}")
+        console.print(f"  HTTP egress: {'✓ Allowed' if result.http_egress_allowed else '✗ Blocked'}")
+        console.print(f"  FTP egress: {'✓ Allowed' if result.ftp_egress_allowed else '✗ Blocked'}")
+        console.print(f"  Overall: {'✓ EXFILTRATION POSSIBLE' if result.overall_allowed else '✗ EXFILTRATION BLOCKED'}")
+
+        console.print(f"\n[cyan]Test Data:[/cyan]")
+        console.print(f"  Synthetic data preview: {result.synthetic_data[:20]}...")
+
+        console.print("\n[green]✓ Exfiltration simulation complete[/green]")
+        console.print("[yellow]⚠ This was a simulation - no data was actually exfiltrated[/yellow]")
+
+    asyncio.run(_run_simulation())
 
 
 @app.command()
 def code_analyze(
     path: Path = typer.Argument(..., help="Path to source code"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file")
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file"),
+    scan_secrets: bool = typer.Option(True, "--secrets/--no-secrets", help="Scan for secrets"),
+    scan_deps: bool = typer.Option(True, "--deps/--no-deps", help="Scan dependencies"),
+    scan_sast: bool = typer.Option(True, "--sast/--no-sast", help="Run static analysis")
 ) -> None:
     """Analyze source code for security issues."""
     console.print(Panel.fit("[bold blue]Source Code Analysis[/bold blue]"))
     console.print(f"Path: {path}")
-    console.print("[yellow]Code analysis feature - basic implementation[/yellow]")
+    console.print(f"Scan secrets: {scan_secrets}")
+    console.print(f"Scan dependencies: {scan_deps}")
+    console.print(f"Static analysis: {scan_sast}")
+
+    async def _run_analysis():
+        from code_analysis.semgrep import SemgrepAnalyzer
+        from code_analysis.gitleaks import GitleaksScanner
+        from code_analysis.trivy import TrivyScanner
+
+        if not path.exists():
+            console.print(f"[red]✗ Path does not exist: {path}[/red]")
+            raise typer.Exit(1)
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            # Static Analysis (Semgrep)
+            sast_result = None
+            if scan_sast:
+                task = progress.add_task("Checking Semgrep installation...", total=None)
+                semgrep = SemgrepAnalyzer()
+                semgrep_installed = await semgrep.check_installed()
+
+                if semgrep_installed:
+                    progress.update(task, description="Running static analysis (Semgrep)...")
+                    sast_result = await semgrep.analyze(str(path))
+                    progress.update(task, description="Static analysis complete")
+                else:
+                    progress.update(task, description="Semgrep not installed, skipping SAST")
+                    console.print("[yellow]⚠ Semgrep not installed - skipping static analysis[/yellow]")
+
+            # Secret Scanning (Gitleaks)
+            secret_result = None
+            if scan_secrets:
+                task = progress.add_task("Checking Gitleaks installation...", total=None)
+                gitleaks = GitleaksScanner()
+                gitleaks_installed = await gitleaks.check_installed()
+
+                if gitleaks_installed:
+                    progress.update(task, description="Scanning for secrets (Gitleaks)...")
+                    secret_result = await gitleaks.scan(str(path))
+                    progress.update(task, description="Secret scan complete")
+                else:
+                    progress.update(task, description="Gitleaks not installed, skipping secret scan")
+                    console.print("[yellow]⚠ Gitleaks not installed - skipping secret scan[/yellow]")
+
+            # Dependency Scanning (Trivy)
+            dep_result = None
+            if scan_deps:
+                task = progress.add_task("Checking Trivy installation...", total=None)
+                trivy = TrivyScanner()
+                trivy_installed = await trivy.check_installed()
+
+                if trivy_installed:
+                    progress.update(task, description="Scanning dependencies (Trivy)...")
+                    dep_result = await trivy.scan(str(path), scan_type="fs")
+                    progress.update(task, description="Dependency scan complete")
+                else:
+                    progress.update(task, description="Trivy not installed, skipping dependency scan")
+                    console.print("[yellow]⚠ Trivy not installed - skipping dependency scan[/yellow]")
+
+        # Display results
+        console.print(f"\n[bold]Analysis Results:[/bold]")
+
+        if sast_result:
+            console.print(f"\n[cyan]Static Analysis (Semgrep):[/cyan]")
+            console.print(f"  Scan duration: {sast_result.scan_duration:.2f}s")
+            console.print(f"  Findings: {len(sast_result.findings)}")
+
+            if sast_result.severity_summary:
+                console.print(f"  [cyan]Severity Summary:[/cyan]")
+                for severity, count in sast_result.severity_summary.items():
+                    console.print(f"    {severity}: {count}")
+
+            if sast_result.findings:
+                console.print(f"\n  [cyan]Top Findings:[/cyan]")
+                for finding in sast_result.findings[:10]:
+                    console.print(f"    [{finding.severity}] {finding.rule_id}")
+                    console.print(f"      {finding.message}")
+                    console.print(f"      {finding.file}:{finding.line}")
+
+        if secret_result:
+            console.print(f"\n[cyan]Secret Scanning (Gitleaks):[/cyan]")
+            console.print(f"  Scan duration: {secret_result.scan_duration:.2f}s")
+            console.print(f"  Secrets found: {len(secret_result.findings)}")
+
+            if secret_result.severity_summary:
+                console.print(f"  [cyan]Severity Summary:[/cyan]")
+                for severity, count in secret_result.severity_summary.items():
+                    console.print(f"    {severity}: {count}")
+
+            if secret_result.findings:
+                console.print(f"\n  [red]Secret Findings:[/red]")
+                for finding in secret_result.findings[:10]:
+                    console.print(f"    [{finding.severity}] {finding.rule_id}")
+                    console.print(f"      {finding.description}")
+                    console.print(f"      {finding.file}:{finding.line}")
+
+        if dep_result:
+            console.print(f"\n[cyan]Dependency Scanning (Trivy):[/cyan]")
+            console.print(f"  Scan duration: {dep_result.scan_duration:.2f}s")
+            console.print(f"  Vulnerabilities: {len(dep_result.vulnerabilities)}")
+
+            if dep_result.severity_summary:
+                console.print(f"  [cyan]Severity Summary:[/cyan]")
+                for severity, count in dep_result.severity_summary.items():
+                    console.print(f"    {severity}: {count}")
+
+            if dep_result.vulnerabilities:
+                console.print(f"\n  [cyan]Top Vulnerabilities:[/cyan]")
+                for vuln in dep_result.vulnerabilities[:10]:
+                    console.print(f"    [{vuln.severity}] {vuln.vulnerability_id}")
+                    console.print(f"      {vuln.package_name} ({vuln.installed_version})")
+                    console.print(f"      Fixed in: {vuln.fixed_version or 'N/A'}")
+
+        # Save results if output specified
+        if output:
+            import json
+            results = {
+                "path": str(path),
+                "sast": sast_result.__dict__ if sast_result else None,
+                "secrets": secret_result.__dict__ if secret_result else None,
+                "dependencies": dep_result.__dict__ if dep_result else None
+            }
+
+            with open(output, "w") as f:
+                json.dump(results, f, indent=2, default=str)
+
+            console.print(f"\n[green]✓ Results saved to {output}[/green]")
+
+        console.print("\n[green]✓ Code analysis complete[/green]")
+
+    asyncio.run(_run_analysis())
 
 
 @app.command()
