@@ -499,30 +499,9 @@ def recon(
                                 console.print(f"    [green]✓ Amass: {len(amass_subdomains)} subdomains[/green]")
                             else:
                                 console.print(f"    [yellow]⚠ Amass: No subdomains found[/yellow]")
-                            
-                            # Display ASN information
-                            if amass_result.get("asn_info"):
-                                console.print(f"\n  [cyan]ASN Information:[/cyan]")
-                                for asn in amass_result["asn_info"][:5]:
-                                    console.print(f"    • {asn}")
-                            
-                            # Display certificates
-                            if amass_result.get("certificates"):
-                                console.print(f"\n  [cyan]Certificates:[/cyan]")
-                                for cert in amass_result["certificates"][:5]:
-                                    console.print(f"    • {cert}")
-                            
-                            # Display related domains
-                            if amass_result.get("related_domains"):
-                                console.print(f"\n  [cyan]Related Domains:[/cyan]")
-                                for rel in amass_result["related_domains"][:5]:
-                                    console.print(f"    • {rel}")
-                            
-                            # Display infrastructure
-                            if amass_result.get("infrastructure"):
-                                console.print(f"\n  [cyan]Infrastructure:[/cyan]")
-                                for infra in amass_result["infrastructure"][:5]:
-                                    console.print(f"    • {infra}")
+
+                            # Note: Advanced Amass features (ASN, certificates, related domains, infrastructure)
+                            # are not available in Amass v4.1.0. These require v4.2.0+ or different syntax.
                             
                         except Exception as e:
                             console.print(f"    [red]✗ Amass advanced query failed: {e}[/red]")

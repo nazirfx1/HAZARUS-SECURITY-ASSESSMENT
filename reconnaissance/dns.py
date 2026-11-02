@@ -245,7 +245,7 @@ class DNSRecon:
             return []
 
     async def query_amass_advanced(self, domain: str) -> Dict[str, Any]:
-        """Query Amass for advanced OSINT capabilities."""
+        """Query Amass for advanced OSINT capabilities (v4.1.0 compatible)."""
         result = {
             "subdomains": [],
             "dns_records": {},
@@ -254,7 +254,7 @@ class DNSRecon:
             "related_domains": [],
             "infrastructure": []
         }
-        
+
         try:
             proc = await asyncio.create_subprocess_exec(
                 "which", "amass",
@@ -262,15 +262,15 @@ class DNSRecon:
                 stderr=asyncio.subprocess.PIPE
             )
             await proc.communicate()
-            
+
             if proc.returncode != 0:
                 self.logger.info("Amass not installed, skipping advanced query")
                 return result
-            
-            # 1. Comprehensive subdomain enumeration
-            self.logger.info(f"Running Amass comprehensive enumeration for {domain}")
+
+            # 1. Comprehensive subdomain enumeration (passive mode for speed)
+            self.logger.info(f"Running Amass passive enumeration for {domain}")
             proc = await asyncio.create_subprocess_exec(
-                "amass", "enum", "-passive", "-active", "-brute", "-d", domain,
+                "amass", "enum", "-passive", "-d", domain,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -281,71 +281,18 @@ class DNSRecon:
                 subdomains = stdout.decode().strip().split('\n')
                 result["subdomains"] = [s for s in subdomains if s and domain in s]
 
-            # 2. ASN enumeration
-            self.logger.info(f"Running Amass ASN enumeration for {domain}")
-            proc = await asyncio.create_subprocess_exec(
-                "amass", "intel", "-asn", "-d", domain,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode != 0:
-                self.logger.warning(f"Amass intel -asn failed: {stderr.decode()}")
-            else:
-                asn_data = stdout.decode().strip()
-                if asn_data:
-                    result["asn_info"] = asn_data.split('\n')
+            # Note: The following advanced features are not available in Amass v4.1.0
+            # - intel -asn: Syntax changed in newer versions
+            # - cert: Command doesn't exist in v4.1.0
+            # - intel -nw: Flag doesn't exist in v4.1.0
+            # - intel -infra: Flag doesn't exist in v4.1.0
+            # These features require Amass v4.2.0+ or different syntax
 
-            # 3. Certificate discovery
-            self.logger.info(f"Running Amass certificate discovery for {domain}")
-            proc = await asyncio.create_subprocess_exec(
-                "amass", "cert", "-d", domain,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode != 0:
-                self.logger.warning(f"Amass cert failed: {stderr.decode()}")
-            else:
-                cert_data = stdout.decode().strip()
-                if cert_data:
-                    result["certificates"] = cert_data.split('\n')
-
-            # 4. Related domains
-            self.logger.info(f"Running Amass related domain discovery for {domain}")
-            proc = await asyncio.create_subprocess_exec(
-                "amass", "intel", "-nw", "-d", domain,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode != 0:
-                self.logger.warning(f"Amass intel -nw failed: {stderr.decode()}")
-            else:
-                related_data = stdout.decode().strip()
-                if related_data:
-                    result["related_domains"] = related_data.split('\n')
-
-            # 5. Infrastructure mapping
-            self.logger.info(f"Running Amass infrastructure mapping for {domain}")
-            proc = await asyncio.create_subprocess_exec(
-                "amass", "intel", "-infra", "-d", domain,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode != 0:
-                self.logger.warning(f"Amass intel -infra failed: {stderr.decode()}")
-            else:
-                infra_data = stdout.decode().strip()
-                if infra_data:
-                    result["infrastructure"] = infra_data.split('\n')
-            
             self.logger.info(f"Amass advanced query complete for {domain}")
-            
+
         except Exception as e:
             self.logger.warning(f"Amass advanced query failed: {e}")
-        
+
         return result
 
     async def query_crtsh(self, domain: str) -> List[str]:

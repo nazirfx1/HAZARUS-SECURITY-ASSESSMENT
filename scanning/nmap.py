@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 import subprocess
+import os
 
 
 @dataclass
@@ -51,12 +52,13 @@ class NmapScanner:
 
     def __init__(self):
         self.logger = logging.getLogger("hazarus.nmap_scanner")
+        self.is_root = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
 
     async def scan(
         self,
         targets: List[str],
         ports: str = "1-65535",
-        scan_type: str = "sS",  # sS (SYN), sT (TCP connect)
+        scan_type: str = None,  # Auto-detect based on root
         service_detection: bool = True,
         os_detection: bool = True,
         aggressive: bool = False,
@@ -66,6 +68,15 @@ class NmapScanner:
         self.logger.info(f"Scanning {len(targets)} targets, ports {ports}")
 
         result = NmapResult(targets=targets, scan_start=datetime.utcnow())
+
+        # Auto-detect scan type based on root privileges
+        if scan_type is None:
+            if self.is_root:
+                scan_type = "sS"  # SYN scan (faster, requires root)
+                self.logger.info("Running as root, using SYN scan (-sS)")
+            else:
+                scan_type = "sT"  # TCP connect scan (no root required)
+                self.logger.info("Not running as root, using TCP connect scan (-sT)")
 
         # Build nmap command
         command = self._build_command(
@@ -239,7 +250,13 @@ class NmapScanner:
         """Quick scan for open ports."""
         self.logger.info(f"Quick scanning {target}")
 
-        command = ["nmap", "-sT", "--open", "-oX", "-", target]
+        # Auto-detect scan type based on root privileges
+        if self.is_root:
+            scan_type = "-sS"  # SYN scan (requires root)
+        else:
+            scan_type = "-sT"  # TCP connect scan (no root required)
+
+        command = ["nmap", scan_type, "--open", "-oX", "-", target]
 
         try:
             process = await asyncio.create_subprocess_exec(
@@ -349,12 +366,18 @@ class NmapScanner:
         """Build advanced nmap command."""
         cmd = ["nmap"]
 
-        # Scan types
+        # Scan types - auto-detect based on root privileges
         if tcp_scan and udp_scan:
-            cmd.append("-sS")  # SYN scan for TCP
+            if self.is_root:
+                cmd.append("-sS")  # SYN scan for TCP (requires root)
+            else:
+                cmd.append("-sT")  # TCP connect scan (no root required)
             cmd.append("-sU")  # UDP scan
         elif tcp_scan:
-            cmd.append("-sS")  # SYN scan (default for advanced)
+            if self.is_root:
+                cmd.append("-sS")  # SYN scan (requires root)
+            else:
+                cmd.append("-sT")  # TCP connect scan (no root required)
         elif udp_scan:
             cmd.append("-sU")  # UDP scan only
 
