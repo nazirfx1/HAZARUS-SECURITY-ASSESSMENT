@@ -475,25 +475,16 @@ def recon(
                     progress.update(task, description="Amass comprehensive enumeration...")
                     amass_available = False
                     try:
+                        # Use 'which' for Linux/Parrot OS compatibility
                         proc = await asyncio.create_subprocess_exec(
-                            "command", "-v", "amass",
+                            "which", "amass",
                             stdout=asyncio.subprocess.PIPE,
                             stderr=asyncio.subprocess.PIPE
                         )
                         await proc.communicate()
                         amass_available = proc.returncode == 0
                     except:
-                        try:
-                            # Fallback to which on some systems
-                            proc = await asyncio.create_subprocess_exec(
-                                "which", "amass",
-                                stdout=asyncio.subprocess.PIPE,
-                                stderr=asyncio.subprocess.PIPE
-                            )
-                            await proc.communicate()
-                            amass_available = proc.returncode == 0
-                        except:
-                            pass
+                        pass
                     
                     amass_result = {}
                     amass_subdomains = []
@@ -627,24 +618,14 @@ def recon(
                         nmap_available = False
                         try:
                             proc = await asyncio.create_subprocess_exec(
-                                "command", "-v", "nmap",
+                                "which", "nmap",
                                 stdout=asyncio.subprocess.PIPE,
                                 stderr=asyncio.subprocess.PIPE
                             )
                             await proc.communicate()
                             nmap_available = proc.returncode == 0
                         except:
-                            try:
-                                # Fallback to which on some systems
-                                proc = await asyncio.create_subprocess_exec(
-                                    "which", "nmap",
-                                    stdout=asyncio.subprocess.PIPE,
-                                    stderr=asyncio.subprocess.PIPE
-                                )
-                                await proc.communicate()
-                                nmap_available = proc.returncode == 0
-                            except:
-                                pass
+                            pass
                         
                         if nmap_available:
                             nmap = NmapScanner()

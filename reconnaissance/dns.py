@@ -253,7 +253,7 @@ class DNSRecon:
         
         try:
             proc = await asyncio.create_subprocess_exec(
-                "command", "-v", "amass",
+                "which", "amass",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
