@@ -138,18 +138,30 @@ class HTTPScanner:
                 self.logger.info("Generating recommendations...")
                 self._generate_recommendations(result)
 
-                # Run advanced scans
-                self.logger.info("Running SSL/TLS analysis...")
-                await self._analyze_ssl(target, result)
+                # Run advanced scans (optional, don't fail on errors)
+                try:
+                    self.logger.info("Running SSL/TLS analysis...")
+                    await self._analyze_ssl(target, result)
+                except Exception as e:
+                    self.logger.warning(f"SSL analysis skipped: {e}")
                 
-                self.logger.info("Detecting technologies...")
-                await self._detect_technologies(headers, response, result)
+                try:
+                    self.logger.info("Detecting technologies...")
+                    await self._detect_technologies(headers, response, result)
+                except Exception as e:
+                    self.logger.warning(f"Technology detection skipped: {e}")
                 
-                self.logger.info("Checking for WAF...")
-                await self._detect_waf(headers, result)
+                try:
+                    self.logger.info("Checking for WAF...")
+                    await self._detect_waf(headers, result)
+                except Exception as e:
+                    self.logger.warning(f"WAF detection skipped: {e}")
                 
-                self.logger.info("Scanning for open directories...")
-                await self._scan_directories(target, result)
+                try:
+                    self.logger.info("Scanning for open directories...")
+                    await self._scan_directories(target, result)
+                except Exception as e:
+                    self.logger.warning(f"Directory scan skipped: {e}")
 
             # Run external tool scans
             self.logger.info("Checking for Nuclei scanner...")
@@ -233,10 +245,15 @@ class HTTPScanner:
     async def _analyze_ssl(self, target: str, result: HTTPSecurityResult) -> None:
         """Analyze SSL/TLS configuration."""
         try:
+            # Extract hostname from target
+            from urllib.parse import urlparse
+            parsed = urlparse(target)
+            hostname = parsed.netloc.split(":")[0]
+            
             # Use openssl s_client to get SSL info
             proc = await asyncio.create_subprocess_exec(
-                "openssl", "s_client", "-connect", target.replace("https://", "").replace("http://", "") + ":443",
-                "-servername", target.replace("https://", "").replace("http://", ""),
+                "openssl", "s_client", "-connect", f"{hostname}:443",
+                "-servername", hostname,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -244,21 +261,31 @@ class HTTPScanner:
             
             output = stdout.decode()
             
-            # Extract SSL info
+            # Extract SSL info with better parsing
             if "Protocol" in output:
                 for line in output.split('\n'):
-                    if "Protocol" in line:
-                        result.ssl_info["protocol"] = line.split(":")[1].strip()
-                    elif "Cipher" in line:
-                        result.ssl_info["cipher"] = line.split(":")[1].strip()
+                    line = line.strip()
+                    if line.startswith("Protocol"):
+                        parts = line.split(":")
+                        if len(parts) >= 2:
+                            result.ssl_info["protocol"] = parts[1].strip()
+                    elif line.startswith("Cipher"):
+                        parts = line.split(":")
+                        if len(parts) >= 2:
+                            result.ssl_info["cipher"] = parts[1].strip()
                     elif "Verify return code" in line:
-                        result.ssl_info["verify_code"] = line.split(":")[1].strip()
+                        parts = line.split(":")
+                        if len(parts) >= 2:
+                            result.ssl_info["verify_code"] = parts[1].strip()
             
             if result.ssl_info:
                 self.logger.info(f"SSL/TLS analysis complete: {result.ssl_info}")
+            else:
+                self.logger.info("SSL/TLS analysis completed but no info extracted")
                 
         except Exception as e:
             self.logger.warning(f"SSL analysis failed: {e}")
+            self.logger.warning("SSL analysis is optional, continuing with other checks")
 
     async def _detect_technologies(self, headers: Dict[str, str], response: httpx.Response, result: HTTPSecurityResult) -> None:
         """Detect technologies used by the target."""
