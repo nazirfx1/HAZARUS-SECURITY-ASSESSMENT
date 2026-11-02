@@ -8,6 +8,7 @@ import logging
 import dns.resolver
 import dns.message
 import dns.query
+import httpx
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -200,6 +201,60 @@ class DNSRecon:
 
         self.logger.info(f"Found {len(found_subdomains)} subdomains")
         return found_subdomains
+
+    async def query_amass(self, domain: str) -> List[str]:
+        """Query Amass for subdomain enumeration if available."""
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "which", "amass",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await proc.communicate()
+            
+            if proc.returncode != 0:
+                self.logger.info("Amass not installed, skipping")
+                return []
+            
+            # Run Amass enumeration
+            proc = await asyncio.create_subprocess_exec(
+                "amass", "enum", "-passive", "-d", domain,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            
+            subdomains = stdout.decode().strip().split('\n')
+            return [s for s in subdomains if s and domain in s]
+            
+        except Exception as e:
+            self.logger.warning(f"Amass query failed: {e}")
+            return []
+
+    async def query_crtsh(self, domain: str) -> List[str]:
+        """Query crt.sh for subdomain enumeration."""
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(
+                    f"https://crt.sh/?q=%.25.{domain}&output=json"
+                )
+                
+                if response.status_code == 200:
+                    import json
+                    data = response.json()
+                    subdomains = set()
+                    
+                    for cert in data:
+                        name_value = cert.get('name_value', '')
+                        if name_value and domain in name_value:
+                            subdomains.add(name_value)
+                    
+                    return list(subdomains)
+                    
+        except Exception as e:
+            self.logger.warning(f"crt.sh query failed: {e}")
+            return []
 
     async def zone_transfer(self, domain: str, nameserver: str) -> bool:
         """Attempt DNS zone transfer."""
