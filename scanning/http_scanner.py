@@ -9,6 +9,7 @@ import httpx
 import subprocess
 import json
 import time
+import os
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -217,13 +218,28 @@ class HTTPScanner:
                 self.logger.info("Nikto not installed, skipping Nikto scan")
                 return []
 
-            # Run Nikto scan
+            # Run Nikto scan with proxy support for Cloudflare bypass
             self.logger.info(f"Running Nikto scan on {target}")
-            proc = await asyncio.create_subprocess_exec(
+            
+            # Try to get proxy from environment if available
+            http_proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy")
+            https_proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+            
+            nikto_args = [
                 "nikto",
                 "-h", target,
                 "-Tuning", "1",  # Show 1-200, 301, 307
                 "-Display", "V",  # Vulnerable items only
+                "-no404",  # Don't show 404 responses
+                "-T", "x",  # Show testing options
+            ]
+            
+            # Add proxy if available
+            if http_proxy:
+                nikto_args.extend(["-useproxy", http_proxy])
+            
+            proc = await asyncio.create_subprocess_exec(
+                *nikto_args,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -232,13 +248,23 @@ class HTTPScanner:
             output = stdout.decode()
             vulnerabilities = []
             
-            # Parse Nikto output for vulnerabilities
+            # Parse Nikto output for vulnerabilities (only show findings, not init messages)
             for line in output.split('\n'):
-                if line.strip() and ('+' in line or '-' in line):
-                    vulnerabilities.append(f"Nikto: {line.strip()}")
+                line = line.strip()
+                # Skip initialization messages
+                if line.startswith('V:') or line.startswith('+ [999') or line.startswith('- STATUS'):
+                    continue
+                # Only show actual findings
+                if line.startswith('+') and ('OSVDB' in line or 'CVE' in line or 'XSS' in line or 'SQL' in line or 'injection' in line.lower()):
+                    vulnerabilities.append(f"Nikto: {line}")
+                # Show security header findings
+                elif line.startswith('+ [013') or line.startswith('+ [9999'):
+                    vulnerabilities.append(f"Nikto: {line}")
             
             if vulnerabilities:
                 self.logger.info(f"Nikto found {len(vulnerabilities)} potential issues")
+            else:
+                self.logger.info("Nikto scan complete - no critical findings")
             
             return vulnerabilities
             
@@ -442,11 +468,18 @@ class HTTPScanner:
 
     async def _check_security_headers(self, headers: Dict[str, str], result: HTTPSecurityResult) -> None:
         """Check for security headers."""
+        # Normalize headers to lowercase for case-insensitive matching
+        headers_lower = {k.lower(): v for k, v in headers.items()}
+        
         for header_name, config in self.security_headers.items():
+            header_name_lower = header_name.lower()
+            present = header_name_lower in headers_lower
+            value = headers_lower.get(header_name_lower) if present else None
+            
             header_info = SecurityHeader(
                 name=header_name,
-                present=header_name in headers,
-                value=headers.get(header_name),
+                present=present,
+                value=value,
                 severity=config["severity"]
             )
             result.security_headers.append(header_info)
@@ -457,27 +490,59 @@ class HTTPScanner:
     async def _analyze_cookies(self, headers: Dict[str, str], result: HTTPSecurityResult) -> None:
         """Analyze cookies for security issues."""
         set_cookie = headers.get("set-cookie", "")
-
+        
         if set_cookie:
-            cookies = set_cookie.split(";")
-            for cookie in cookies:
-                cookie_info = {"name": cookie.split("=")[0] if "=" in cookie else cookie}
-
-                # Check for Secure flag
-                if "Secure" not in cookie:
+            # Split by semicolon to separate multiple cookies
+            # Cookies are separated by comma in Set-Cookie header
+            cookies_list = []
+            current_cookie = ""
+            
+            for part in set_cookie.split(","):
+                # Check if this part starts a new cookie (has an = before any other attributes)
+                # Cookie attributes like HttpOnly, Secure, Path don't have =
+                if "=" in part and part.index("=") < part.index("=") + 1:
+                    # This is a new cookie
+                    if current_cookie:
+                        cookies_list.append(current_cookie.strip())
+                    current_cookie = part
+                else:
+                    # This is an attribute, append to current cookie
+                    current_cookie += "," + part
+            
+            if current_cookie:
+                cookies_list.append(current_cookie.strip())
+            
+            for cookie_str in cookies_list:
+                # Parse cookie: name=value; attributes
+                cookie_parts = cookie_str.split(";")
+                if not cookie_parts:
+                    continue
+                
+                # First part is name=value
+                name_value = cookie_parts[0].strip()
+                if "=" not in name_value:
+                    continue
+                
+                cookie_name = name_value.split("=")[0].strip()
+                cookie_info = {"name": cookie_name}
+                
+                # Check attributes
+                has_secure = "Secure" in cookie_str
+                has_httponly = "HttpOnly" in cookie_str
+                has_samesite = "SameSite" in cookie_str
+                
+                if not has_secure:
                     cookie_info["secure"] = False
-                    result.vulnerabilities.append(f"Cookie missing Secure flag: {cookie_info['name']}")
-
-                # Check for HttpOnly flag
-                if "HttpOnly" not in cookie:
+                    result.vulnerabilities.append(f"Cookie missing Secure flag: {cookie_name}")
+                
+                if not has_httponly:
                     cookie_info["httponly"] = False
-                    result.vulnerabilities.append(f"Cookie missing HttpOnly flag: {cookie_info['name']}")
-
-                # Check for SameSite
-                if "SameSite" not in cookie:
+                    result.vulnerabilities.append(f"Cookie missing HttpOnly flag: {cookie_name}")
+                
+                if not has_samesite:
                     cookie_info["samesite"] = False
-                    result.vulnerabilities.append(f"Cookie missing SameSite attribute: {cookie_info['name']}")
-
+                    result.vulnerabilities.append(f"Cookie missing SameSite attribute: {cookie_name}")
+                
                 result.cookies.append(cookie_info)
 
     async def _check_cors(self, headers: Dict[str, str], result: HTTPSecurityResult) -> None:
