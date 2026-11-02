@@ -560,6 +560,14 @@ def web(
                         for directory in result.open_directories:
                             console.print(f"    • {directory}")
                     
+                    if result.sqlmap_findings:
+                        console.print(f"\n  [red]SQLMap Findings:[/red]")
+                        for finding in result.sqlmap_findings:
+                            console.print(f"    • {finding}")
+                    
+                    if result.ssl_labs_grade:
+                        console.print(f"\n  [cyan]SSL Labs Grade:[/cyan] {result.ssl_labs_grade} (Score: {result.ssl_labs_score})")
+                    
                     if result.nuclei_findings:
                         console.print(f"\n  [red]Nuclei Findings:[/red]")
                         for finding in result.nuclei_findings:

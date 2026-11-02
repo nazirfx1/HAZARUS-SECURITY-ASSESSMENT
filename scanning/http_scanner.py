@@ -40,6 +40,9 @@ class HTTPSecurityResult:
     open_directories: List[str] = field(default_factory=list)
     waf_detected: Optional[str] = None
     nuclei_findings: List[str] = field(default_factory=list)
+    sqlmap_findings: List[str] = field(default_factory=list)
+    ssl_labs_score: Optional[str] = None
+    ssl_labs_grade: Optional[str] = None
     scan_duration: float = 0.0  # Scan duration in seconds
     dns_resolution_time: float = 0.0
     connection_time: float = 0.0
@@ -175,6 +178,21 @@ class HTTPScanner:
                 result.nuclei_findings.extend(nuclei_results)
                 self.logger.info(f"Nuclei scan complete: {len(nuclei_results)} findings")
             
+            # Run SQLMap scan if available
+            self.logger.info("Checking for SQLMap scanner...")
+            sqlmap_results = await self._run_sqlmap(target)
+            if sqlmap_results:
+                result.sqlmap_findings.extend(sqlmap_results)
+                self.logger.info(f"SQLMap scan complete: {len(sqlmap_results)} findings")
+            
+            # Run SSL Labs API scan if available
+            self.logger.info("Checking SSL Labs API...")
+            ssl_labs_result = await self._check_ssllabs(target)
+            if ssl_labs_result:
+                result.ssl_labs_score = ssl_labs_result.get("score")
+                result.ssl_labs_grade = ssl_labs_result.get("grade")
+                self.logger.info(f"SSL Labs grade: {result.ssl_labs_grade}")
+            
             # Run Nikto scan if available
             self.logger.info("Checking for Nikto scanner...")
             nikto_results = await self._run_nikto(target)
@@ -271,6 +289,90 @@ class HTTPScanner:
         except Exception as e:
             self.logger.warning(f"Nikto scan failed: {e}")
             return []
+
+    async def _run_sqlmap(self, target: str) -> List[str]:
+        """Run SQLMap for SQL injection testing if available."""
+        try:
+            # Check if SQLMap is installed
+            proc = await asyncio.create_subprocess_exec(
+                "which", "sqlmap",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await proc.communicate()
+            
+            if proc.returncode != 0:
+                self.logger.info("SQLMap not installed, skipping SQL injection scan")
+                return []
+
+            # Run SQLMap scan (basic level, no invasive tests)
+            self.logger.info(f"Running SQLMap scan on {target}")
+            proc = await asyncio.create_subprocess_exec(
+                "sqlmap",
+                "-u", target,
+                "--batch",
+                "--level=1",
+                "--risk=1",
+                "--random-agent",
+                "--timeout=10",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            
+            output = stdout.decode()
+            findings = []
+            
+            # Parse SQLMap output for injection findings
+            for line in output.split('\n'):
+                if "sql injection" in line.lower() or "injectable" in line.lower():
+                    findings.append(f"SQLMap: {line.strip()}")
+            
+            if findings:
+                self.logger.info(f"SQLMap found {len(findings)} potential SQL injection points")
+            else:
+                self.logger.info("SQLMap scan complete - no SQL injection found")
+            
+            return findings
+            
+        except Exception as e:
+            self.logger.warning(f"SQLMap scan failed: {e}")
+            return []
+
+    async def _check_ssllabs(self, target: str) -> Dict[str, Any]:
+        """Check SSL Labs API for SSL configuration grade."""
+        try:
+            # Extract hostname from target
+            from urllib.parse import urlparse
+            parsed = urlparse(target)
+            hostname = parsed.netloc.split(":")[0]
+            
+            # Check for SSL Labs API key
+            api_key = os.environ.get("SSLLABS_API_KEY")
+            if not api_key:
+                self.logger.info("SSL Labs API key not set, skipping SSL Labs scan")
+                return {}
+            
+            # Call SSL Labs API
+            import httpx
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(
+                    f"https://api.ssllabs.com/api/v3/analyze?host={hostname}&apiKey={api_key}"
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    return {
+                        "score": data.get("endpoints", [{}])[0].get("score", 0),
+                        "grade": data.get("endpoints", [{}])[0].get("grade", "N/A")
+                    }
+                else:
+                    self.logger.warning(f"SSL Labs API returned status {response.status_code}")
+                    return {}
+                    
+        except Exception as e:
+            self.logger.warning(f"SSL Labs check failed: {e}")
+            return {}
 
     async def _analyze_ssl(self, target: str, result: HTTPSecurityResult) -> None:
         """Analyze SSL/TLS configuration."""
