@@ -6,6 +6,7 @@ HTTP security scanning.
 import asyncio
 import logging
 import httpx
+import subprocess
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -87,11 +88,71 @@ class HTTPScanner:
                 # Generate recommendations
                 self._generate_recommendations(result)
 
+            # Run Nikto scan if available
+            nikto_results = await self._run_nikto(target)
+            if nikto_results:
+                result.vulnerabilities.extend(nikto_results)
+
+        except httpx.ConnectError as e:
+            self.logger.error(f"HTTP scan failed - connection error: {e}")
+            result.vulnerabilities.append(f"Connection failed: {str(e)}")
+            result.vulnerabilities.append("Check if target is accessible and DNS is resolving")
+        except httpx.TimeoutException as e:
+            self.logger.error(f"HTTP scan failed - timeout: {e}")
+            result.vulnerabilities.append(f"Request timed out: {str(e)}")
+        except httpx.HTTPStatusError as e:
+            self.logger.error(f"HTTP scan failed - status error: {e}")
+            result.vulnerabilities.append(f"HTTP error: {e.response.status_code}")
         except Exception as e:
             self.logger.error(f"HTTP scan failed: {e}")
             result.vulnerabilities.append(f"Scan failed: {str(e)}")
+            result.vulnerabilities.append(f"Error type: {type(e).__name__}")
 
         return result
+
+    async def _run_nikto(self, target: str) -> List[str]:
+        """Run Nikto web vulnerability scanner if available."""
+        try:
+            # Check if Nikto is installed
+            proc = await asyncio.create_subprocess_exec(
+                "which", "nikto",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await proc.communicate()
+            
+            if proc.returncode != 0:
+                self.logger.info("Nikto not installed, skipping Nikto scan")
+                return []
+
+            # Run Nikto scan
+            self.logger.info(f"Running Nikto scan on {target}")
+            proc = await asyncio.create_subprocess_exec(
+                "nikto",
+                "-h", target,
+                "-Tuning", "1",  # Show 1-200, 301, 307
+                "-Display", "V",  # Vulnerable items only
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            
+            output = stdout.decode()
+            vulnerabilities = []
+            
+            # Parse Nikto output for vulnerabilities
+            for line in output.split('\n'):
+                if line.strip() and ('+' in line or '-' in line):
+                    vulnerabilities.append(f"Nikto: {line.strip()}")
+            
+            if vulnerabilities:
+                self.logger.info(f"Nikto found {len(vulnerabilities)} potential issues")
+            
+            return vulnerabilities
+            
+        except Exception as e:
+            self.logger.warning(f"Nikto scan failed: {e}")
+            return []
 
     async def _check_security_headers(self, headers: Dict[str, str], result: HTTPSecurityResult) -> None:
         """Check for security headers."""
