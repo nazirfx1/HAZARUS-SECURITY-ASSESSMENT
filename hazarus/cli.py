@@ -438,17 +438,38 @@ def recon(
                         for txt in result.txt_records[:5]:
                             console.print(f"    • {txt}")
                     
-                    # Subdomain enumeration
-                    progress.update(task, description="Subdomain enumeration...")
-                    subdiscovery = SubdomainDiscovery()
-                    subdomains = await subdiscovery.enumerate_subdomains(target)
+                    # Subdomain enumeration with advanced tools
+                    progress.update(task, description="Subdomain enumeration (Amass)...")
+                    amass_subdomains = await dns_recon.query_amass(target)
                     
-                    if subdomains:
-                        console.print(f"\n  [cyan]Subdomains Found:[/cyan] ({len(subdomains)})")
-                        for sub in subdomains[:15]:  # Show first 15
+                    progress.update(task, description="Subdomain enumeration (crt.sh)...")
+                    crtsh_subdomains = await dns_recon.query_crtsh(target)
+                    
+                    progress.update(task, description="Subdomain enumeration (brute force)...")
+                    subdiscovery = SubdomainDiscovery()
+                    bruteforce_subdomains = await subdiscovery.enumerate_subdomains(target)
+                    
+                    # Combine all subdomain sources
+                    all_subdomains = set()
+                    all_subdomains.update(amass_subdomains)
+                    all_subdomains.update(crtsh_subdomains)
+                    all_subdomains.update(bruteforce_subdomains)
+                    
+                    if all_subdomains:
+                        console.print(f"\n  [cyan]Subdomains Found:[/cyan] ({len(all_subdomains)} total)")
+                        
+                        if amass_subdomains:
+                            console.print(f"    Amass: {len(amass_subdomains)}")
+                        if crtsh_subdomains:
+                            console.print(f"    crt.sh: {len(crtsh_subdomains)}")
+                        if bruteforce_subdomains:
+                            console.print(f"    Brute force: {len(bruteforce_subdomains)}")
+                        
+                        console.print(f"\n  [cyan]Subdomain List:[/cyan]")
+                        for sub in sorted(all_subdomains)[:20]:  # Show first 20
                             console.print(f"    • {sub}")
-                        if len(subdomains) > 15:
-                            console.print(f"    ... and {len(subdomains) - 15} more")
+                        if len(all_subdomains) > 20:
+                            console.print(f"    ... and {len(all_subdomains) - 20} more")
                     else:
                         console.print(f"\n  [yellow]No subdomains found[/yellow]")
                     
