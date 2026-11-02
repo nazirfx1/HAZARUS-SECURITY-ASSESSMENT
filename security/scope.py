@@ -120,6 +120,18 @@ class ScopeManager:
         self.logger.info(f"All {len(targets)} targets validated")
         return True
 
+    async def validate_target(self, target: str) -> bool:
+        """
+        Validate that a single target is within scope.
+        Async wrapper for CLI compatibility.
+        """
+        if not self.config:
+            self.logger.error("Scope not loaded")
+            return False
+
+        normalized = self._normalize_target(target)
+        return self._validate_single_target(normalized)
+
     def _normalize_target(self, target: str) -> str:
         """Normalize a target for comparison."""
         target = target.strip().lower()
