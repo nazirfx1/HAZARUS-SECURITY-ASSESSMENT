@@ -52,8 +52,9 @@ class HTTPSecurityResult:
 class HTTPScanner:
     """HTTP scanning module."""
 
-    def __init__(self, timeout: int = 10):
+    def __init__(self, timeout: int = 10, connect_timeout: int = 5):
         self.timeout = timeout
+        self.connect_timeout = connect_timeout
         self.logger = logging.getLogger("hazarus.http_scanner")
 
         # Important security headers
@@ -83,14 +84,32 @@ class HTTPScanner:
         try:
             dns_start = time.time()
             self.logger.info(f"Resolving DNS for {target}...")
-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+            
+            # Use separate timeout for connection
+            timeout = httpx.Timeout(
+                connect=self.connect_timeout,
+                read=self.timeout,
+                write=self.timeout,
+                pool=self.timeout
+            )
+            
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
                 dns_end = time.time()
                 result.dns_resolution_time = dns_end - dns_start
                 self.logger.info(f"DNS resolved in {result.dns_resolution_time:.2f}s")
                 
                 conn_start = time.time()
-                self.logger.info(f"Establishing connection to {target}...")
-                response = await client.get(target)
+                self.logger.info(f"Establishing connection to {target} (timeout: {self.connect_timeout}s)...")
+                
+                try:
+                    response = await client.get(target)
+                except httpx.TimeoutException as e:
+                    self.logger.error(f"Connection timeout after {self.connect_timeout}s")
+                    result.vulnerabilities.append(f"Connection timeout: Server did not respond within {self.connect_timeout}s")
+                    result.vulnerabilities.append("Possible causes: Firewall, WAF blocking, or server is down")
+                    result.vulnerabilities.append("Try increasing timeout or checking network connectivity")
+                    return result
+                
                 conn_end = time.time()
                 result.connection_time = conn_end - conn_start
                 result.response_time = conn_end - dns_start
