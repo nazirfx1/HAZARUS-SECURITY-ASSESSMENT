@@ -65,9 +65,12 @@ class SubdomainDiscovery:
         subdomains = []
 
         try:
+            import urllib.parse
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                # Use crt.sh API
-                url = f"https://crt.sh/?q=%.{domain}&output=json"
+                # Use crt.sh API with proper URL encoding
+                query = f"%.{domain}"
+                encoded_query = urllib.parse.quote(query)
+                url = f"https://crt.sh/?q={encoded_query}&output=json"
                 response = await client.get(url)
 
                 if response.status_code == 200:
@@ -87,6 +90,8 @@ class SubdomainDiscovery:
 
                     subdomains = list(seen)
                     self.logger.debug(f"Found {len(subdomains)} subdomains from CT logs")
+                else:
+                    self.logger.warning(f"crt.sh returned status {response.status_code}")
 
         except Exception as e:
             self.logger.error(f"Certificate Transparency query failed: {e}")

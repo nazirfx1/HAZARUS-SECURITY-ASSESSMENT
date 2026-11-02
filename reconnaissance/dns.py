@@ -214,16 +214,16 @@ class DNSRecon:
         """Query Amass for comprehensive subdomain enumeration if available."""
         try:
             proc = await asyncio.create_subprocess_exec(
-                "command", "-v", "amass",
+                "which", "amass",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
             await proc.communicate()
-            
+
             if proc.returncode != 0:
                 self.logger.info("Amass not installed, skipping")
                 return []
-            
+
             # Run Amass enumeration with multiple modes
             # Passive enumeration (DNS data sources, CT logs)
             proc = await asyncio.create_subprocess_exec(
@@ -232,10 +232,14 @@ class DNSRecon:
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
-            
+
+            if proc.returncode != 0:
+                self.logger.warning(f"Amass enum failed: {stderr.decode()}")
+                return []
+
             subdomains = stdout.decode().strip().split('\n')
             return [s for s in subdomains if s and domain in s]
-            
+
         except Exception as e:
             self.logger.warning(f"Amass query failed: {e}")
             return []
@@ -271,9 +275,12 @@ class DNSRecon:
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
-            subdomains = stdout.decode().strip().split('\n')
-            result["subdomains"] = [s for s in subdomains if s and domain in s]
-            
+            if proc.returncode != 0:
+                self.logger.warning(f"Amass enum failed: {stderr.decode()}")
+            else:
+                subdomains = stdout.decode().strip().split('\n')
+                result["subdomains"] = [s for s in subdomains if s and domain in s]
+
             # 2. ASN enumeration
             self.logger.info(f"Running Amass ASN enumeration for {domain}")
             proc = await asyncio.create_subprocess_exec(
@@ -282,10 +289,13 @@ class DNSRecon:
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
-            asn_data = stdout.decode().strip()
-            if asn_data:
-                result["asn_info"] = asn_data.split('\n')
-            
+            if proc.returncode != 0:
+                self.logger.warning(f"Amass intel -asn failed: {stderr.decode()}")
+            else:
+                asn_data = stdout.decode().strip()
+                if asn_data:
+                    result["asn_info"] = asn_data.split('\n')
+
             # 3. Certificate discovery
             self.logger.info(f"Running Amass certificate discovery for {domain}")
             proc = await asyncio.create_subprocess_exec(
@@ -294,10 +304,13 @@ class DNSRecon:
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
-            cert_data = stdout.decode().strip()
-            if cert_data:
-                result["certificates"] = cert_data.split('\n')
-            
+            if proc.returncode != 0:
+                self.logger.warning(f"Amass cert failed: {stderr.decode()}")
+            else:
+                cert_data = stdout.decode().strip()
+                if cert_data:
+                    result["certificates"] = cert_data.split('\n')
+
             # 4. Related domains
             self.logger.info(f"Running Amass related domain discovery for {domain}")
             proc = await asyncio.create_subprocess_exec(
@@ -306,10 +319,13 @@ class DNSRecon:
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
-            related_data = stdout.decode().strip()
-            if related_data:
-                result["related_domains"] = related_data.split('\n')
-            
+            if proc.returncode != 0:
+                self.logger.warning(f"Amass intel -nw failed: {stderr.decode()}")
+            else:
+                related_data = stdout.decode().strip()
+                if related_data:
+                    result["related_domains"] = related_data.split('\n')
+
             # 5. Infrastructure mapping
             self.logger.info(f"Running Amass infrastructure mapping for {domain}")
             proc = await asyncio.create_subprocess_exec(
@@ -318,9 +334,12 @@ class DNSRecon:
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
-            infra_data = stdout.decode().strip()
-            if infra_data:
-                result["infrastructure"] = infra_data.split('\n')
+            if proc.returncode != 0:
+                self.logger.warning(f"Amass intel -infra failed: {stderr.decode()}")
+            else:
+                infra_data = stdout.decode().strip()
+                if infra_data:
+                    result["infrastructure"] = infra_data.split('\n')
             
             self.logger.info(f"Amass advanced query complete for {domain}")
             
@@ -333,17 +352,20 @@ class DNSRecon:
         """Query crt.sh for subdomain enumeration."""
         try:
             import httpx
+            import urllib.parse
             async with httpx.AsyncClient(timeout=30) as client:
-                # Use proper crt.sh API format
+                # Use proper crt.sh API format with URL encoding
+                query = f"%.{domain}"
+                encoded_query = urllib.parse.quote(query)
                 response = await client.get(
-                    f"https://crt.sh/?q=%.{domain}&output=json"
+                    f"https://crt.sh/?q={encoded_query}&output=json"
                 )
-                
+
                 if response.status_code == 200:
                     import json
                     data = response.json()
                     subdomains = set()
-                    
+
                     for cert in data:
                         name_value = cert.get('name_value', '')
                         # Split by newlines if multiple names
@@ -351,12 +373,12 @@ class DNSRecon:
                             name = name.strip()
                             if name and domain in name and not name.startswith('*'):
                                 subdomains.add(name)
-                    
+
                     return list(subdomains)
                 else:
                     self.logger.warning(f"crt.sh returned status {response.status_code}")
                     return []
-                    
+
         except Exception as e:
             self.logger.warning(f"crt.sh query failed: {e}")
             return []

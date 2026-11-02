@@ -430,7 +430,9 @@ def recon(
                     if result.mx_records:
                         console.print(f"\n  [cyan]MX Records:[/cyan]")
                         for mx in result.mx_records:
-                            console.print(f"    • {mx.get('exchange', 'N/A')}")
+                            priority = mx.get('priority', 'N/A')
+                            server = mx.get('server', 'N/A')
+                            console.print(f"    • {priority} {server}")
                     
                     if result.spf_record:
                         console.print(f"\n  [cyan]SPF Record:[/cyan]")
