@@ -563,23 +563,36 @@ def recon(
                     # Port scanning (basic ports)
                     progress.update(task, description="Port scanning...")
                     try:
-                        nmap = NmapScanner()
-                        # Scan common ports only for reconnaissance
-                        nmap_result = await nmap.scan(target, ports="22,80,443,8080,8443")
-                        open_ports = []
-                        for host in nmap_result.hosts:
-                            for port in host.ports:
-                                if port.state == "open":
-                                    open_ports.append(f"{port.port}/{port.service or 'unknown'}")
+                        # Check if Nmap is available
+                        proc = await asyncio.create_subprocess_exec(
+                            "nmap", "--version",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        await proc.communicate()
+                        nmap_available = proc.returncode == 0
                         
-                        if open_ports:
-                            console.print(f"\n  [cyan]Open Ports:[/cyan]")
-                            for port in open_ports:
-                                console.print(f"    • {port}")
+                        if nmap_available:
+                            nmap = NmapScanner()
+                            # Scan common ports only for reconnaissance
+                            nmap_result = await nmap.scan([target], ports="22,80,443,8080,8443")
+                            open_ports = []
+                            for host in nmap_result.hosts:
+                                for port in host.ports:
+                                    if port.state == "open":
+                                        open_ports.append(f"{port.port}/{port.service or 'unknown'}")
+                            
+                            if open_ports:
+                                console.print(f"\n  [cyan]Open Ports:[/cyan]")
+                                for port in open_ports:
+                                    console.print(f"    • {port}")
+                            else:
+                                console.print(f"\n  [yellow]No common ports detected (22,80,443,8080,8443)[/yellow]")
                         else:
-                            console.print(f"\n  [yellow]No common ports detected[/yellow]")
+                            console.print(f"\n  [yellow]⚠ Nmap not installed - skipping port scan[/yellow]")
+                            console.print(f"    Install Nmap for port scanning capabilities")
                     except Exception as e:
-                        console.print(f"    [yellow]⚠ Port scan failed: {e}[/yellow]")
+                        console.print(f"\n  [yellow]⚠ Port scan failed: {e}[/yellow]")
                     
                     progress.update(task, description="Reconnaissance complete")
                     
