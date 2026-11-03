@@ -555,26 +555,36 @@ class InteractiveMode:
             subdomain_discovery = SubdomainDiscovery()
             subdomain_result = await subdomain_discovery.discover(target)
             
-            self.console.print(f"[green]✓ Subdomains: {len(subdomain_result.subdomains)}[/green]")
+            # Convert set to list for display
+            subdomain_list = list(subdomain_result.subdomains) if subdomain_result.subdomains else []
             
-            if subdomain_result.subdomains:
+            self.console.print(f"[green]✓ Subdomains: {len(subdomain_list)}[/green]")
+            
+            if subdomain_list:
                 self.console.print("\n[bold cyan]Subdomains Found:[/bold cyan]")
-                for sub in subdomain_result.subdomains[:15]:  # Show first 15
+                for sub in subdomain_list[:15]:  # Show first 15
                     self.console.print(f"  [green]{sub}[/green]")
-                if len(subdomain_result.subdomains) > 15:
-                    self.console.print(f"  [dim]... and {len(subdomain_result.subdomains) - 15} more[/dim]")
+                if len(subdomain_list) > 15:
+                    self.console.print(f"  [dim]... and {len(subdomain_list) - 15} more[/dim]")
             
             # Origin IP Discovery (for advanced mode)
             if mode == "advanced":
                 self.console.print(f"\n[yellow][4/4] Origin IP Discovery...[/yellow]")
                 origin_discovery = OriginIPDiscovery()
                 origin_result = await origin_discovery.discover(target)
-                self.console.print(f"[green]✓ Origin IPs: {len(origin_result.origin_ips)}[/green]")
+                origin_ips = getattr(origin_result, 'origin_ips', [])
+                self.console.print(f"[green]✓ Origin IPs: {len(origin_ips)}[/green]")
                 
-                if origin_result.origin_ips:
+                if origin_ips:
                     self.console.print("\n[bold cyan]Potential Origin IPs:[/bold cyan]")
-                    for ip_info in origin_result.origin_ips[:5]:
-                        self.console.print(f"  [green]{ip_info['ip']}[/green] [dim](confidence: {ip_info.get('confidence', 'N/A')})[/dim]")
+                    for ip_info in origin_ips[:5]:
+                        if isinstance(ip_info, dict):
+                            ip = ip_info.get('ip', 'unknown')
+                            confidence = ip_info.get('confidence', 'N/A')
+                        else:
+                            ip = str(ip_info)
+                            confidence = 'N/A'
+                        self.console.print(f"  [green]{ip}[/green] [dim](confidence: {confidence})[/dim]")
             
             # Summary
             self.console.print(f"\n{'='*80}")
@@ -582,7 +592,7 @@ class InteractiveMode:
             self.console.print(f"{'='*80}")
             self.console.print(f"[dim]Total DNS Records: {len(result.records)}[/dim]")
             self.console.print(f"[dim]Total Nameservers: {len(result.nameservers)}[/dim]")
-            self.console.print(f"[dim]Total Subdomains: {len(subdomain_result.subdomains)}[/dim]")
+            self.console.print(f"[dim]Total Subdomains: {len(subdomain_list)}[/dim]")
             if mode == "advanced":
                 self.console.print(f"[dim]Total Origin IPs: {len(origin_result.origin_ips)}[/dim]")
             self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
@@ -642,16 +652,19 @@ class InteractiveMode:
                 live = LiveHostDiscovery()
                 result = await live.discover_hosts(target)
                 
-                self.console.print(f"[green]✓ Live hosts: {len(result.hosts)}[/green]")
-                if result.hosts:
+                hosts = getattr(result, 'hosts', [])
+                self.console.print(f"[green]✓ Live hosts: {len(hosts)}[/green]")
+                if hosts:
                     self.console.print("\n[bold cyan]Live Hosts Found:[/bold cyan]")
-                    for host in result.hosts:
-                        self.console.print(f"  [green]{host.ip}[/green] [dim]({host.status})[/dim]")
+                    for host in hosts:
+                        ip = getattr(host, 'ip', 'unknown')
+                        status = getattr(host, 'status', 'unknown')
+                        self.console.print(f"  [green]{ip}[/green] [dim]({status})[/dim]")
                 
                 self.console.print(f"\n{'='*80}")
                 self.console.print(f"[bold green]SCAN COMPLETE[/bold green]")
                 self.console.print(f"{'='*80}")
-                self.console.print(f"[dim]Total Live Hosts: {len(result.hosts)}[/dim]")
+                self.console.print(f"[dim]Total Live Hosts: {len(hosts)}[/dim]")
                 self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
                 self.console.print(f"{'='*80}\n")
                 
@@ -661,10 +674,15 @@ class InteractiveMode:
             
             # Display results
             open_ports = []
-            for host in result.hosts:
-                for port in host.ports:
-                    if port.state == "open":
-                        open_ports.append(f"{port.port}/{port.protocol}")
+            hosts = getattr(result, 'hosts', [])
+            for host in hosts:
+                ports = getattr(host, 'ports', [])
+                for port in ports:
+                    port_state = getattr(port, 'state', None)
+                    port_num = getattr(port, 'port', None)
+                    port_protocol = getattr(port, 'protocol', 'tcp')
+                    if port_state == "open" and port_num:
+                        open_ports.append(f"{port_num}/{port_protocol}")
             
             self.console.print(f"[green]✓ Open ports: {len(open_ports)}[/green]")
             
