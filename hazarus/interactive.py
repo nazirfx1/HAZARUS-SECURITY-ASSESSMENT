@@ -1095,6 +1095,7 @@ class InteractiveMode:
         # Phase 2: Reconnaissance
         if "recon" in phases:
             self.console.print(f"[yellow][Phase {phases.index('recon') + 1}/{len(phases)}] Reconnaissance...[/yellow]")
+            self.console.print(f"  [dim]Steps: DNS, Amass, crt.sh, Brute Force, WHOIS, Origin IP[/dim]")
             try:
                 from reconnaissance.dns import DNSRecon
                 from reconnaissance.whois import WhoisRecon
@@ -1172,6 +1173,7 @@ class InteractiveMode:
         # Phase 3: Network Scan
         if "scan" in phases:
             self.console.print(f"[yellow][Phase {phases.index('scan') + 1}/{len(phases)}] Network Scanning...[/yellow]")
+            self.console.print(f"  [dim]Steps: Command build, Execute, Parse, Extract[/dim]")
             try:
                 from scanning.nmap import NmapScanner
                 
@@ -1226,6 +1228,7 @@ class InteractiveMode:
         # Phase 4: Web Assessment
         if "web" in phases:
             self.console.print(f"[yellow][Phase {phases.index('web') + 1}/{len(phases)}] Web Assessment...[/yellow]")
+            self.console.print(f"  [dim]Steps: HTTP Scan, Headers, Cookies, Vulns, Advanced Tools[/dim]")
             try:
                 from scanning.http_scanner import HTTPScanner
                 from scanning.web_tools import AdvancedWebTools
@@ -1292,6 +1295,7 @@ class InteractiveMode:
             # API Assessment
             if "api" in phases:
                 self.console.print(f"[yellow][Phase {phases.index('api') + 1}/{len(phases)}] API Assessment...[/yellow]")
+                self.console.print(f"  [dim]Steps: REST endpoints, GraphQL, Security scan[/dim]")
                 try:
                     from scanning.api_discovery import APIDiscovery
                     api_discovery = APIDiscovery()
@@ -1323,6 +1327,7 @@ class InteractiveMode:
             # Vulnerability Research
             if "research" in phases:
                 self.console.print(f"[yellow][Phase {phases.index('research') + 1}/{len(phases)}] Vulnerability Research...[/yellow]")
+                self.console.print(f"  [dim]Steps: Search ExploitDB, CVE lookup[/dim]")
                 try:
                     from vulnerability import ExploitIntelligence
                     exploitdb = ExploitIntelligence()
@@ -1338,6 +1343,7 @@ class InteractiveMode:
             # Exploit Listing
             if "exploit" in phases:
                 self.console.print(f"[yellow][Phase {phases.index('exploit') + 1}/{len(phases)}] Exploit Listing...[/yellow]")
+                self.console.print(f"  [dim]Steps: Query exploit registry, List available exploits[/dim]")
                 try:
                     from exploitation.exploit_registry import ExploitRegistry
                     registry = ExploitRegistry()
@@ -1352,6 +1358,7 @@ class InteractiveMode:
             # Post-Assessment Audit
             if "post_audit" in phases:
                 self.console.print(f"[yellow][Phase {phases.index('post_audit') + 1}/{len(phases)}] Post-Assessment Audit...[/yellow]")
+                self.console.print(f"  [dim]Steps: Privilege audit, Persistence check[/dim]")
                 try:
                     from post_assessment.privilege_audit import PrivilegeAudit
                     from post_assessment.persistence_audit import PersistenceAudit
@@ -1376,6 +1383,7 @@ class InteractiveMode:
             # Lateral Movement Audit
             if "lateral" in phases:
                 self.console.print(f"[yellow][Phase {phases.index('lateral') + 1}/{len(phases)}] Lateral Movement Audit...[/yellow]")
+                self.console.print(f"  [dim]Steps: Credential cache, Service checks, Network paths[/dim]")
                 try:
                     from post_assessment.lateral_movement_audit import LateralMovementAudit
                     
