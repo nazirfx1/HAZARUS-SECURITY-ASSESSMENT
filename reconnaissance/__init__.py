@@ -10,6 +10,7 @@ from .crtsh import CertificateTransparency
 from .passive_recon import PassiveRecon
 from .asset_inventory import AssetInventory
 from .live_hosts import LiveHostDiscovery
+from .origin_ip import OriginIPDiscovery
 
 __all__ = [
     "DNSRecon",
@@ -19,4 +20,5 @@ __all__ = [
     "PassiveRecon",
     "AssetInventory",
     "LiveHostDiscovery",
+    "OriginIPDiscovery",
 ]

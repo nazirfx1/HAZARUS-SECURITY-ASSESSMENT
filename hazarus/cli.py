@@ -624,6 +624,40 @@ def recon(
                                 console.print(f"    Nameservers: {', '.join(whois_result.name_servers[:3])}")
                     except Exception as e:
                         console.print(f"    [yellow]⚠ WHOIS query failed: {e}[/yellow]")
+
+                    # Origin IP discovery (for WAF/CDN bypass)
+                    progress.update(task, description="Discovering origin IPs...")
+                    try:
+                        from reconnaissance.origin_ip import OriginIPDiscovery
+                        origin_discovery = OriginIPDiscovery()
+                        origin_result = await origin_discovery.discover(target)
+                        if origin_result.origin_ips:
+                            console.print(f"\n  [cyan]Origin IP Discovery:[/cyan]")
+                            console.print(f"    [green]✓ {len(origin_result.origin_ips)} potential origin IPs found[/green]")
+                            
+                            # Group by confidence
+                            high_conf = [f for f in origin_result.origin_ips if f.confidence == 'high']
+                            medium_conf = [f for f in origin_result.origin_ips if f.confidence == 'medium']
+                            low_conf = [f for f in origin_result.origin_ips if f.confidence == 'low']
+                            
+                            if high_conf:
+                                console.print(f"\n  [cyan]High Confidence:[/cyan]")
+                                for f in high_conf[:5]:
+                                    console.print(f"    • {f.ip} ({f.source})")
+                            
+                            if medium_conf:
+                                console.print(f"\n  [cyan]Medium Confidence:[/cyan]")
+                                for f in medium_conf[:5]:
+                                    console.print(f"    • {f.ip} ({f.source})")
+                            
+                            if low_conf:
+                                console.print(f"\n  [cyan]Low Confidence:[/cyan]")
+                                for f in low_conf[:3]:
+                                    console.print(f"    • {f.ip} ({f.source})")
+                        else:
+                            console.print(f"\n  [yellow]⚠ No origin IPs found[/yellow]")
+                    except Exception as e:
+                        console.print(f"    [yellow]⚠ Origin IP discovery failed: {e}[/yellow]")
                     
                     # Port scanning (advanced deep scan)
                     progress.update(task, description="Port scanning...")
@@ -1583,13 +1617,28 @@ def assess(
                             console.print(f"    Live hosts: {len(live_result.hosts)} found")
                         except Exception as e:
                             console.print(f"    [yellow]⚠ Live host discovery failed: {e}[/yellow]")
+
+                    # Origin IP discovery (for WAF/CDN bypass)
+                    try:
+                        from reconnaissance.origin_ip import OriginIPDiscovery
+                        origin_discovery = OriginIPDiscovery()
+                        origin_result = await origin_discovery.discover(target)
+                        console.print(f"    Origin IPs: {len(origin_result.origin_ips)} potential IPs found")
+                        if origin_result.origin_ips:
+                            console.print(f"      [dim]Origin IPs (confidence: high/medium):[/dim]")
+                            for ip_finding in origin_result.origin_ips[:5]:  # Show top 5
+                                if ip_finding.confidence in ['high', 'medium']:
+                                    console.print(f"        {ip_finding.ip} ({ip_finding.confidence} confidence)")
+                    except Exception as e:
+                        console.print(f"    [yellow]⚠ Origin IP discovery failed: {e}[/yellow]")
                 
                 with open(results_file, "a") as f:
                     f.write("PHASE 2: RECONNAISSANCE\n")
                     f.write(f"DNS Records: {len(dns_result.records)}\n")
                     f.write(f"Amass Subdomains: {len(amass_subdomains)}\n")
                     f.write(f"crt.sh Subdomains: {len(crtsh_subdomains)}\n")
-                    f.write(f"Brute Force Subdomains: {len(bruteforce_result.subdomains)}\n\n")
+                    f.write(f"Brute Force Subdomains: {len(bruteforce_result.subdomains)}\n")
+                    f.write(f"Origin IPs: {len(origin_result.origin_ips)}\n\n")
                 
                 # Store phase results
                 phase_results['recon'] = {
@@ -1597,7 +1646,8 @@ def assess(
                     'amass_subdomains': len(amass_subdomains),
                     'crtsh_subdomains': len(crtsh_subdomains),
                     'bruteforce_subdomains': len(bruteforce_result.subdomains),
-                    'open_ports': open_ports
+                    'open_ports': open_ports,
+                    'origin_ips': len(origin_result.origin_ips)
                 }
                     
             except Exception as e:
