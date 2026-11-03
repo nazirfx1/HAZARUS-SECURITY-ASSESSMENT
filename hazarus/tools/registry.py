@@ -956,6 +956,205 @@ class ToolRegistry:
                 exit_code=0
             )
         )
+        
+        # Phase 3 Specialized Capabilities
+        self.tools['spiderfoot'] = ToolMetadata(
+            name="SpiderFoot",
+            description="Automated OSINT correlation",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="sf",
+                version_flag="--version",
+                version_pattern=r"SpiderFoot ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="spiderfoot",
+                version="3.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="sf --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['commix'] = ToolMetadata(
+            name="Commix",
+            description="Command injection assessment",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="commix",
+                version_flag="--version",
+                version_pattern=r"([0-9.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="commix",
+                version="3.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="commix --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['aircrack'] = ToolMetadata(
+            name="Aircrack-ng",
+            description="Wireless security auditing",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="aircrack-ng",
+                version_flag="-V",
+                version_pattern=r"([0-9.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="aircrack-ng",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="aircrack-ng -V",
+                exit_code=0
+            )
+        )
+        
+        self.tools['wireshark'] = ToolMetadata(
+            name="Wireshark",
+            description="Network packet analysis",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="tshark",
+                version_flag="-v",
+                version_pattern=r"TShark ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="tshark",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="tshark -v",
+                exit_code=0
+            )
+        )
+        
+        self.tools['hashcat'] = ToolMetadata(
+            name="Hashcat",
+            description="GPU-accelerated hash auditing",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="hashcat",
+                version_flag="--version",
+                version_pattern=r"Hashcat ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="hashcat",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="hashcat --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['hydra'] = ToolMetadata(
+            name="Hydra",
+            description="Authorized authentication testing",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="hydra",
+                version_flag="-h",
+                version_pattern=r"Hydra ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="hydra",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="hydra -h",
+                exit_code=0
+            )
+        )
+        
+        self.tools['winpeas'] = ToolMetadata(
+            name="WinPEAS",
+            description="Windows privilege escalation exposure discovery",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="winpeas",
+                version_flag="-h",
+                version_pattern=r"WinPEAS"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="carlospolop/winPEAS",
+                asset_pattern=r"winpeas_x64\.exe",
+                version="latest",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="winpeas -h",
+                exit_code=0
+            )
+        )
+        
+        self.tools['bloodhound'] = ToolMetadata(
+            name="BloodHound",
+            description="Active Directory relationship and privilege analysis",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="bloodhound-python",
+                version_flag="--version",
+                version_pattern=r"([0-9.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="bloodhound",
+                version="4.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="bloodhound-python --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['kerbrute'] = ToolMetadata(
+            name="Kerbrute",
+            description="Active Directory authentication assessment",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="kerbrute",
+                version_flag="-h",
+                version_pattern=r"Kerbrute"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="ropnop/kerbrute",
+                asset_pattern=r"kerbrute_.*_linux_amd64",
+                version="latest",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="kerbrute -h",
+                exit_code=0
+            )
+        )
     
     def _parse_tool_config(self, name: str, config: dict) -> ToolMetadata:
         """Parse tool configuration from YAML."""
