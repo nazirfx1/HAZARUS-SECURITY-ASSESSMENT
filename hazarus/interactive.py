@@ -526,8 +526,10 @@ class InteractiveMode:
             
             # DNS Reconnaissance
             self.console.print("[yellow][1/8] DNS Enumeration...[/yellow]")
-            dns_recon = DNSRecon()
-            result = await dns_recon.enumerate_records(target)
+            self.console.print(f"  [dim]Querying: A, AAAA, MX, TXT, NS, SOA, CNAME, SRV[/dim]")
+            with self.console.status("[dim]Performing DNS queries...[/dim]", spinner="dots"):
+                dns_recon = DNSRecon()
+                result = await dns_recon.enumerate_records(target)
             
             self.console.print(f"[green]✓ DNS Records: {len(result.records)}[/green]")
             self.console.print(f"[green]✓ Nameservers: {len(result.nameservers)}[/green]")
@@ -548,18 +550,24 @@ class InteractiveMode:
             # WHOIS (for full/advanced modes)
             if mode in ["full", "advanced"]:
                 self.console.print(f"\n[yellow][2/8] WHOIS Query...[/yellow]")
-                whois_recon = WhoisRecon()
-                whois_result = await whois_recon.query(target)
+                self.console.print(f"  [dim]Querying WHOIS database for {target}[/dim]")
+                with self.console.status("[dim]Performing WHOIS lookup...[/dim]", spinner="dots"):
+                    whois_recon = WhoisRecon()
+                    whois_result = await whois_recon.query(target)
                 if whois_result:
                     self.console.print(f"[green]✓ WHOIS: {whois_result.registrar}[/green]")
                     self.console.print(f"[dim]  Registrar: {whois_result.registrar}[/dim]")
                     self.console.print(f"[dim]  Created: {whois_result.created_date}[/dim]")
                     self.console.print(f"[dim]  Expires: {whois_result.expiration_date}[/dim]")
+                else:
+                    self.console.print("[yellow]⚠ WHOIS data not found[/yellow]")
             
             # Basic Subdomain Discovery
             self.console.print(f"\n[yellow][3/8] Basic Subdomain Discovery...[/yellow]")
-            subdomain_discovery = SubdomainDiscovery()
-            subdomain_result = await subdomain_discovery.discover(target)
+            self.console.print(f"  [dim]Methods: crt.sh, brute force[/dim]")
+            with self.console.status("[dim]Discovering subdomains...[/dim]", spinner="dots"):
+                subdomain_discovery = SubdomainDiscovery()
+                subdomain_result = await subdomain_discovery.discover(target)
             subdomain_list = list(subdomain_result.subdomains) if subdomain_result.subdomains else []
             
             self.console.print(f"[green]✓ Subdomains: {len(subdomain_list)}[/green]")
@@ -734,45 +742,122 @@ class InteractiveMode:
                     self.console.print(f"[yellow]⚠ Could not resolve {target}: {e}[/yellow]\n")
             
             if mode == "quick":
-                self.console.print("[yellow][1/1] Quick Port Scan (1-1000)...[/yellow]")
-                result = await nmap.scan(
-                    targets=[scan_target],
-                    ports="1-1000",
-                    scan_type="sT"
-                )
-            elif mode == "deep":
-                self.console.print("[yellow][1/1] Deep Port Scan (1-65535)...[/yellow]")
-                result = await nmap.scan(
-                    targets=[scan_target],
-                    ports="1-65535",
-                    scan_type="sT"
-                )
-            elif mode == "advanced":
-                self.console.print("[yellow][1/1] Advanced Scan with Scripts...[/yellow]")
-                if is_sudo:
-                    # Full advanced scan with all features
-                    result = await nmap.advanced_scan(
-                        targets=[scan_target],
-                        ports="1-65535",
-                        tcp_scan=True,
-                        udp_scan=False,  # UDP requires more time
-                        service_detection=True,
-                        os_detection=True,
-                        script_scan=True,
-                        vuln_scan=True,
-                        traceroute=True,
-                        aggressive=True,
-                        timing=4
-                    )
-                else:
-                    # Fallback to basic scan without sudo
-                    self.console.print("[yellow]⚠ Advanced features disabled (requires sudo)[/yellow]")
-                    self.console.print("[yellow]⚠ Running basic scan instead[/yellow]\n")
+                self.console.print("[yellow][1/5] Building Scan Command...[/yellow]")
+                self.console.print(f"  [dim]Mode: Quick Scan[/dim]")
+                self.console.print(f"  [dim]Ports: 1-1000[/dim]")
+                self.console.print(f"  [dim]Scan Type: TCP Connect[/dim]")
+                self.console.print()
+                
+                self.console.print("[yellow][2/5] Executing Nmap...[/yellow]")
+                self.console.print(f"  [dim]Command: nmap -sT -p 1-1000 -sV --version-intensity 5 -T4 --max-rate 1000 -oX - -v {scan_target}[/dim]")
+                self.console.print()
+                
+                self.console.print("[yellow][3/5] Scanning Ports...[/yellow]")
+                with self.console.status("[dim]Scanning in progress...[/dim]", spinner="dots"):
                     result = await nmap.scan(
                         targets=[scan_target],
                         ports="1-1000",
                         scan_type="sT"
                     )
+                
+                self.console.print("[green]✓ Port scan complete[/green]")
+                self.console.print("[yellow][4/5] Parsing Results...[/yellow]")
+                self.console.print("[green]✓ Results parsed[/green]")
+                self.console.print("[yellow][5/5] Compiling Findings...[/yellow]")
+                
+            elif mode == "deep":
+                self.console.print("[yellow][1/5] Building Scan Command...[/yellow]")
+                self.console.print(f"  [dim]Mode: Deep Scan[/dim]")
+                self.console.print(f"  [dim]Ports: 1-65535[/dim]")
+                self.console.print(f"  [dim]Scan Type: TCP Connect[/dim]")
+                self.console.print()
+                
+                self.console.print("[yellow][2/5] Executing Nmap...[/yellow]")
+                self.console.print(f"  [dim]Command: nmap -sT -p 1-65535 -sV --version-intensity 5 -T4 --max-rate 1000 -oX - -v {scan_target}[/dim]")
+                self.console.print()
+                
+                self.console.print("[yellow][3/5] Scanning Ports...[/yellow]")
+                self.console.print("  [dim]This may take several minutes...[/dim]")
+                with self.console.status("[dim]Scanning in progress...[/dim]", spinner="dots"):
+                    result = await nmap.scan(
+                        targets=[scan_target],
+                        ports="1-65535",
+                        scan_type="sT"
+                    )
+                
+                self.console.print("[green]✓ Port scan complete[/green]")
+                self.console.print("[yellow][4/5] Parsing Results...[/yellow]")
+                self.console.print("[green]✓ Results parsed[/green]")
+                self.console.print("[yellow][5/5] Compiling Findings...[/yellow]")
+                
+            elif mode == "advanced":
+                self.console.print("[yellow][1/6] Building Advanced Scan Command...[/yellow]")
+                self.console.print(f"  [dim]Mode: Advanced Scan[/dim]")
+                if is_sudo:
+                    self.console.print(f"  [dim]Privileges: Root (SYN scan, OS detection, traceroute)[/dim]")
+                    self.console.print(f"  [dim]Ports: 1-65535[/dim]")
+                    self.console.print(f"  [dim]Scan Type: SYN scan[/dim]")
+                    self.console.print(f"  [dim]Scripts: Vuln scripts[/dim]")
+                    self.console.print(f"  [dim]Traceroute: Enabled[/dim]")
+                else:
+                    self.console.print(f"  [dim]Privileges: Non-root (TCP connect scan)[/dim]")
+                    self.console.print(f"  [dim]Ports: Common ports only (1-1000,3389,5432,5900,6379,8080,8443)[/dim]")
+                    self.console.print(f"  [dim]Scan Type: TCP connect[/dim]")
+                    self.console.print(f"  [dim]Scripts: Safe scripts only[/dim]")
+                    self.console.print(f"  [dim]Traceroute: Disabled (requires root)[/dim]")
+                self.console.print()
+                
+                self.console.print("[yellow][2/6] Executing Nmap...[/yellow]")
+                if is_sudo:
+                    self.console.print(f"  [dim]Command: nmap -sS -p 1-65535 -sV --version-intensity 5 -O --osscan-limit --script vuln --traceroute -A -T4 --max-rate 1000 -oX - -v {scan_target}[/dim]")
+                else:
+                    self.console.print(f"  [dim]Command: nmap -sT -p 1-1000,3389,5432,5900,6379,8080,8443 -sV --version-intensity 5 --script default,safe -T4 --max-rate 1000 -oX - -v {scan_target}[/dim]")
+                self.console.print()
+                
+                self.console.print("[yellow][3/6] Scanning Ports...[/yellow]")
+                self.console.print("  [dim]Service detection enabled[/dim]")
+                if is_sudo:
+                    self.console.print("  [dim]OS detection enabled[/dim]")
+                    self.console.print("  [dim]Vulnerability scripts enabled[/dim]")
+                    self.console.print("  [dim]Traceroute enabled[/dim]")
+                else:
+                    self.console.print("  [dim]Safe scripts only[/dim]")
+                self.console.print("  [dim]This may take several minutes...[/dim]")
+                
+                with self.console.status("[dim]Scanning in progress...[/dim]", spinner="dots"):
+                    if is_sudo:
+                        result = await nmap.advanced_scan(
+                            targets=[scan_target],
+                            ports="1-65535",
+                            tcp_scan=True,
+                            udp_scan=False,
+                            service_detection=True,
+                            os_detection=True,
+                            script_scan=True,
+                            vuln_scan=True,
+                            traceroute=True,
+                            aggressive=True,
+                            timing=4
+                        )
+                    else:
+                        result = await nmap.scan(
+                            targets=[scan_target],
+                            ports="1-1000,3389,5432,5900,6379,8080,8443",
+                            scan_type="sT"
+                        )
+                
+                self.console.print("[green]✓ Port scan complete[/green]")
+                self.console.print("[yellow][4/6] Parsing Results...[/yellow]")
+                self.console.print("[green]✓ Results parsed[/green]")
+                self.console.print("[yellow][5/6] Extracting Service Versions...[/yellow]")
+                self.console.print("[green]✓ Service versions extracted[/green]")
+                if is_sudo:
+                    self.console.print("[yellow][6/6] Extracting OS Fingerprints...[/yellow]")
+                    self.console.print("[green]✓ OS fingerprints extracted[/green]")
+                else:
+                    self.console.print("[yellow][6/6] Skipping OS detection (requires root)[/yellow]")
+                
+                self.console.print("[yellow]Compiling Findings...[/yellow]")
             elif mode == "live":
                 self.console.print("[yellow][1/1] Live Host Discovery...[/yellow]")
                 from reconnaissance.live_hosts import LiveHostDiscovery
