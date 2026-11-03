@@ -1172,7 +1172,8 @@ class InteractiveMode:
                         subfinder_subdomains = list(subfinder_result.subdomains) if subfinder_result.subdomains else []
                         self.console.print(f"  Subfinder: {len(subfinder_subdomains)} subdomains")
                     except Exception as e:
-                        self.console.print(f"  [yellow]⚠ Subfinder failed: {e}[/yellow]")
+                        self.console.print(f"  [yellow]⚠ Subfinder not available: {e}[/yellow]")
+                        subfinder_subdomains = []
                     
                     # DNS over HTTPS
                     try:
@@ -1201,6 +1202,7 @@ class InteractiveMode:
                         self.console.print(f"  Takeover vulnerable: {takeover_vulnerable}")
                     except Exception as e:
                         self.console.print(f"  [yellow]⚠ Takeover detection failed: {e}[/yellow]")
+                        takeover_vulnerable = 0
                 
                 # Origin IP (basic for standard, enhanced for full)
                 origin_ips = []
