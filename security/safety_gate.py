@@ -153,8 +153,8 @@ class SafetyGate:
             from core.config import get_config
             config_manager = get_config()
             config = config_manager.config
-            lab_ranges = config.lab.cidr_ranges if config.lab else None
-        except ImportError:
+            lab_ranges = config.lab.cidr_ranges if config and config.lab else None
+        except (ImportError, AttributeError):
             # Fallback if config not available
             lab_ranges = None
         

@@ -49,8 +49,10 @@ class PortConfig:
     zap: int = 8080
     ssl: int = 443
     http: int = 80
-    ssh: int = 22
     https: int = 443
+    ssh: int = 22
+    common_ports: list = field(default_factory=lambda: [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 5900, 6379, 8080, 8443])
+    success_status_codes: list = field(default_factory=lambda: [200, 301, 302, 304, 307, 308])
 
 
 @dataclass
