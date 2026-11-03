@@ -1101,12 +1101,17 @@ class InteractiveMode:
         # Phase 2: Reconnaissance
         if "recon" in phases:
             self.console.print(f"[yellow][Phase {phases.index('recon') + 1}/{len(phases)}] Reconnaissance...[/yellow]")
-            self.console.print(f"  [dim]Steps: DNS, Amass, crt.sh, Brute Force, WHOIS, Origin IP[/dim]")
+            if mode == "full":
+                self.console.print(f"  [dim]Steps: DNS, Amass, crt.sh, Brute Force, WHOIS, Subfinder, DoH, Live Hosts, Takeover, Origin IP[/dim]")
+            else:
+                self.console.print(f"  [dim]Steps: DNS, Amass, crt.sh, Brute Force, WHOIS, Origin IP[/dim]")
             try:
                 from reconnaissance.dns import DNSRecon
                 from reconnaissance.whois import WhoisRecon
                 from reconnaissance.subdomains import SubdomainDiscovery
                 from reconnaissance.origin_ip import OriginIPDiscovery
+                from reconnaissance.advanced import AdvancedSubdomainTools, AdvancedDNS, EnhancedLiveHostDiscovery, EnhancedOriginIPDiscovery
+                from reconnaissance.security import SubdomainTakeoverDetector
                 
                 dns_recon = DNSRecon()
                 dns_result = await dns_recon.enumerate_records(target)
@@ -1152,13 +1157,65 @@ class InteractiveMode:
                 except Exception as e:
                     self.console.print(f"  [yellow]⚠ WHOIS failed: {e}[/yellow]")
                 
-                # Origin IP
+                # Advanced tools (full mode only)
+                subfinder_subdomains = []
+                doh_records = 0
+                live_hosts = 0
+                takeover_vulnerable = 0
+                enhanced_origin_ips = 0
+                
+                if mode == "full":
+                    # Subfinder
+                    try:
+                        advanced_tools = AdvancedSubdomainTools()
+                        subfinder_result = await advanced_tools.discover_all(target, tools=["subfinder"])
+                        subfinder_subdomains = list(subfinder_result.subdomains) if subfinder_result.subdomains else []
+                        self.console.print(f"  Subfinder: {len(subfinder_subdomains)} subdomains")
+                    except Exception as e:
+                        self.console.print(f"  [yellow]⚠ Subfinder failed: {e}[/yellow]")
+                    
+                    # DNS over HTTPS
+                    try:
+                        advanced_dns = AdvancedDNS()
+                        doh_result = await advanced_dns.query_doh(target, "A")
+                        doh_records = len(doh_result.records) if doh_result.records else 0
+                        self.console.print(f"  DoH (Google): {doh_records} records")
+                    except Exception as e:
+                        self.console.print(f"  [yellow]⚠ DoH failed: {e}[/yellow]")
+                    
+                    # Enhanced Live Host Discovery
+                    try:
+                        enhanced_live = EnhancedLiveHostDiscovery()
+                        live_result = await enhanced_live.discover_enhanced(target)
+                        live_hosts = len(live_result.hosts) if live_result.hosts else 0
+                        self.console.print(f"  Live hosts: {live_hosts}")
+                    except Exception as e:
+                        self.console.print(f"  [yellow]⚠ Live host discovery failed: {e}[/yellow]")
+                    
+                    # Subdomain Takeover Detection
+                    all_subdomains = list(set(amass_subdomains + crtsh_subdomains + bruteforce_subdomains + subfinder_subdomains))
+                    try:
+                        takeover_detector = SubdomainTakeoverDetector()
+                        takeover_result = await takeover_detector.scan_subdomains(all_subdomains[:20])
+                        takeover_vulnerable = takeover_result.vulnerable_count
+                        self.console.print(f"  Takeover vulnerable: {takeover_vulnerable}")
+                    except Exception as e:
+                        self.console.print(f"  [yellow]⚠ Takeover detection failed: {e}[/yellow]")
+                
+                # Origin IP (basic for standard, enhanced for full)
                 origin_ips = []
                 try:
-                    origin_discovery = OriginIPDiscovery()
-                    origin_result = await origin_discovery.discover(target)
-                    origin_ips = getattr(origin_result, 'origin_ips', [])
-                    self.console.print(f"  Origin IPs: {len(origin_ips)} potential IPs")
+                    if mode == "full":
+                        enhanced_origin = EnhancedOriginIPDiscovery()
+                        origin_result = await enhanced_origin.discover_enhanced(target)
+                        origin_ips = getattr(origin_result, 'origin_ips', [])
+                        enhanced_origin_ips = origin_result.total_ips if hasattr(origin_result, 'total_ips') else len(origin_ips)
+                        self.console.print(f"  Origin IPs (enhanced): {enhanced_origin_ips}")
+                    else:
+                        origin_discovery = OriginIPDiscovery()
+                        origin_result = await origin_discovery.discover(target)
+                        origin_ips = getattr(origin_result, 'origin_ips', [])
+                        self.console.print(f"  Origin IPs: {len(origin_ips)}")
                 except Exception as e:
                     self.console.print(f"  [yellow]⚠ Origin IP discovery failed: {e}[/yellow]")
                 
@@ -1167,7 +1224,11 @@ class InteractiveMode:
                     'amass_subdomains': len(amass_subdomains),
                     'crtsh_subdomains': len(crtsh_subdomains),
                     'bruteforce_subdomains': len(bruteforce_subdomains),
-                    'origin_ips': len(origin_ips)
+                    'subfinder_subdomains': len(subfinder_subdomains),
+                    'doh_records': doh_records,
+                    'live_hosts': live_hosts,
+                    'takeover_vulnerable': takeover_vulnerable,
+                    'origin_ips': enhanced_origin_ips if mode == "full" else len(origin_ips)
                 }
             except Exception as e:
                 self.console.print(f"  [red]✗ Reconnaissance failed: {e}[/red]")
@@ -1422,7 +1483,14 @@ class InteractiveMode:
         
         if phase_results.get('recon'):
             r = phase_results['recon']
-            self.console.print(f"[dim]Recon - DNS: {r['dns_records']}, Amass: {r['amass_subdomains']}, crt.sh: {r['crtsh_subdomains']}, Brute: {r['bruteforce_subdomains']}[/dim]")
+            if mode == "full":
+                subfinder = r.get('subfinder_subdomains', 0)
+                doh = r.get('doh_records', 0)
+                live = r.get('live_hosts', 0)
+                takeover = r.get('takeover_vulnerable', 0)
+                self.console.print(f"[dim]Recon - DNS: {r['dns_records']}, Amass: {r['amass_subdomains']}, crt.sh: {r['crtsh_subdomains']}, Brute: {r['bruteforce_subdomains']}, Subfinder: {subfinder}, DoH: {doh}, Live: {live}, Takeover: {takeover}, Origin IPs: {r['origin_ips']}[/dim]")
+            else:
+                self.console.print(f"[dim]Recon - DNS: {r['dns_records']}, Amass: {r['amass_subdomains']}, crt.sh: {r['crtsh_subdomains']}, Brute: {r['bruteforce_subdomains']}, Origin IPs: {r['origin_ips']}[/dim]")
         
         if phase_results.get('scan'):
             s = phase_results['scan']
