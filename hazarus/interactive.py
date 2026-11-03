@@ -1055,9 +1055,10 @@ class InteractiveMode:
         
         phase_results = {}
         
-        # Phase 1: Privacy Check
+            # Phase 1: Privacy Check
         if "privacy" in phases:
             self.console.print(f"[yellow][Phase {phases.index('privacy') + 1}/{len(phases)}] Privacy Check...[/yellow]")
+            self.console.print(f"  [dim]Checking: Anonsurf, Tor, DNS Leak, IPv6[/dim]")
             try:
                 from anonymity.anonsurf import AnonsurfManager
                 from anonymity.dns_leak import DNSLeakChecker
