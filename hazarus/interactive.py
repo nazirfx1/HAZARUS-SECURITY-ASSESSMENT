@@ -153,6 +153,7 @@ class InteractiveMode:
 
     async def target_management_menu(self):
         """Target management submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Target Management[/bold]", border_style="red"))
@@ -189,6 +190,7 @@ class InteractiveMode:
 
     async def reconnaissance_menu(self):
         """Reconnaissance submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Reconnaissance[/bold]", border_style="red"))
@@ -223,6 +225,7 @@ class InteractiveMode:
 
     async def network_scanning_menu(self):
         """Network scanning submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Network Scanning[/bold]", border_style="red"))
@@ -255,6 +258,7 @@ class InteractiveMode:
 
     async def web_assessment_menu(self):
         """Web assessment submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Web Assessment[/bold]", border_style="red"))
@@ -289,6 +293,7 @@ class InteractiveMode:
 
     async def comprehensive_assessment_menu(self):
         """Comprehensive assessment submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Comprehensive Assessment[/bold]", border_style="red"))
@@ -823,6 +828,7 @@ class InteractiveMode:
     # Placeholder methods for other menus
     async def api_assessment_menu(self):
         """API assessment submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]API Assessment[/bold]", border_style="red"))
@@ -853,6 +859,7 @@ class InteractiveMode:
 
     async def vulnerability_research_menu(self):
         """Vulnerability research submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Vulnerability Research[/bold]", border_style="red"))
@@ -885,6 +892,7 @@ class InteractiveMode:
 
     async def exploitation_menu(self):
         """Exploitation submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Exploitation[/bold]", border_style="red"))
@@ -918,6 +926,7 @@ class InteractiveMode:
 
     async def post_assessment_menu(self):
         """Post-assessment audits submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Post-Assessment Audits[/bold]", border_style="red"))
@@ -950,6 +959,7 @@ class InteractiveMode:
 
     async def source_code_analysis_menu(self):
         """Source code analysis submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Source Code Analysis[/bold]", border_style="red"))
@@ -982,6 +992,7 @@ class InteractiveMode:
 
     async def reporting_menu(self):
         """Reporting submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Reporting[/bold]", border_style="red"))
@@ -1011,6 +1022,7 @@ class InteractiveMode:
 
     async def configuration_menu(self):
         """Configuration submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Configuration[/bold]", border_style="red"))
@@ -1040,6 +1052,7 @@ class InteractiveMode:
 
     async def advanced_tools_menu(self):
         """Advanced tools submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Advanced Tools[/bold]", border_style="red"))
@@ -1076,6 +1089,7 @@ class InteractiveMode:
 
     async def asset_intelligence_menu(self):
         """Asset intelligence submenu."""
+        self.console.clear()
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Asset Intelligence[/bold]", border_style="red"))
