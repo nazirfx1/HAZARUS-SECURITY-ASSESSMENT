@@ -521,9 +521,11 @@ class InteractiveMode:
             from reconnaissance.whois import WhoisRecon
             from reconnaissance.subdomains import SubdomainDiscovery
             from reconnaissance.origin_ip import OriginIPDiscovery
+            from reconnaissance.advanced import AdvancedSubdomainTools, AdvancedDNS, EnhancedLiveHostDiscovery, EnhancedOriginIPDiscovery
+            from reconnaissance.security import SubdomainTakeoverDetector, VirtualHostEnumerator
             
             # DNS Reconnaissance
-            self.console.print("[yellow][1/4] DNS Enumeration...[/yellow]")
+            self.console.print("[yellow][1/8] DNS Enumeration...[/yellow]")
             dns_recon = DNSRecon()
             result = await dns_recon.enumerate_records(target)
             
@@ -533,7 +535,7 @@ class InteractiveMode:
             # Display detailed DNS findings
             if result.records:
                 self.console.print("\n[bold cyan]DNS Records Found:[/bold cyan]")
-                for record in result.records[:10]:  # Show first 10
+                for record in result.records[:10]:
                     self.console.print(f"  [dim]{record.record_type}[/dim] [green]{record.value}[/green]")
                 if len(result.records) > 10:
                     self.console.print(f"  [dim]... and {len(result.records) - 10} more[/dim]")
@@ -545,7 +547,7 @@ class InteractiveMode:
             
             # WHOIS (for full/advanced modes)
             if mode in ["full", "advanced"]:
-                self.console.print(f"\n[yellow][2/4] WHOIS Query...[/yellow]")
+                self.console.print(f"\n[yellow][2/8] WHOIS Query...[/yellow]")
                 whois_recon = WhoisRecon()
                 whois_result = await whois_recon.query(target)
                 if whois_result:
@@ -554,25 +556,102 @@ class InteractiveMode:
                     self.console.print(f"[dim]  Created: {whois_result.created_date}[/dim]")
                     self.console.print(f"[dim]  Expires: {whois_result.expiration_date}[/dim]")
             
-            # Subdomain Discovery
-            self.console.print(f"\n[yellow][3/4] Subdomain Discovery...[/yellow]")
+            # Basic Subdomain Discovery
+            self.console.print(f"\n[yellow][3/8] Basic Subdomain Discovery...[/yellow]")
             subdomain_discovery = SubdomainDiscovery()
             subdomain_result = await subdomain_discovery.discover(target)
-            
-            # Convert set to list for display
             subdomain_list = list(subdomain_result.subdomains) if subdomain_result.subdomains else []
             
             self.console.print(f"[green]✓ Subdomains: {len(subdomain_list)}[/green]")
             
             if subdomain_list:
                 self.console.print("\n[bold cyan]Subdomains Found:[/bold cyan]")
-                for sub in subdomain_list[:15]:  # Show first 15
+                for sub in subdomain_list[:15]:
                     self.console.print(f"  [green]{sub}[/green]")
                 if len(subdomain_list) > 15:
                     self.console.print(f"  [dim]... and {len(subdomain_list) - 15} more[/dim]")
             
-            # Origin IP Discovery (for advanced mode)
+            # Advanced Subdomain Tools (for advanced mode)
             if mode == "advanced":
+                self.console.print(f"\n[yellow][4/8] Advanced Subdomain Discovery...[/yellow]")
+                try:
+                    advanced_tools = AdvancedSubdomainTools()
+                    tools_to_use = ["subfinder", "amass"]
+                    advanced_result = await advanced_tools.discover_all(target, tools=tools_to_use)
+                    self.console.print(f"[green]✓ Advanced subdomains: {advanced_result.total_found}[/green]")
+                    
+                    if advanced_result.subdomains:
+                        self.console.print("\n[bold cyan]Advanced Subdomains:[/bold cyan]")
+                        for sub in advanced_result.subdomains[:10]:
+                            self.console.print(f"  [green]{sub}[/green] [dim]({sub.source})[/dim]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Advanced subdomain discovery failed: {e}[/yellow]")
+            
+            # DNS over HTTPS (for advanced mode)
+            if mode == "advanced":
+                self.console.print(f"\n[yellow][5/8] DNS over HTTPS...[/yellow]")
+                try:
+                    advanced_dns = AdvancedDNS()
+                    doh_result = await advanced_dns.query_doh(target, "A")
+                    self.console.print(f"[green]✓ DoH records: {len(doh_result.records)}[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ DoH query failed: {e}[/yellow]")
+            
+            # Enhanced Live Host Discovery (for advanced mode)
+            if mode == "advanced":
+                self.console.print(f"\n[yellow][6/8] Enhanced Live Host Discovery...[/yellow]")
+                try:
+                    enhanced_live = EnhancedLiveHostDiscovery()
+                    live_result = await enhanced_live.discover_enhanced(target)
+                    self.console.print(f"[green]✓ Live hosts: {len(live_result.hosts)}[/green]")
+                    
+                    if live_result.hosts:
+                        self.console.print("\n[bold cyan]Live Hosts:[/bold cyan]")
+                        for host in live_result.hosts[:5]:
+                            ip = getattr(host, 'ip', 'unknown')
+                            status = getattr(host, 'status', 'unknown')
+                            self.console.print(f"  [green]{ip}[/green] [dim]({status})[/dim]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Enhanced live host discovery failed: {e}[/yellow]")
+            
+            # Subdomain Takeover Detection (for advanced mode)
+            if mode == "advanced":
+                self.console.print(f"\n[yellow][7/8] Subdomain Takeover Detection...[/yellow]")
+                try:
+                    takeover_detector = SubdomainTakeoverDetector()
+                    takeover_result = await takeover_detector.scan_subdomains(subdomain_list[:20])
+                    self.console.print(f"[green]✓ Takeover vulnerable: {takeover_result.vulnerable_count}[/green]")
+                    
+                    if takeover_result.vulnerable_subdomains:
+                        self.console.print("\n[bold red]Vulnerable Subdomains:[/bold red]")
+                        for vuln in takeover_result.vulnerable_subdomains[:5]:
+                            self.console.print(f"  [red]{vuln.subdomain}[/red] [dim]({vuln.service})[/dim]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Takeover detection failed: {e}[/yellow]")
+            
+            # Origin IP Discovery
+            if mode == "advanced":
+                self.console.print(f"\n[yellow][8/8] Enhanced Origin IP Discovery...[/yellow]")
+                try:
+                    enhanced_origin = EnhancedOriginIPDiscovery()
+                    origin_result = await enhanced_origin.discover_enhanced(target)
+                    origin_ips = getattr(origin_result, 'origin_ips', [])
+                    self.console.print(f"[green]✓ Origin IPs: {origin_result.total_ips}[/green]")
+                    
+                    if origin_ips:
+                        self.console.print("\n[bold cyan]Potential Origin IPs:[/bold cyan]")
+                        for ip_info in origin_ips[:5]:
+                            if isinstance(ip_info, dict):
+                                ip = ip_info.get('ip', 'unknown')
+                                confidence = ip_info.get('confidence', 'N/A')
+                            else:
+                                ip = str(getattr(ip_info, 'ip', 'unknown'))
+                                confidence = getattr(ip_info, 'confidence', 'N/A')
+                            self.console.print(f"  [green]{ip}[/green] [dim](confidence: {confidence})[/dim]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Enhanced origin IP discovery failed: {e}[/yellow]")
+            else:
+                # Basic origin IP for full mode
                 self.console.print(f"\n[yellow][4/4] Origin IP Discovery...[/yellow]")
                 origin_discovery = OriginIPDiscovery()
                 origin_result = await origin_discovery.discover(target)
@@ -586,8 +665,8 @@ class InteractiveMode:
                             ip = ip_info.get('ip', 'unknown')
                             confidence = ip_info.get('confidence', 'N/A')
                         else:
-                            ip = str(ip_info)
-                            confidence = 'N/A'
+                            ip = str(getattr(ip_info, 'ip', 'unknown'))
+                            confidence = getattr(ip_info, 'confidence', 'N/A')
                         self.console.print(f"  [green]{ip}[/green] [dim](confidence: {confidence})[/dim]")
             
             # Summary
@@ -598,7 +677,13 @@ class InteractiveMode:
             self.console.print(f"[dim]Total Nameservers: {len(result.nameservers)}[/dim]")
             self.console.print(f"[dim]Total Subdomains: {len(subdomain_list)}[/dim]")
             if mode == "advanced":
-                self.console.print(f"[dim]Total Origin IPs: {len(origin_result.origin_ips)}[/dim]")
+                self.console.print(f"[dim]Advanced Tools Used: Yes[/dim]")
+                self.console.print(f"[dim]DoH/DoT: Yes[/dim]")
+                self.console.print(f"[dim]Enhanced Live Hosts: Yes[/dim]")
+                self.console.print(f"[dim]Takeover Detection: Yes[/dim]")
+            if mode in ["full", "advanced"]:
+                origin_ips_count = len(origin_ips) if mode == "full" else origin_result.total_ips if mode == "advanced" else 0
+                self.console.print(f"[dim]Total Origin IPs: {origin_ips_count}[/dim]")
             self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
             self.console.print(f"{'='*80}\n")
             
