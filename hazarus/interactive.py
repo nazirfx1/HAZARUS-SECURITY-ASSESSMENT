@@ -47,7 +47,7 @@ class InteractiveMode:
 
     def show_config(self):
         """Display configuration details."""
-        config_table = Table(title="Configuration Details", show_header=True, box_style="red")
+        config_table = Table(title="Configuration Details", show_header=True)
         config_table.add_column("Setting", style="cyan", width=30)
         config_table.add_column("Value", style="green")
 
