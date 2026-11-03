@@ -71,6 +71,11 @@ class PersistenceAudit:
     async def _check_systemd_services(self, result: PersistenceAuditResult) -> None:
         """Check systemd services for persistence."""
         try:
+            # Check if target is local
+            if "/" not in result.target or not result.target.startswith("/"):
+                self.logger.info("Target is not a local path, skipping systemd check")
+                return
+
             process = await asyncio.create_subprocess_exec(
                 "systemctl", "list-units", "--type=service", "--all",
                 stdout=asyncio.subprocess.PIPE,
@@ -85,19 +90,20 @@ class PersistenceAudit:
                         parts = service.split()
                         if len(parts) >= 4:
                             service_name = parts[0]
-                            if "enabled" in parts:
+                            if "enabled" in parts and "running" in parts:
                                 result.systemd_services.append(service_name)
+                                result.mechanisms.append(PersistenceMechanism(
+                                    type="systemd",
+                                    location=service_name,
+                                    description=f"Systemd service: {service_name}",
+                                    severity="medium",
+                                    removable=True
+                                ))
 
-            # Check for suspicious user services
-            try:
-                process = await asyncio.create_subprocess_exec(
-                    "systemctl", "--user", "list-units", "--type=service",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                stdout, stderr = await process.communicate()
+            self.logger.info(f"Found {len(result.systemd_services)} systemd services")
 
-                if process.returncode == 0:
+        except Exception as e:
+            self.logger.warning(f"Systemd check failed: {e}")
                     user_services = stdout.decode().strip().split("\n")
                     for service in user_services[1:]:
                         if service and "enabled" in service:
@@ -117,12 +123,16 @@ class PersistenceAudit:
 
     async def _check_cron_jobs(self, result: PersistenceAuditResult) -> None:
         """Check cron jobs for persistence."""
+        # Check if target is local
+        if "/" not in result.target or not result.target.startswith("/"):
+            self.logger.info("Target is not a local path, skipping cron check")
+            return
+
         cron_paths = [
             "/etc/crontab",
-            "/etc/cron.d/*",
-            "/var/spool/cron/crontabs/*",
-            "/root/.crontab",
-            "/home/*/.crontab"
+            "/etc/cron.d/",
+            "/var/spool/cron/crontabs/",
+            "/root/.crontab"
         ]
 
         for path in cron_paths:
@@ -144,18 +154,23 @@ class PersistenceAudit:
                         removable=True
                     ))
 
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Cron check failed for {path}: {e}")
+
+        self.logger.info(f"Found {len(result.cron_jobs)} cron job locations")
 
     async def _check_startup_files(self, result: PersistenceAuditResult) -> None:
         """Check startup files for persistence."""
+        # Check if target is local
+        if "/" not in result.target or not result.target.startswith("/"):
+            self.logger.info("Target is not a local path, skipping startup file check")
+            return
+
         startup_files = [
             "/etc/rc.local",
-            "/etc/init.d/*",
-            "/root/.bashrc",
-            "/root/.bash_profile",
-            "/home/*/.bashrc",
-            "/home/*/.bash_profile"
+            "/etc/rc.d/",
+            "/etc/init.d/",
+            "/etc/systemd/system/"
         ]
 
         for path in startup_files:
@@ -169,17 +184,30 @@ class PersistenceAudit:
 
                 if process.returncode == 0:
                     result.startup_files.append(path)
+                    result.mechanisms.append(PersistenceMechanism(
+                        type="startup",
+                        location=path,
+                        description="Startup file found",
+                        severity="low",
+                        removable=True
+                    ))
 
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Startup file check failed for {path}: {e}")
+
+        self.logger.info(f"Found {len(result.startup_files)} startup file locations")
 
     async def _check_profile_files(self, result: PersistenceAuditResult) -> None:
         """Check profile files for persistence."""
+        # Check if target is local
+        if "/" not in result.target or not result.target.startswith("/"):
+            self.logger.info("Target is not a local path, skipping profile check")
+            return
+
         profile_files = [
             "/etc/profile",
-            "/etc/profile.d/*",
-            "/root/.profile",
-            "/home/*/.profile"
+            "/etc/profile.d/",
+            "/root/.profile"
         ]
 
         for path in profile_files:
@@ -197,6 +225,13 @@ class PersistenceAudit:
                         location=path,
                         description="Profile file found",
                         severity="low",
+                        removable=True
+                    ))
+
+            except Exception as e:
+                self.logger.debug(f"Profile check failed for {path}: {e}")
+
+        self.logger.info(f"Profile check complete")
                         removable=True
                     ))
 

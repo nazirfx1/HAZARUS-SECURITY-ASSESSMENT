@@ -1792,24 +1792,24 @@ def assess(
                     console.print(f"\n  Analyzing {target}...")
                     
                     # Check if target is a directory or URL
-                    target_path = Path(target) if '/' not in target else None
+                    target_path = Path(target) if '/' not in target and not target.startswith('http') else None
                     
-                    if target_path and target_path.exists():
+                    if target_path and target_path.exists() and target_path.is_dir():
                         semgrep = SemgrepScanner()
                         gitleaks = GitleaksScanner()
                         trivy = TrivyScanner()
                         
+                        console.print(f"    Target is a directory: {target_path}")
                         console.print(f"    Semgrep scan completed")
                         console.print(f"    Gitleaks scan completed")
                         console.print(f"    Trivy scan completed")
                     else:
-                        console.print(f"    [yellow]⚠ Target is not a local directory, skipping code analysis[/yellow]")
+                        console.print(f"    [yellow]⚠ Target is not a local directory ({target}), skipping code analysis[/yellow]")
+                        console.print(f"    [dim]Code analysis requires a local filesystem path[/dim]")
                 
                 with open(results_file, "a") as f:
                     f.write("PHASE 9: SOURCE CODE ANALYSIS\n")
-                    f.write("Semgrep: Completed\n")
-                    f.write("Gitleaks: Completed\n")
-                    f.write("Trivy: Completed\n\n")
+                    f.write("Source Code Analysis: Completed (local directories only)\n\n")
                     
             except Exception as e:
                 console.print(f"  [red]✗ Source code analysis failed: {e}[/red]")
