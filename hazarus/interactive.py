@@ -708,33 +708,71 @@ class InteractiveMode:
         self.console.print(f"[cyan]Running {mode} scan on {target}...[/cyan]")
         self.console.print("[yellow]Note: Network scanning requires sudo privileges[/yellow]\n")
         
+        # Check sudo
+        import os
+        is_sudo = os.environ.get('SUDO_UID') is not None
+        if is_sudo:
+            self.console.print("[green]✓ Running with sudo privileges[/green]\n")
+        else:
+            self.console.print("[yellow]⚠ Not running with sudo - some features will be limited[/yellow]\n")
+        
         # Import and call actual scan logic
         try:
             from scanning.nmap import NmapScanner
+            import socket
             
             nmap = NmapScanner()
+            
+            # Resolve domain to IP if needed
+            scan_target = target
+            if not target.replace('.', '').isdigit() and '/' not in target:
+                try:
+                    resolved_ip = socket.gethostbyname(target)
+                    self.console.print(f"[dim]Resolved {target} to {resolved_ip}[/dim]\n")
+                    scan_target = resolved_ip
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Could not resolve {target}: {e}[/yellow]\n")
             
             if mode == "quick":
                 self.console.print("[yellow][1/1] Quick Port Scan (1-1000)...[/yellow]")
                 result = await nmap.scan(
-                    targets=[target],
+                    targets=[scan_target],
                     ports="1-1000",
                     scan_type="sT"
                 )
             elif mode == "deep":
                 self.console.print("[yellow][1/1] Deep Port Scan (1-65535)...[/yellow]")
                 result = await nmap.scan(
-                    targets=[target],
+                    targets=[scan_target],
                     ports="1-65535",
                     scan_type="sT"
                 )
             elif mode == "advanced":
                 self.console.print("[yellow][1/1] Advanced Scan with Scripts...[/yellow]")
-                result = await nmap.advanced_scan(
-                    targets=[target],
-                    ports="1-65535",
-                    aggressive=True
-                )
+                if is_sudo:
+                    # Full advanced scan with all features
+                    result = await nmap.advanced_scan(
+                        targets=[scan_target],
+                        ports="1-65535",
+                        tcp_scan=True,
+                        udp_scan=False,  # UDP requires more time
+                        service_detection=True,
+                        os_detection=True,
+                        script_scan=True,
+                        vuln_scan=True,
+                        traceroute=True,
+                        aggressive=True,
+                        timing=4
+                    )
+                else:
+                    # Fallback to basic scan without sudo
+                    self.console.print("[yellow]⚠ Advanced features disabled (requires sudo)[/yellow]")
+                    self.console.print("[yellow]⚠ Running basic scan instead[/yellow]\n")
+                    result = await nmap.scan(
+                        targets=[scan_target],
+                        ports="1-1000",
+                        scan_type="sT"
+                    )
             elif mode == "live":
                 self.console.print("[yellow][1/1] Live Host Discovery...[/yellow]")
                 from reconnaissance.live_hosts import LiveHostDiscovery
