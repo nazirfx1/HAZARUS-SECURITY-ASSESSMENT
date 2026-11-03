@@ -6,6 +6,7 @@ ARP, ICMP, and IPv6 host discovery tools.
 import asyncio
 import logging
 import re
+import os
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
