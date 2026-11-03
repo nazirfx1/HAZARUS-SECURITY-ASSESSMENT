@@ -901,12 +901,29 @@ def web(
         False,
         "--skip-advanced",
         help="Skip advanced scans (SSL, directories, WAF) for faster results"
+    ),
+    active: bool = typer.Option(
+        False,
+        "--active",
+        "-a",
+        help="Enable active scanning with wpscan, whatweb, gobuster"
+    ),
+    aggressive: bool = typer.Option(
+        False,
+        "--aggressive",
+        "-A",
+        help="Enable aggressive scanning (all tools with maximum depth)"
     )
 ) -> None:
     """Run web application security assessment."""
     console.print(Panel.fit("[bold blue]Web Assessment[/bold blue]"))
     console.print(f"Targets: {', '.join(targets)}")
     console.print(f"Timeout: {timeout}s")
+    
+    if aggressive:
+        console.print("[red]⚠ Aggressive scanning enabled - maximum depth scanning[/red]")
+    elif active:
+        console.print("[yellow]⚠ Active scanning enabled - extended tool usage[/yellow]")
     if skip_advanced:
         console.print("[yellow]Advanced scans disabled (faster mode)[/yellow]")
 
@@ -1007,6 +1024,82 @@ def web(
                         console.print(f"\n  [cyan]CORS Configuration:[/cyan]")
                         for key, value in result.cors_config.items():
                             console.print(f"    {key}: {value}")
+                    
+                    # Advanced web tools (if active or aggressive mode)
+                    if active or aggressive:
+                        progress.update(task, description="Running advanced web tools...")
+                        try:
+                            from scanning.web_tools import AdvancedWebTools
+                            
+                            web_tools = AdvancedWebTools(timeout=300)
+                            
+                            # WhatWeb - Technology detection
+                            progress.update(task, description="Technology detection (WhatWeb)...")
+                            whatweb_result = await web_tools.whatweb_scan(target, aggressive=aggressive)
+                            if whatweb_result.technologies:
+                                console.print(f"\n  [cyan]WhatWeb Technologies:[/cyan] ({len(whatweb_result.technologies)} found)")
+                                for tech in whatweb_result.technologies[:15]:
+                                    version = whatweb_result.version_info.get(tech, "")
+                                    version_info = f" ({version})" if version else ""
+                                    console.print(f"    • {tech}{version_info}")
+                                if len(whatweb_result.technologies) > 15:
+                                    console.print(f"    ... and {len(whatweb_result.technologies) - 15} more")
+                            if whatweb_result.server:
+                                console.print(f"  [cyan]Server:[/cyan] {whatweb_result.server}")
+                            
+                            # WPScan - WordPress scanning
+                            progress.update(task, description="WordPress scan (WPScan)...")
+                            wpscan_result = await web_tools.wpscan_scan(target, aggressive=aggressive)
+                            if wpscan_result.is_wordpress:
+                                console.print(f"\n  [cyan]WordPress Detected:[/cyan]")
+                                if wpscan_result.version:
+                                    console.print(f"    Version: {wpscan_result.version}")
+                                if wpscan_result.plugins:
+                                    console.print(f"    Plugins ({len(wpscan_result.plugins)}):")
+                                    for plugin in wpscan_result.plugins[:10]:
+                                        console.print(f"      • {plugin}")
+                                    if len(wpscan_result.plugins) > 10:
+                                        console.print(f"      ... and {len(wpscan_result.plugins) - 10} more")
+                                if wpscan_result.themes:
+                                    console.print(f"    Themes ({len(wpscan_result.themes)}):")
+                                    for theme in wpscan_result.themes[:5]:
+                                        console.print(f"      • {theme}")
+                                    if len(wpscan_result.themes) > 5:
+                                        console.print(f"      ... and {len(wpscan_result.themes) - 5} more")
+                                if wpscan_result.vulnerabilities:
+                                    console.print(f"    [red]Vulnerabilities:[/red]")
+                                    for vuln in wpscan_result.vulnerabilities[:5]:
+                                        console.print(f"      • {vuln}")
+                                    if len(wpscan_result.vulnerabilities) > 5:
+                                        console.print(f"      ... and {len(wpscan_result.vulnerabilities) - 5} more")
+                            
+                            # Gobuster - Directory brute force
+                            progress.update(task, description="Directory brute force (Gobuster)...")
+                            gobuster_result = await web_tools.gobuster_scan(target, aggressive=aggressive)
+                            if gobuster_result.directories:
+                                console.print(f"\n  [cyan]Directories Found:[/cyan] ({gobuster_result.total_found} total)")
+                                for directory in gobuster_result.directories[:20]:
+                                    console.print(f"    • {directory}")
+                                if len(gobuster_result.directories) > 20:
+                                    console.print(f"    ... and {len(gobuster_result.directories) - 20} more")
+                                if gobuster_result.status_codes:
+                                    console.print(f"  [cyan]Status Codes:[/cyan]")
+                                    for status, count in gobuster_result.status_codes.items():
+                                        console.print(f"    {status}: {count}")
+                            
+                            # WebExploit - Vulnerability search (read-only)
+                            if aggressive:
+                                progress.update(task, description="Vulnerability search (WebExploit)...")
+                                websploit_result = await web_tools.websploit_scan(target)
+                                if websploit_result.exploits:
+                                    console.print(f"\n  [red]WebExploit References:[/red] ({len(websploit_result.exploits)} found)")
+                                    for exploit in websploit_result.exploits[:5]:
+                                        console.print(f"    • {exploit}")
+                                    if len(websploit_result.exploits) > 5:
+                                        console.print(f"    ... and {len(websploit_result.exploits) - 5} more")
+                        
+                        except Exception as e:
+                            console.print(f"\n  [yellow]⚠ Advanced web tools failed: {e}[/yellow]")
                     
                     progress.update(task, description="Scan complete")
                     
