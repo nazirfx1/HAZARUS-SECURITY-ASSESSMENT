@@ -775,6 +775,187 @@ class ToolRegistry:
                 exit_code=0
             )
         )
+        
+        # Phase 2 Enhanced Capabilities
+        self.tools['masscan'] = ToolMetadata(
+            name="Masscan",
+            description="Large-scale asynchronous scanning",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="masscan",
+                version_flag="-V",
+                version_pattern=r"masscan ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="masscan",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="masscan -V",
+                exit_code=0
+            )
+        )
+        
+        self.tools['feroxbuster'] = ToolMetadata(
+            name="Feroxbuster",
+            description="Recursive content discovery",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="feroxbuster",
+                version_flag="-V",
+                version_pattern=r"feroxbuster ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="epi052/feroxbuster",
+                asset_pattern=r"feroxbuster_.*_linux_amd64\.tar\.gz",
+                version="2.0+",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="feroxbuster -V",
+                exit_code=0
+            )
+        )
+        
+        self.tools['ffuf'] = ToolMetadata(
+            name="ffuf",
+            description="HTTP fuzzing and discovery",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="ffuf",
+                version_flag="-V",
+                version_pattern=r"ffuf ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="ffuf/ffuf",
+                asset_pattern=r"ffuf_.*_linux_amd64\.tar\.gz",
+                version="2.0+",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="ffuf -V",
+                exit_code=0
+            )
+        )
+        
+        self.tools['schemathesis'] = ToolMetadata(
+            name="Schemathesis",
+            description="OpenAPI-driven API property testing",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="schemathesis",
+                version_flag="version",
+                version_pattern=r"Schemathesis ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="schemathesis",
+                version="3.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="schemathesis version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['postman'] = ToolMetadata(
+            name="Postman CLI",
+            description="API collections and automated workflows",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="newman",
+                version_flag="-v",
+                version_pattern=r"([0-9.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="newman",
+                version="6.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="newman -v",
+                exit_code=0
+            )
+        )
+        
+        self.tools['bandit'] = ToolMetadata(
+            name="Bandit",
+            description="Python security static analysis",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="bandit",
+                version_flag="--version",
+                version_pattern=r"bandit ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="bandit",
+                version="1.7+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="bandit --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['linpeas'] = ToolMetadata(
+            name="LinPEAS",
+            description="Linux privilege escalation exposure discovery",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="linpeas",
+                version_flag="-h",
+                version_pattern=r"LinPEAS"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="carlospolop/linPEAS",
+                asset_pattern=r"linpeas_linux\.sh",
+                version="latest",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="linpeas -h",
+                exit_code=0
+            )
+        )
+        
+        self.tools['lynis'] = ToolMetadata(
+            name="Lynis",
+            description="Linux security configuration auditing",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="lynis",
+                version_flag="--version",
+                version_pattern=r"Lynis ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="lynis",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="lynis --version",
+                exit_code=0
+            )
+        )
     
     def _parse_tool_config(self, name: str, config: dict) -> ToolMetadata:
         """Parse tool configuration from YAML."""

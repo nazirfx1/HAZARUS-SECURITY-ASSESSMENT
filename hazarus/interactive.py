@@ -1510,7 +1510,18 @@ class InteractiveMode:
             # Source Code Analysis
             if "code" in phases:
                 self.console.print(f"[yellow][Phase {phases.index('code') + 1}/{len(phases)}] Source Code Analysis...[/yellow]")
-                self.console.print("  [dim]Source code analysis requires code path - skipping[/dim]")
+                self.console.print(f"  [dim]Steps: Semgrep, Gitleaks, Trivy, Bandit[/dim]")
+                try:
+                    from code_analysis import SemgrepScanner, GitleaksScanner, TrivyScanner, BanditScanner
+                    
+                    # Note: This would require a code path - for now showing placeholder
+                    self.console.print(f"  [yellow]⚠ Source code analysis requires code path[/yellow]")
+                    self.console.print(f"  [dim]Tools available: Semgrep, Gitleaks, Trivy, Bandit[/dim]")
+                    
+                    phase_results['code'] = {'status': 'requires_code_path'}
+                except Exception as e:
+                    self.console.print(f"  [red]✗ Source code analysis failed: {e}[/red]")
+                    phase_results['code'] = None
                 self.console.print()
         
         # Summary
