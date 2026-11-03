@@ -52,6 +52,11 @@ class Radare2Analyzer:
             if proc.returncode != 0:
                 raise RuntimeError("radare2 not installed")
             
+            # Get timeout from config
+            from core.config import get_config
+            config = get_config()
+            timeout = config.get('timeouts.reverse_engineering', 300)
+            
             # Build command
             cmd = ["r2", "-q", "-c", "afl", target]
             

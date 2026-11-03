@@ -52,6 +52,11 @@ class GDBDebugger:
             if proc.returncode != 0:
                 raise RuntimeError("GDB not installed")
             
+            # Get timeout from config
+            from core.config import get_config
+            config = get_config()
+            timeout = config.get('timeouts.reverse_engineering', 300)
+            
             # Build command (simplified)
             cmd = ["gdb", "-batch", "-ex", "info functions", target]
             
