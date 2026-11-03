@@ -179,12 +179,12 @@ class ToolInstaller:
             return False
         
         try:
-            # Use pip with --user by default
-            cmd = ["pip", "install", "--user", tool.installation.package]
+            # Use pip with --break-system-packages for Python 3.13+
+            cmd = ["pip", "install", "--break-system-packages", tool.installation.package]
             
             if use_sudo:
                 # System-wide install
-                cmd = ["pip", "install", tool.installation.package]
+                cmd = ["pip", "install", "--break-system-packages", tool.installation.package]
                 cmd.insert(0, "sudo")
             
             result = await self._run_command(cmd)

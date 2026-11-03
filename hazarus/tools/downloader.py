@@ -146,6 +146,14 @@ class GitHubDownloader:
             else:
                 return None
             
+            # Find the actual extracted directory (might be nested)
+            if not any(extract_dir.iterdir()):
+                # Check for single nested directory
+                for item in self.download_dir.iterdir():
+                    if item.is_dir() and item.name.startswith(archive_path.stem):
+                        shutil.rmtree(extract_dir)
+                        return item
+            
             return extract_dir
             
         except Exception as e:
