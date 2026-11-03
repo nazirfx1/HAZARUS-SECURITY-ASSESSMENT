@@ -56,7 +56,7 @@ class WebExploitResult:
 class AdvancedWebTools:
     """Advanced web security tools integration for Parrot OS."""
 
-    def __init__(self, timeout: int = 300):
+    def __init__(self, timeout: int = 600):
         self.timeout = timeout
         self.logger = logging.getLogger("hazarus.advanced_web_tools")
 

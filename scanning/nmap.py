@@ -416,26 +416,31 @@ class NmapScanner:
         elif udp_scan:
             cmd.append("-sU")  # UDP scan only
 
-        # Port specification
-        cmd.append("-p")
-        cmd.append(ports)
+        # Port specification - limit to prevent segfault on full port range
+        if ports == "1-65535" and not aggressive:
+            cmd.append("-p")
+            cmd.append("1-1000,3389,5432,5900,6379,8080,8443")  # Common ports only
+        else:
+            cmd.append("-p")
+            cmd.append(ports)
 
         # Service detection
         if service_detection:
             cmd.append("-sV")
-            cmd.append("--version-intensity")  # Default: 7
-            cmd.append("7")
+            cmd.append("--version-intensity")
+            cmd.append("5")  # Reduced from 7 to prevent crashes
 
         # OS detection (requires root)
         if os_detection and self.is_root:
             cmd.append("-O")
+            cmd.append("--osscan-limit")  # Add this to limit OS detection
         elif os_detection and not self.is_root:
             self.logger.warning("OS detection requires root privileges, skipping -O")
 
-        # Script scanning
+        # Script scanning - separate vuln scan to prevent crashes
         if script_scan:
-            if vuln_scan:
-                # Vulnerability detection scripts
+            if vuln_scan and aggressive:
+                # Only run vuln scripts in aggressive mode
                 cmd.append("--script")
                 cmd.append("vuln")
             else:
@@ -443,8 +448,8 @@ class NmapScanner:
                 cmd.append("--script")
                 cmd.append("default,safe")
 
-        # Traceroute (requires root for some features)
-        if traceroute:
+        # Traceroute (disable in non-aggressive mode to prevent issues)
+        if traceroute and aggressive:
             cmd.append("--traceroute")
 
         # Aggressive scan
@@ -453,6 +458,10 @@ class NmapScanner:
 
         # Timing template (0-5, 4 is normal)
         cmd.append(f"-T{timing}")
+
+        # Add rate limiting to prevent connection resets and segfaults
+        cmd.append("--max-rate")
+        cmd.append("1000")  # Limit packets per second
 
         # XML output
         cmd.append("-oX")

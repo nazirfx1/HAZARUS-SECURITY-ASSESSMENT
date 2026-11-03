@@ -1031,7 +1031,7 @@ def web(
                         try:
                             from scanning.web_tools import AdvancedWebTools
                             
-                            web_tools = AdvancedWebTools(timeout=300)
+                            web_tools = AdvancedWebTools(timeout=600)
                             
                             # WhatWeb - Technology detection
                             progress.update(task, description="Technology detection (WhatWeb)...")
@@ -1623,7 +1623,7 @@ def assess(
                     
                     # Advanced web tools
                     if active or aggressive:
-                        web_tools = AdvancedWebTools(timeout=300)
+                        web_tools = AdvancedWebTools(timeout=600)
                         
                         # WhatWeb
                         whatweb_result = await web_tools.whatweb_scan(target, aggressive=aggressive)
@@ -1770,7 +1770,7 @@ def assess(
                 for target in valid_targets:
                     console.print(f"\n  Auditing {target}...")
                     
-                    lateral_audit = LateralMovementAudit()
+                    lateral_audit_obj = LateralMovementAudit()
                     console.print(f"    Lateral movement audit completed")
                 
                 with open(results_file, "a") as f:
