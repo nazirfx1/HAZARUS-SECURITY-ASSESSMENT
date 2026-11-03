@@ -55,6 +55,11 @@ class MasscanScanner:
             if proc.returncode != 0:
                 raise RuntimeError("Masscan not installed")
             
+            # Get timeout from config
+            from core.config import get_config
+            config = get_config()
+            timeout = config.get('timeouts.long', 600)
+            
             # Build command
             cmd = [
                 "masscan",
