@@ -268,10 +268,10 @@ class AdvancedWebTools:
                 "gobuster", "dir",
                 "-u", target,
                 "-w", wordlist,
-                "-t", "20",  # Reduced from 50 to 20 to prevent connection resets
+                "-t", "10",  # Reduced from 20 to 10 for slow targets
                 "-x", "php,html,js,css,txt,xml",
                 "-k",  # Skip SSL verification
-                "--timeout", "30s"  # Increased from 10s to 30s
+                "--timeout", "60s"  # Increased from 30s to 60s for slow targets
             ]
 
             if aggressive:
