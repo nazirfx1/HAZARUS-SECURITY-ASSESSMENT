@@ -53,8 +53,8 @@ class GitHubDownloader:
             if not asset_url:
                 return None
             
-            # Download asset
-            return await self._download_file(asset_url, timeout)
+            # Download asset with redirect following
+            return await self._download_file(asset_url, timeout, follow_redirects=True)
             
         except Exception as e:
             print(f"GitHub download failed: {e}")
@@ -95,21 +95,22 @@ class GitHubDownloader:
                 return asset.get('browser_download_url')
         return None
     
-    async def _download_file(self, url: str, timeout: int) -> Optional[Path]:
+    async def _download_file(self, url: str, timeout: int, follow_redirects: bool = True) -> Optional[Path]:
         """Download file from URL.
         
         Args:
             url: URL to download from
             timeout: Timeout in seconds
+            follow_redirects: Whether to follow HTTP redirects
             
         Returns:
             Path to downloaded file or None
         """
         try:
-            filename = url.split('/')[-1]
+            filename = url.split('/')[-1].split('?')[0]  # Handle URLs with query params
             filepath = self.download_dir / filename
             
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=follow_redirects) as client:
                 async with client.stream('GET', url) as response:
                     response.raise_for_status()
                     
