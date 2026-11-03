@@ -27,6 +27,7 @@ class InteractiveMode:
         self.history = []
         self.home = Path.home()
         self.hazarus_dir = self.home / ".hazarus"
+        self.banner_shown = False
 
     def show_banner(self):
         """Display HAZARUS banner."""
@@ -103,11 +104,12 @@ class InteractiveMode:
         """Run interactive mode."""
         self.console.clear()
         
+        # Show banner only once at startup
+        self.show_banner()
+        self.show_config()
+        self.banner_shown = True
+        
         while True:
-            self.console.clear()
-            self.show_banner()
-            self.show_config()
-            
             if self.current_target:
                 self.console.print(f"[green]Current Target: {self.current_target}[/green]\n")
             
@@ -153,7 +155,7 @@ class InteractiveMode:
     async def target_management_menu(self):
         """Target management submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Target Management[/bold]", border_style="red"))
             self.console.print("[1] Add Target")
             self.console.print("[2] List Targets")
@@ -166,6 +168,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-6]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice == "1":
                 target = self.console.input("Enter target (domain/IP): ")
@@ -188,7 +191,7 @@ class InteractiveMode:
     async def reconnaissance_menu(self):
         """Reconnaissance submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Reconnaissance[/bold]", border_style="red"))
             self.console.print("[1] Quick Recon (DNS + Subdomains)")
             self.console.print("[2] Full Recon (DNS + Subdomains + WHOIS + Origin IP)")
@@ -200,6 +203,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4", "5"]:
                 target = self.console.input("Enter target: ") if not self.current_target else self.current_target
@@ -221,7 +225,7 @@ class InteractiveMode:
     async def network_scanning_menu(self):
         """Network scanning submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Network Scanning[/bold]", border_style="red"))
             self.console.print("[1] Quick Scan (Common Ports)")
             self.console.print("[2] Deep Scan (All Ports)")
@@ -232,6 +236,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4"]:
                 target = self.console.input("Enter target (IP/CIDR): ") if not self.current_target else self.current_target
@@ -252,7 +257,7 @@ class InteractiveMode:
     async def web_assessment_menu(self):
         """Web assessment submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Web Assessment[/bold]", border_style="red"))
             self.console.print("[1] Basic Assessment")
             self.console.print("[2] Aggressive Assessment")
@@ -264,6 +269,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4", "5"]:
                 target = self.console.input("Enter target: ") if not self.current_target else self.current_target
@@ -285,7 +291,7 @@ class InteractiveMode:
     async def comprehensive_assessment_menu(self):
         """Comprehensive assessment submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Comprehensive Assessment[/bold]", border_style="red"))
             self.console.print("[1] Standard (4 Phases)")
             self.console.print("[2] Full (10 Phases)")
@@ -295,6 +301,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-3]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3"]:
                 target = self.console.input("Enter target: ") if not self.current_target else self.current_target
@@ -493,8 +500,16 @@ class InteractiveMode:
         self.console.input("\nPress Enter to continue...")
 
     async def run_recon(self, target: str, mode: str):
-        """Run reconnaissance."""
-        self.console.print(f"[cyan]Running {mode} reconnaissance on {target}...[/cyan]")
+        """Run reconnaissance with detailed debug and findings."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]SCANNER DEBUG[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Mode: {mode}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        self.console.print(f"[cyan]Running {mode} reconnaissance on {target}...[/cyan]\n")
         
         # Import and call actual recon logic
         try:
@@ -503,32 +518,96 @@ class InteractiveMode:
             from reconnaissance.subdomains import SubdomainDiscovery
             from reconnaissance.origin_ip import OriginIPDiscovery
             
+            # DNS Reconnaissance
+            self.console.print("[yellow][1/4] DNS Enumeration...[/yellow]")
             dns_recon = DNSRecon()
             result = await dns_recon.enumerate_records(target)
             
             self.console.print(f"[green]✓ DNS Records: {len(result.records)}[/green]")
             self.console.print(f"[green]✓ Nameservers: {len(result.nameservers)}[/green]")
             
+            # Display detailed DNS findings
+            if result.records:
+                self.console.print("\n[bold cyan]DNS Records Found:[/bold cyan]")
+                for record in result.records[:10]:  # Show first 10
+                    self.console.print(f"  [dim]{record.type}[/dim] [green]{record.value}[/green]")
+                if len(result.records) > 10:
+                    self.console.print(f"  [dim]... and {len(result.records) - 10} more[/dim]")
+            
+            if result.nameservers:
+                self.console.print("\n[bold cyan]Nameservers:[/bold cyan]")
+                for ns in result.nameservers:
+                    self.console.print(f"  [green]{ns}[/green]")
+            
+            # WHOIS (for full/advanced modes)
             if mode in ["full", "advanced"]:
+                self.console.print(f"\n[yellow][2/4] WHOIS Query...[/yellow]")
                 whois_recon = WhoisRecon()
                 whois_result = await whois_recon.query(target)
                 if whois_result:
                     self.console.print(f"[green]✓ WHOIS: {whois_result.registrar}[/green]")
+                    self.console.print(f"[dim]  Registrar: {whois_result.registrar}[/dim]")
+                    self.console.print(f"[dim]  Created: {whois_result.created_date}[/dim]")
+                    self.console.print(f"[dim]  Expires: {whois_result.expiration_date}[/dim]")
             
+            # Subdomain Discovery
+            self.console.print(f"\n[yellow][3/4] Subdomain Discovery...[/yellow]")
+            subdomain_discovery = SubdomainDiscovery()
+            subdomain_result = await subdomain_discovery.discover(target)
+            
+            self.console.print(f"[green]✓ Subdomains: {len(subdomain_result.subdomains)}[/green]")
+            
+            if subdomain_result.subdomains:
+                self.console.print("\n[bold cyan]Subdomains Found:[/bold cyan]")
+                for sub in subdomain_result.subdomains[:15]:  # Show first 15
+                    self.console.print(f"  [green]{sub}[/green]")
+                if len(subdomain_result.subdomains) > 15:
+                    self.console.print(f"  [dim]... and {len(subdomain_result.subdomains) - 15} more[/dim]")
+            
+            # Origin IP Discovery (for advanced mode)
             if mode == "advanced":
+                self.console.print(f"\n[yellow][4/4] Origin IP Discovery...[/yellow]")
                 origin_discovery = OriginIPDiscovery()
                 origin_result = await origin_discovery.discover(target)
                 self.console.print(f"[green]✓ Origin IPs: {len(origin_result.origin_ips)}[/green]")
+                
+                if origin_result.origin_ips:
+                    self.console.print("\n[bold cyan]Potential Origin IPs:[/bold cyan]")
+                    for ip_info in origin_result.origin_ips[:5]:
+                        self.console.print(f"  [green]{ip_info['ip']}[/green] [dim](confidence: {ip_info.get('confidence', 'N/A')})[/dim]")
+            
+            # Summary
+            self.console.print(f"\n{'='*80}")
+            self.console.print(f"[bold green]RECONNAISSANCE COMPLETE[/bold green]")
+            self.console.print(f"{'='*80}")
+            self.console.print(f"[dim]Total DNS Records: {len(result.records)}[/dim]")
+            self.console.print(f"[dim]Total Nameservers: {len(result.nameservers)}[/dim]")
+            self.console.print(f"[dim]Total Subdomains: {len(subdomain_result.subdomains)}[/dim]")
+            if mode == "advanced":
+                self.console.print(f"[dim]Total Origin IPs: {len(origin_result.origin_ips)}[/dim]")
+            self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+            self.console.print(f"{'='*80}\n")
             
         except Exception as e:
-            self.console.print(f"[red]✗ Reconnaissance failed: {e}[/red]")
+            self.console.print(f"\n[red]✗ Reconnaissance failed: {e}[/red]")
+            import traceback
+            self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
         
-        self.console.input("\nPress Enter to continue...")
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
 
     async def run_scan(self, target: str, mode: str):
-        """Run network scan."""
+        """Run network scan with detailed debug and findings."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]SCANNER DEBUG[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Mode: {mode}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
         self.console.print(f"[cyan]Running {mode} scan on {target}...[/cyan]")
-        self.console.print("[yellow]Note: Network scanning requires sudo privileges[/yellow]")
+        self.console.print("[yellow]Note: Network scanning requires sudo privileges[/yellow]\n")
         
         # Import and call actual scan logic
         try:
@@ -537,31 +616,50 @@ class InteractiveMode:
             nmap = NmapScanner()
             
             if mode == "quick":
+                self.console.print("[yellow][1/1] Quick Port Scan (1-1000)...[/yellow]")
                 result = await nmap.scan(
                     targets=[target],
                     ports="1-1000",
                     scan_type="sT"
                 )
             elif mode == "deep":
+                self.console.print("[yellow][1/1] Deep Port Scan (1-65535)...[/yellow]")
                 result = await nmap.scan(
                     targets=[target],
                     ports="1-65535",
                     scan_type="sT"
                 )
             elif mode == "advanced":
+                self.console.print("[yellow][1/1] Advanced Scan with Scripts...[/yellow]")
                 result = await nmap.advanced_scan(
                     targets=[target],
                     ports="1-65535",
                     aggressive=True
                 )
             elif mode == "live":
+                self.console.print("[yellow][1/1] Live Host Discovery...[/yellow]")
                 from reconnaissance.live_hosts import LiveHostDiscovery
                 live = LiveHostDiscovery()
                 result = await live.discover_hosts(target)
+                
                 self.console.print(f"[green]✓ Live hosts: {len(result.hosts)}[/green]")
-                self.console.input("\nPress Enter to continue...")
+                if result.hosts:
+                    self.console.print("\n[bold cyan]Live Hosts Found:[/bold cyan]")
+                    for host in result.hosts:
+                        self.console.print(f"  [green]{host.ip}[/green] [dim]({host.status})[/dim]")
+                
+                self.console.print(f"\n{'='*80}")
+                self.console.print(f"[bold green]SCAN COMPLETE[/bold green]")
+                self.console.print(f"{'='*80}")
+                self.console.print(f"[dim]Total Live Hosts: {len(result.hosts)}[/dim]")
+                self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+                self.console.print(f"{'='*80}\n")
+                
+                self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+                self.console.input("")
                 return
             
+            # Display results
             open_ports = []
             for host in result.hosts:
                 for port in host.ports:
@@ -570,43 +668,108 @@ class InteractiveMode:
             
             self.console.print(f"[green]✓ Open ports: {len(open_ports)}[/green]")
             
+            if open_ports:
+                self.console.print("\n[bold cyan]Open Ports Found:[/bold cyan]")
+                for port in open_ports[:20]:
+                    self.console.print(f"  [green]{port}[/green]")
+                if len(open_ports) > 20:
+                    self.console.print(f"  [dim]... and {len(open_ports) - 20} more[/dim]")
+            
+            # Summary
+            self.console.print(f"\n{'='*80}")
+            self.console.print(f"[bold green]SCAN COMPLETE[/bold green]")
+            self.console.print(f"{'='*80}")
+            self.console.print(f"[dim]Total Open Ports: {len(open_ports)}[/dim]")
+            self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+            self.console.print(f"{'='*80}\n")
+            
         except Exception as e:
-            self.console.print(f"[red]✗ Scan failed: {e}[/red]")
+            self.console.print(f"\n[red]✗ Scan failed: {e}[/red]")
+            import traceback
+            self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
         
-        self.console.input("\nPress Enter to continue...")
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
 
     async def run_web(self, target: str, mode: str):
-        """Run web assessment."""
-        self.console.print(f"[cyan]Running {mode} web assessment on {target}...[/cyan]")
+        """Run web assessment with detailed debug and findings."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]SCANNER DEBUG[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Mode: {mode}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        self.console.print(f"[cyan]Running {mode} web assessment on {target}...[/cyan]\n")
         
         # Import and call actual web logic
         try:
             from scanning.http_scanner import HTTPScanner
             from scanning.web_tools import AdvancedWebTools
             
+            self.console.print("[yellow][1/4] HTTP Security Scan...[/yellow]")
             scanner = HTTPScanner(timeout=30)
             result = await scanner.scan(target)
             
             self.console.print(f"[green]✓ Security headers: {len(result.security_headers)}[/green]")
             self.console.print(f"[green]✓ Cookies: {len(result.cookies)}[/green]")
             
+            if result.security_headers:
+                self.console.print("\n[bold cyan]Security Headers:[/bold cyan]")
+                for header, value in result.security_headers.items():
+                    self.console.print(f"  [cyan]{header}:[/cyan] [green]{value}[/green]")
+            
+            if result.cookies:
+                self.console.print("\n[bold cyan]Cookies:[/bold cyan]")
+                for cookie in result.cookies[:10]:
+                    self.console.print(f"  [green]{cookie.name}[/green] [dim]({cookie.domain})[/dim]")
+                if len(result.cookies) > 10:
+                    self.console.print(f"  [dim]... and {len(result.cookies) - 10} more[/dim]")
+            
             if mode in ["aggressive", "wpscan", "gobuster", "whatweb"]:
                 web_tools = AdvancedWebTools()
                 
                 if mode == "whatweb":
+                    self.console.print(f"\n[yellow][2/4] Technology Detection...[/yellow]")
                     whatweb_result = await web_tools.whatweb_scan(target)
                     self.console.print(f"[green]✓ Technologies: {len(whatweb_result.technologies)}[/green]")
+                    if whatweb_result.technologies:
+                        self.console.print("\n[bold cyan]Technologies Detected:[/bold cyan]")
+                        for tech in whatweb_result.technologies[:15]:
+                            self.console.print(f"  [green]{tech}[/green]")
                 elif mode == "gobuster":
+                    self.console.print(f"\n[yellow][2/4] Directory Enumeration...[/yellow]")
                     gobuster_result = await web_tools.gobuster_scan(target)
                     self.console.print(f"[green]✓ Directories: {gobuster_result.total_found}[/green]")
+                    if gobuster_result.directories:
+                        self.console.print("\n[bold cyan]Directories Found:[/bold cyan]")
+                        for dir in gobuster_result.directories[:15]:
+                            self.console.print(f"  [green]{dir}[/green]")
                 elif mode == "wpscan":
+                    self.console.print(f"\n[yellow][2/4] WordPress Security Scan...[/yellow]")
                     wpscan_result = await web_tools.wpscan_scan(target)
                     self.console.print(f"[green]✓ WordPress: {wpscan_result.is_wordpress}[/green]")
+                    if wpscan_result.is_wordpress:
+                        self.console.print(f"[dim]  Version: {wpscan_result.version or 'Unknown'}[/dim]")
+                        self.console.print(f"[dim]  Plugins: {len(wpscan_result.plugins)}[/dim]")
+            
+            # Summary
+            self.console.print(f"\n{'='*80}")
+            self.console.print(f"[bold green]WEB ASSESSMENT COMPLETE[/bold green]")
+            self.console.print(f"{'='*80}")
+            self.console.print(f"[dim]Security Headers: {len(result.security_headers)}[/dim]")
+            self.console.print(f"[dim]Cookies: {len(result.cookies)}[/dim]")
+            self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+            self.console.print(f"{'='*80}\n")
             
         except Exception as e:
-            self.console.print(f"[red]✗ Web assessment failed: {e}[/red]")
+            self.console.print(f"\n[red]✗ Web assessment failed: {e}[/red]")
+            import traceback
+            self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
         
-        self.console.input("\nPress Enter to continue...")
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
 
     async def run_comprehensive(self, target: str, mode: str):
         """Run comprehensive assessment."""
@@ -636,7 +799,7 @@ class InteractiveMode:
     async def api_assessment_menu(self):
         """API assessment submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]API Assessment[/bold]", border_style="red"))
             self.console.print("[1] REST Endpoint Discovery")
             self.console.print("[2] GraphQL Endpoint Discovery")
@@ -646,6 +809,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-3]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3"]:
                 target = self.console.input("Enter target: ") if not self.current_target else self.current_target
@@ -665,7 +829,7 @@ class InteractiveMode:
     async def vulnerability_research_menu(self):
         """Vulnerability research submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Vulnerability Research[/bold]", border_style="red"))
             self.console.print("[1] CVE Search")
             self.console.print("[2] Exploit Intelligence (SearchSploit)")
@@ -676,6 +840,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4"]:
                 target = self.console.input("Enter target: ") if not self.current_target else self.current_target
@@ -696,7 +861,7 @@ class InteractiveMode:
     async def exploitation_menu(self):
         """Exploitation submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Exploitation[/bold]", border_style="red"))
             self.console.print("[1] List Available Exploits")
             self.console.print("[2] Check Exploit Compatibility")
@@ -708,6 +873,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4"]:
                 target = self.console.input("Enter target: ") if not self.current_target else self.current_target
@@ -728,7 +894,7 @@ class InteractiveMode:
     async def post_assessment_menu(self):
         """Post-assessment audits submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Post-Assessment Audits[/bold]", border_style="red"))
             self.console.print("[1] Privilege Audit")
             self.console.print("[2] Persistence Audit")
@@ -739,6 +905,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4"]:
                 target = self.console.input("Enter target: ") if not self.current_target else self.current_target
@@ -759,7 +926,7 @@ class InteractiveMode:
     async def source_code_analysis_menu(self):
         """Source code analysis submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Source Code Analysis[/bold]", border_style="red"))
             self.console.print("[1] Semgrep Static Analysis")
             self.console.print("[2] Gitleaks Secret Detection")
@@ -770,6 +937,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4"]:
                 target = self.console.input("Enter code path: ")
@@ -790,7 +958,7 @@ class InteractiveMode:
     async def reporting_menu(self):
         """Reporting submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Reporting[/bold]", border_style="red"))
             self.console.print("[1] View Recent Assessments")
             self.console.print("[2] Generate Markdown Report")
@@ -802,6 +970,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice == "1":
                 await self.view_recent_assessments()
@@ -818,7 +987,7 @@ class InteractiveMode:
     async def configuration_menu(self):
         """Configuration submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Configuration[/bold]", border_style="red"))
             self.console.print("[1] View Current Configuration")
             self.console.print("[2] Edit Assessment Settings")
@@ -829,6 +998,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice == "1":
                 self.show_config()
@@ -846,7 +1016,7 @@ class InteractiveMode:
     async def advanced_tools_menu(self):
         """Advanced tools submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Advanced Tools[/bold]", border_style="red"))
             self.console.print("[1] Advanced Subdomain Discovery")
             self.console.print("[2] DNS over HTTPS")
@@ -859,6 +1029,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-6]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4", "5", "6"]:
                 target = self.console.input("Enter target: ") if not self.current_target else self.current_target
@@ -881,7 +1052,7 @@ class InteractiveMode:
     async def asset_intelligence_menu(self):
         """Asset intelligence submenu."""
         while True:
-            self.console.clear()
+            self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Asset Intelligence[/bold]", border_style="red"))
             self.console.print("[1] View Asset Inventory")
             self.console.print("[2] View Asset Lifecycle")
@@ -893,6 +1064,7 @@ class InteractiveMode:
             choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
 
             if choice == "0":
+                self.console.clear()
                 break
             elif choice in ["1", "2", "3", "4", "5"]:
                 mode = {
