@@ -275,11 +275,19 @@ class DNSRecon:
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
+
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
+
+            self.logger.debug(f"Amass stdout: {stdout_text[:500]}")
+            self.logger.debug(f"Amass stderr: {stderr_text[:500]}")
+
             if proc.returncode != 0:
-                self.logger.warning(f"Amass enum failed: {stderr.decode()}")
+                self.logger.warning(f"Amass enum failed with exit code {proc.returncode}: {stderr_text}")
             else:
-                subdomains = stdout.decode().strip().split('\n')
+                subdomains = stdout_text.strip().split('\n')
                 result["subdomains"] = [s for s in subdomains if s and domain in s]
+                self.logger.info(f"Amass found {len(result['subdomains'])} subdomains")
 
             # Note: The following advanced features are not available in Amass v4.1.0
             # - intel -asn: Syntax changed in newer versions

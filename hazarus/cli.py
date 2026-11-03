@@ -499,6 +499,7 @@ def recon(
                                 console.print(f"    [green]✓ Amass: {len(amass_subdomains)} subdomains[/green]")
                             else:
                                 console.print(f"    [yellow]⚠ Amass: No subdomains found[/yellow]")
+                                console.print(f"    [dim]    (Amass v4.1.0 passive enumeration)[/dim]")
 
                             # Note: Advanced Amass features (ASN, certificates, related domains, infrastructure)
                             # are not available in Amass v4.1.0. These require v4.2.0+ or different syntax.
@@ -610,7 +611,7 @@ def recon(
 
                         if nmap_available:
                             nmap = NmapScanner()
-                            # Use advanced deep scan by default
+                            # Try advanced deep scan first
                             nmap_result = await nmap.advanced_scan(
                                 targets=[target],
                                 ports="1-65535",
@@ -624,6 +625,19 @@ def recon(
                                 aggressive=False,
                                 timing=4
                             )
+
+                            # If advanced scan failed, try basic scan without root requirements
+                            if nmap_result.exit_status != 0:
+                                console.print(f"    [yellow]⚠ Advanced scan failed, falling back to basic scan[/yellow]")
+                                nmap_result = await nmap.scan(
+                                    targets=[target],
+                                    ports="1-65535",
+                                    scan_type="sT",  # TCP connect (no root required)
+                                    service_detection=True,
+                                    os_detection=False,  # Skip OS detection (requires root)
+                                    aggressive=False
+                                )
+
                             open_ports = []
                             for host in nmap_result.hosts:
                                 if host.os:

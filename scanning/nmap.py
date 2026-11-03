@@ -151,13 +151,17 @@ class NmapScanner:
         if service_detection:
             cmd.append("-sV")
 
-        # OS detection
-        if os_detection:
+        # OS detection (requires root)
+        if os_detection and self.is_root:
             cmd.append("-O")
+        elif os_detection and not self.is_root:
+            self.logger.warning("OS detection requires root privileges, skipping -O")
 
-        # Aggressive scan
-        if aggressive:
+        # Aggressive scan (requires root for some features)
+        if aggressive and self.is_root:
             cmd.append("-A")
+        elif aggressive and not self.is_root:
+            self.logger.warning("Aggressive scan requires root privileges, skipping -A")
 
         # XML output
         cmd.append("-oX")
@@ -391,9 +395,11 @@ class NmapScanner:
             cmd.append("--version-intensity")  # Default: 7
             cmd.append("7")
 
-        # OS detection
-        if os_detection:
+        # OS detection (requires root)
+        if os_detection and self.is_root:
             cmd.append("-O")
+        elif os_detection and not self.is_root:
+            self.logger.warning("OS detection requires root privileges, skipping -O")
 
         # Script scanning
         if script_scan:
@@ -406,7 +412,7 @@ class NmapScanner:
                 cmd.append("--script")
                 cmd.append("default,safe")
 
-        # Traceroute
+        # Traceroute (requires root for some features)
         if traceroute:
             cmd.append("--traceroute")
 
