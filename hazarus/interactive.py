@@ -939,11 +939,17 @@ class InteractiveMode:
             from scanning.web_tools import AdvancedWebTools
             
             self.console.print("[yellow][1/4] HTTP Security Scan...[/yellow]")
-            scanner = HTTPScanner(timeout=30)
-            result = await scanner.scan(target)
+            self.console.print(f"  [dim]Target: {target}[/dim]")
+            self.console.print(f"  [dim]Timeout: 30s[/dim]")
+            self.console.print(f"  [dim]Checks: Headers, Cookies, Vulns[/dim]")
+            
+            with self.console.status("[dim]Scanning HTTP security...[/dim]", spinner="dots"):
+                scanner = HTTPScanner(timeout=30)
+                result = await scanner.scan(target)
             
             self.console.print(f"[green]✓ Security headers: {len(result.security_headers)}[/green]")
             self.console.print(f"[green]✓ Cookies: {len(result.cookies)}[/green]")
+            self.console.print(f"[green]✓ Vulnerabilities: {len(result.vulnerabilities)}[/green]")
             
             if result.security_headers:
                 self.console.print("\n[bold cyan]Security Headers:[/bold cyan]")
