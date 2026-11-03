@@ -126,18 +126,6 @@ class PrivilegeAudit:
         except Exception as e:
             self.logger.warning(f"SUID file check failed: {e}")
 
-                for file in result.suid_files:
-                    if file in risky_files:
-                        result.findings.append(PrivilegeFinding(
-                            type="suid",
-                            description=f"Risky SUID file: {file}",
-                            severity="medium",
-                            evidence=file
-                        ))
-
-        except Exception as e:
-            self.logger.error(f"SUID check failed: {e}")
-
     async def _check_sudo_config(self, result: PrivilegeAuditResult) -> None:
         """Check sudo configuration."""
         try:

@@ -148,12 +148,22 @@ class SafetyGate:
         """Check if target is in a lab environment."""
         import ipaddress
 
-        # Default lab CIDR ranges
-        lab_ranges = [
-            "192.168.100.0/24",
-            "10.0.100.0/24",
-            "172.16.100.0/24"
-        ]
+        # Load lab CIDR ranges from configuration (lazy import to avoid circular dependency)
+        try:
+            from core.config import get_config
+            config_manager = get_config()
+            config = config_manager.config
+            lab_ranges = config.lab.cidr_ranges if config.lab else None
+        except ImportError:
+            # Fallback if config not available
+            lab_ranges = None
+        
+        if not lab_ranges:
+            lab_ranges = [
+                "192.168.100.0/24",
+                "10.0.100.0/24",
+                "172.16.100.0/24"  # Included for test compatibility
+            ]
 
         try:
             target_ip = ipaddress.ip_address(target)

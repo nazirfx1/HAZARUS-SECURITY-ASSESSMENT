@@ -563,10 +563,10 @@ class ScopeManager:
     def create_scope_template(self, output_path: Path) -> None:
         """Create a scope configuration template."""
         template = {
-            "allowed_targets": ["192.168.1.100", "example.com"],
-            "allowed_domains": ["example.com", "test.example.com"],
-            "allowed_cidrs": ["192.168.1.0/24"],
-            "excluded_targets": ["192.168.1.1", "critical.example.com"],
+            "allowed_targets": ["YOUR_TARGET_IP_OR_DOMAIN"],
+            "allowed_domains": ["YOUR_DOMAIN_HERE"],
+            "allowed_cidrs": ["YOUR_NETWORK_CIDR"],
+            "excluded_targets": ["CRITICAL_SYSTEM_IP"],
             "allowed_ports": [80, 443, 22, 3389],
             "assessment_window": {
                 "start": "2024-01-01T00:00:00",
@@ -575,10 +575,10 @@ class ScopeManager:
             "intensity": "normal",
             "rate_limit": 100,
             "request_limit": 10000,
-            "operator_id": "operator@example.com",
+            "operator_id": "OPERATOR_EMAIL@example.com",
             "client_id": "client-001",
-            "emergency_contact": "emergency@example.com",
-            "notes": "Assessment scope description"
+            "emergency_contact": "EMERGENCY_CONTACT@example.com",
+            "notes": "Assessment scope description - REPLACE ALL PLACEHOLDER VALUES"
         }
 
         with open(output_path, "w") as f:

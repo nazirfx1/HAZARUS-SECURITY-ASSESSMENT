@@ -9,6 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime, UTC
+import copy
 
 
 class TaskStatus(Enum):
@@ -36,6 +37,9 @@ class Task:
     result: Any = None
     error: Optional[str] = None
     _task: Optional[asyncio.Task] = None
+    _paused_at: Optional[datetime] = None
+    _resumed_at: Optional[datetime] = None
+    _checkpoint: Optional[Dict[str, Any]] = None
 
 
 class TaskManager:
@@ -174,12 +178,63 @@ class TaskManager:
         return cancelled
 
     async def pause_all(self) -> None:
-        """Pause all running tasks (not yet implemented)."""
-        self.logger.warning("Pause functionality not yet implemented")
+        """Pause all running tasks."""
+        paused_count = 0
+        for task in self.get_running_tasks():
+            try:
+                # Save task state for resumption
+                task._paused_at = datetime.now(UTC)
+                task._checkpoint = {
+                    'task_id': task.task_id,
+                    'name': task.name,
+                    'args': task.args,
+                    'kwargs': task.kwargs,
+                    'status_before_pause': task.status.value
+                }
+                
+                # Cancel the task (can be resumed by recreating)
+                if task._task and not task._task.done():
+                    task._task.cancel()
+                    task.status = TaskStatus.PAUSED
+                    paused_count += 1
+                    self.logger.info(f"Paused task: {task.task_id}")
+                    
+            except Exception as e:
+                self.logger.error(f"Failed to pause task {task.task_id}: {e}")
+        
+        self.logger.info(f"Paused {paused_count} tasks")
 
     async def resume_all(self) -> None:
-        """Resume all paused tasks (not yet implemented)."""
-        self.logger.warning("Resume functionality not yet implemented")
+        """Resume all paused tasks."""
+        resumed_count = 0
+        for task in list(self._tasks.values()):
+            if task.status == TaskStatus.PAUSED and task._checkpoint:
+                try:
+                    # Restore task from checkpoint
+                    checkpoint = task._checkpoint
+                    task._resumed_at = datetime.now(UTC)
+                    
+                    # Recreate the task with original parameters
+                    new_task = Task(
+                        task_id=task.task_id,
+                        name=checkpoint['name'],
+                        func=task.func,
+                        args=checkpoint['args'],
+                        kwargs=checkpoint['kwargs'],
+                        status=TaskStatus.PENDING
+                    )
+                    
+                    # Replace old task with new one
+                    self._tasks[task.task_id] = new_task
+                    new_task._task = asyncio.create_task(self._execute_task(new_task))
+                    
+                    resumed_count += 1
+                    self.logger.info(f"Resumed task: {task.task_id}")
+                    
+                except Exception as e:
+                    self.logger.error(f"Failed to resume task {task.task_id}: {e}")
+        
+        self.logger.info(f"Resumed {resumed_count} tasks")
 
     async def stop_all(self) -> None:
         """Stop all tasks gracefully."""

@@ -104,19 +104,6 @@ class PersistenceAudit:
 
         except Exception as e:
             self.logger.warning(f"Systemd check failed: {e}")
-                    user_services = stdout.decode().strip().split("\n")
-                    for service in user_services[1:]:
-                        if service and "enabled" in service:
-                            result.mechanisms.append(PersistenceMechanism(
-                                type="systemd_user",
-                                location=service.split()[0],
-                                description="User systemd service enabled",
-                                severity="medium",
-                                removable=True
-                            ))
-
-            except Exception:
-                pass
 
         except Exception as e:
             self.logger.error(f"Systemd check failed: {e}")
@@ -232,11 +219,6 @@ class PersistenceAudit:
                 self.logger.debug(f"Profile check failed for {path}: {e}")
 
         self.logger.info(f"Profile check complete")
-                        removable=True
-                    ))
-
-            except Exception:
-                pass
 
     def to_dict(self, result: PersistenceAuditResult) -> Dict[str, Any]:
         """Convert result to dictionary."""

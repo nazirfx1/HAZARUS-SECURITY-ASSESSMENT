@@ -186,24 +186,6 @@ class LateralMovementAudit:
 
         except Exception as e:
             self.logger.warning(f"Cached credentials check failed: {e}")
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-
-            if process.returncode == 0:
-                shares = stdout.decode().strip().split("\n")
-                for share in shares:
-                    if "Share" in share or "Disk" in share:
-                        result.paths.append(LateralPath(
-                            source=result.target,
-                            destination="SMB Share",
-                            method="SMB",
-                            accessible=True
-                        ))
-
-        except Exception:
-            pass
 
     async def _check_ssh_known_hosts(self, result: LateralMovementResult) -> None:
         """Check SSH known_hosts for lateral movement targets."""
