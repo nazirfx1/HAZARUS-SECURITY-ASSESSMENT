@@ -1539,7 +1539,7 @@ class InteractiveMode:
         """External tools management submenu."""
         self.console.clear()
         
-        from tools import ToolRegistry, ToolDetector, ToolInstaller, ToolConfigurer, ToolValidator
+        from hazarus.tools import ToolRegistry, ToolDetector, ToolInstaller, ToolConfigurer, ToolValidator
         
         registry = ToolRegistry()
         detector = ToolDetector(registry)
@@ -1721,7 +1721,7 @@ class InteractiveMode:
     async def startup_tool_check(self):
         """Check required tools on startup."""
         try:
-            from tools import ToolDetector, ToolRegistry
+            from hazarus.tools import ToolDetector, ToolRegistry
             
             registry = ToolRegistry()
             detector = ToolDetector(registry)
