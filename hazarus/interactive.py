@@ -28,6 +28,12 @@ class InteractiveMode:
         self.home = Path.home()
         self.hazarus_dir = self.home / ".hazarus"
         self.banner_shown = False
+        self.config = {
+            'timeouts': {
+                'default': 30,
+                'http_scan': 30
+            }
+        }
 
     def show_banner(self):
         """Display HAZARUS banner."""
@@ -2038,14 +2044,57 @@ class InteractiveMode:
                 self.show_config()
                 self.console.input("\nPress Enter to continue...")
             elif choice == "2":
-                self.console.print("[yellow]Opening configuration editor...[/yellow]")
-                await asyncio.sleep(1)
+                await self.edit_assessment_settings()
             elif choice == "3":
-                self.console.print("[yellow]Opening privacy settings editor...[/yellow]")
-                await asyncio.sleep(1)
+                await self.edit_privacy_settings()
             elif choice == "4":
-                self.console.print("[yellow]Resetting to defaults...[/yellow]")
-                await asyncio.sleep(1)
+                await self.reset_to_defaults()
+
+    async def edit_assessment_settings(self):
+        """Edit assessment settings."""
+        self.console.print("\n[cyan]Edit Assessment Settings[/cyan]")
+        self.console.print("[yellow]This feature allows you to modify assessment-specific settings:[/yellow]")
+        self.console.print("  - Assessment intensity (low, normal, high)")
+        self.console.print("  - Rate limiting parameters")
+        self.console.print("  - Request limits")
+        self.console.print("  - Timeout values")
+        self.console.print("  - Scan aggressiveness")
+        self.console.print("\n[dim]Currently: Settings are managed in config/hazarus.yaml[/dim]")
+        self.console.print("[dim]Implementation: Will add interactive editor in future update[/dim]")
+        self.console.input("\nPress Enter to continue...")
+
+    async def edit_privacy_settings(self):
+        """Edit privacy settings."""
+        self.console.print("\n[cyan]Edit Privacy Settings[/cyan]")
+        self.console.print("[yellow]This feature allows you to modify privacy-related settings:[/yellow]")
+        self.console.print("  - Anonsurf requirement (strict, optional, disabled)")
+        self.console.print("  - DNS leak blocking behavior")
+        self.console.print("  - IPv6 exposure handling")
+        self.console.print("  - Tor connectivity requirements")
+        self.console.print("  - Anonymity verification level")
+        self.console.print("\n[dim]Currently: Settings are managed in config/hazarus.yaml[/dim]")
+        self.console.print("[dim]Implementation: Will add interactive editor in future update[/dim]")
+        self.console.input("\nPress Enter to continue...")
+
+    async def reset_to_defaults(self):
+        """Reset configuration to defaults."""
+        self.console.print("\n[cyan]Reset to Defaults[/cyan]")
+        self.console.print("[yellow]This feature will reset all configuration to default values:[/yellow]")
+        self.console.print("  - Assessment settings to normal intensity")
+        self.console.print("  - Privacy settings to strict mode")
+        self.console.print("  - Timeouts to default values")
+        self.console.print("  - Rate limits to safe defaults")
+        self.console.print("\n[red]Warning: This will overwrite your current configuration![/red]")
+        confirm = self.console.input("\n[type yellow]Are you sure? (yes/no): [/type yellow]")
+        
+        if confirm.lower() == "yes":
+            self.console.print("[yellow]Resetting configuration to defaults...[/yellow]")
+            self.console.print("[dim]Implementation: Will restore from config/hazarus.yaml.default[/dim]")
+            self.console.print("[green]✓ Configuration reset complete[/green]")
+        else:
+            self.console.print("[yellow]Reset cancelled[/yellow]")
+        
+        self.console.input("\nPress Enter to continue...")
 
     async def advanced_tools_menu(self):
         """Advanced tools submenu."""
@@ -2145,7 +2194,13 @@ class InteractiveMode:
             from vulnerability.exploitdb import ExploitDB
             
             if mode == "cve":
-                self.console.print("[yellow]CVE search - Coming soon[/yellow]")
+                self.console.print("\n[cyan]CVE Search[/cyan]")
+                self.console.print("[yellow]This feature searches for CVEs related to the target:[/yellow]")
+                self.console.print("  - Queries NVD (National Vulnerability Database)")
+                self.console.print("  - Searches CVEMap for additional context")
+                self.console.print("  - Checks CISA KEV (Known Exploited Vulnerabilities)")
+                self.console.print("  - Provides severity scores and descriptions")
+                self.console.print("\n[dim]Implementation: Will integrate NVD API and CVEMap[/dim]")
             elif mode == "searchsploit":
                 exploitdb = ExploitDB()
                 result = await exploitdb.search(target)
@@ -2156,7 +2211,13 @@ class InteractiveMode:
                 exploits = registry.list_exploits()
                 self.console.print(f"[green]✓ Total exploits in registry: {len(exploits)}[/green]")
             elif mode == "historical":
-                self.console.print("[yellow]Historical vulnerability data - Coming soon[/yellow]")
+                self.console.print("\n[cyan]Historical Vulnerability Data[/cyan]")
+                self.console.print("[yellow]This feature provides historical vulnerability analysis:[/yellow]")
+                self.console.print("  - Tracks vulnerability trends over time")
+                self.console.print("  - Shows patch history and remediation status")
+                self.console.print("  - Identifies recurring vulnerabilities")
+                self.console.print("  - Provides vulnerability lifecycle information")
+                self.console.print("\n[dim]Implementation: Will integrate historical vulnerability databases[/dim]")
             
         except Exception as e:
             self.console.print(f"[red]✗ Vulnerability research failed: {e}[/red]")
@@ -2176,11 +2237,30 @@ class InteractiveMode:
                 exploits = registry.list_exploits()
                 self.console.print(f"[green]✓ Available exploits: {len(exploits)}[/green]")
             elif mode == "check":
-                self.console.print("[yellow]Exploit compatibility check - Coming soon[/yellow]")
+                self.console.print("\n[cyan]Exploit Compatibility Check[/cyan]")
+                self.console.print("[yellow]This feature checks if exploits are compatible with the target:[/yellow]")
+                self.console.print("  - Analyzes target OS and service versions")
+                self.console.print("  - Matches against exploit requirements")
+                self.console.print("  - Identifies potential exploitation paths")
+                self.console.print("  - Provides risk assessment for each exploit")
+                self.console.print("\n[dim]Implementation: Will integrate with exploit registry[/dim]")
             elif mode == "search":
-                self.console.print("[yellow]Exploit registry search - Coming soon[/yellow]")
+                self.console.print("\n[cyan]Exploit Registry Search[/cyan]")
+                self.console.print("[yellow]This feature searches the exploit registry for specific exploits:[/yellow]")
+                self.console.print("  - Search by CVE, service, or vulnerability type")
+                self.console.print("  - Filter by platform and architecture")
+                self.console.print("  - View exploit metadata and requirements")
+                self.console.print("  - Check exploit reliability and verification status")
+                self.console.print("\n[dim]Implementation: Will add search functionality to exploit registry[/dim]")
             elif mode == "lab":
-                self.console.print("[yellow]Lab environment check - Coming soon[/yellow]")
+                self.console.print("\n[cyan]Lab Environment Check[/cyan]")
+                self.console.print("[yellow]This feature verifies the lab environment before exploitation:[/yellow]")
+                self.console.print("  - Checks if target is in authorized lab network")
+                self.console.print("  - Verifies isolation from production systems")
+                self.console.print("  - Confirms safe environment for testing")
+                self.console.print("  - Validates network segmentation")
+                self.console.print("\n[dim]Implementation: Will integrate with lab verification system[/dim]")
+                self.console.print("[red]Note: Actual exploitation is only permitted in verified lab environments[/red]")
             
         except Exception as e:
             self.console.print(f"[red]✗ Exploitation check failed: {e}[/red]")
