@@ -9,6 +9,7 @@ from .subdomains import SubdomainDiscovery
 from .crtsh import CertificateTransparency
 from .passive_recon import PassiveRecon
 from .asset_inventory import AssetInventory
+from .live_hosts import LiveHostDiscovery
 
 __all__ = [
     "DNSRecon",
@@ -17,4 +18,5 @@ __all__ = [
     "CertificateTransparency",
     "PassiveRecon",
     "AssetInventory",
+    "LiveHostDiscovery",
 ]

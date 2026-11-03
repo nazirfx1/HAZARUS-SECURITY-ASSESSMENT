@@ -370,6 +370,12 @@ def recon(
         "--active",
         "-a",
         help="Enable active Amass enumeration (slower but more thorough)"
+    ),
+    live_hosts: bool = typer.Option(
+        False,
+        "--live-hosts",
+        "-l",
+        help="Enable live host discovery using arping, fping, and IPv6 tools (requires sudo)"
     )
 ) -> None:
     """Run reconnaissance on targets."""
@@ -388,6 +394,13 @@ def recon(
         console.print("[yellow]⚠ Active Amass enumeration enabled - this may take several minutes[/yellow]")
     else:
         console.print("[green]✓ Passive Amass enumeration (fast)[/green]")
+
+    if live_hosts:
+        if is_sudo:
+            console.print("[green]✓ Live host discovery enabled (arping, fping, IPv6)[/green]")
+        else:
+            console.print("[red]✗ Live host discovery requires sudo - use 'sudo hazarus'[/red]")
+            live_hosts = False
 
     async def _run_recon():
         from reconnaissance.dns import DNSRecon
@@ -680,7 +693,39 @@ def recon(
                             console.print(f"    Install Nmap for port scanning capabilities")
                     except Exception as e:
                         console.print(f"\n  [yellow]⚠ Port scan failed: {e}[/yellow]")
-                    
+
+                    # Live host discovery (with arping, fping, IPv6)
+                    if live_hosts:
+                        progress.update(task, description="Live host discovery...")
+                        try:
+                            from reconnaissance.live_hosts import LiveHostDiscovery
+
+                            live_discovery = LiveHostDiscovery(timeout=60)
+                            live_result = await live_discovery.discover_hosts(
+                                target,
+                                use_arping=True,
+                                use_fping=True,
+                                use_ipv6=True
+                            )
+
+                            if live_result.hosts:
+                                console.print(f"\n  [cyan]Live Hosts:[/cyan] ({len(live_result.hosts)} found)")
+                                console.print(f"  Scan Duration: {live_result.scan_duration:.2f}s")
+
+                                for host in live_result.hosts[:20]:  # Show first 20
+                                    mac_info = f" ({host.mac})" if host.mac else ""
+                                    time_info = f" - {host.response_time:.2f}ms" if host.response_time else ""
+                                    source_info = f" [{host.source}]" if host.source else ""
+                                    console.print(f"    • {host.ip}{mac_info}{time_info}{source_info}")
+
+                                if len(live_result.hosts) > 20:
+                                    console.print(f"    ... and {len(live_result.hosts) - 20} more")
+                            else:
+                                console.print(f"\n  [yellow]No live hosts detected[/yellow]")
+
+                        except Exception as e:
+                            console.print(f"\n  [yellow]⚠ Live host discovery failed: {e}[/yellow]")
+
                     progress.update(task, description="Reconnaissance complete")
                     
                 except Exception as e:
