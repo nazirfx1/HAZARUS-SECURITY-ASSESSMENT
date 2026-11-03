@@ -271,7 +271,7 @@ class AdvancedWebTools:
                 "-t", "20",  # Reduced from 50 to 20 to prevent connection resets
                 "-x", "php,html,js,css,txt,xml",
                 "-k",  # Skip SSL verification
-                "--timeout", "10s"  # Add explicit timeout
+                "--timeout", "30s"  # Increased from 10s to 30s
             ]
 
             if aggressive:
@@ -342,51 +342,11 @@ class AdvancedWebTools:
 
             self.logger.info(f"Running WebExploit search for {target}")
 
-            # WebExploit is interactive, so we'll do a simple info query
-            # This is a defensive integration only - no actual exploitation
-            # Try different possible commands
-            commands_to_try = [
-                ["websploit", "search", target],
-                ["websploit", "--search", target],
-                ["websploit", "info", target]
-            ]
-            
-            for cmd in commands_to_try:
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-
-                try:
-                    stdout, stderr = await asyncio.wait_for(
-                        proc.communicate(),
-                        timeout=60  # Shorter timeout for search
-                    )
-                    
-                    output = stdout.decode()
-                    stderr_text = stderr.decode()
-
-                    if proc.returncode == 0 and output.strip():
-                        # Parse output for exploit references
-                        for line in output.split('\n'):
-                            if 'exploit' in line.lower() or 'cve' in line.lower():
-                                result.exploits.append(line.strip())
-                        
-                        if result.exploits:
-                            self.logger.info(f"WebExploit found {len(result.exploits)} references")
-                            break
-                except asyncio.TimeoutError:
-                    proc.kill()
-                    self.logger.warning(f"WebExploit command timed out: {' '.join(cmd)}")
-                    continue
-                except Exception as e:
-                    self.logger.warning(f"WebExploit command failed: {' '.join(cmd)} - {e}")
-                    continue
-
-            if not result.exploits:
-                self.logger.info("WebExploit: No exploit references found (tool may not support search command)")
-                result.errors.append("WebExploit search command not supported or no results")
+            # WebExploit is interactive and often doesn't support search commands
+            # Skip this if not critical for the assessment
+            self.logger.info("WebExploit: Tool integration skipped (not suitable for automated scanning)")
+            result.errors.append("WebExploit skipped - tool requires interactive use")
+            return result
 
         except Exception as e:
             self.logger.error(f"WebExploit failed: {e}")
