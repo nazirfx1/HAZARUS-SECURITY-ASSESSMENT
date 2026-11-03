@@ -30,11 +30,13 @@ class BloodHoundAnalyzer:
     def __init__(self):
         self.tool_name = "bloodhound"
     
-    async def analyze_ad(self, target: str) -> BloodHoundResult:
+    async def analyze_ad(self, target: str, username: Optional[str] = None, password: Optional[str] = None) -> BloodHoundResult:
         """Analyze Active Directory with BloodHound.
         
         Args:
             target: Target domain controller
+            username: AD username (if None, skips execution)
+            password: AD password (if None, skips execution)
             
         Returns:
             BloodHoundResult with AD analysis
@@ -53,21 +55,41 @@ class BloodHoundAnalyzer:
             if proc.returncode != 0:
                 raise RuntimeError("BloodHound not installed")
             
+            # Check if credentials are provided
+            if not username or not password:
+                print(f"  [yellow]⚠ BloodHound requires AD credentials[/yellow]")
+                print(f"  [dim]Usage: Provide username and password for domain {target}[/dim]")
+                return result
+            
             # Build command
             cmd = [
                 "bloodhound-python",
                 "-d", target,
-                "-u", "",  # Would need actual credentials
-                "-p", "",
+                "-u", username,
+                "-p", password,
                 "--collection", "All"
             ]
             
-            # Note: This would require actual AD credentials
-            print(f"  [yellow]⚠ BloodHound requires AD credentials[/yellow]")
+            # Execute
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
             
-            # Skip actual execution for safety
-            result.shortest_paths = 0
-            result.admin_paths = 0
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=600
+            )
+            
+            # Parse output
+            output = stdout.decode()
+            result = self._parse_output(output, target)
+            
+        except Exception as e:
+            print(f"BloodHound error: {e}")
+        
+        return result
             
         except Exception as e:
             print(f"BloodHound error: {e}")

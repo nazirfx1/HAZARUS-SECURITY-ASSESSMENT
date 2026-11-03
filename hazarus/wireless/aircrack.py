@@ -53,11 +53,25 @@ class AircrackScanner:
             if proc.returncode != 0:
                 raise RuntimeError("Aircrack-ng not installed")
             
+            # Check if wireless interface exists
+            check_proc = await asyncio.create_subprocess_exec(
+                "iwconfig", interface,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await check_proc.communicate()
+            
+            if check_proc.returncode != 0:
+                print(f"  [yellow]⚠ Wireless interface {interface} not found or not in monitor mode[/yellow]")
+                print(f"  [dim]To enable: sudo airmon-ng start {interface}[/dim]")
+                return result
+            
             # Build command (simplified - would need actual interface setup)
             cmd = ["airodump-ng", interface]
             
-            # Note: This would require actual wireless interface
-            print(f"  [yellow]⚠ Wireless scanning requires wireless interface: {interface}[/yellow]")
+            # Note: This would require actual wireless interface in monitor mode
+            print(f"  [yellow]⚠ Wireless scanning requires interface in monitor mode[/yellow]")
+            print(f"  [dim]To enable: sudo airmon-ng start {interface}[/dim]")
             
         except Exception as e:
             print(f"Aircrack-ng error: {e}")

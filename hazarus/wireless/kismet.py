@@ -52,6 +52,18 @@ class KismetScanner:
             if proc.returncode != 0:
                 raise RuntimeError("Kismet not installed")
             
+            # Check if wireless interface exists
+            check_proc = await asyncio.create_subprocess_exec(
+                "iwconfig", interface,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await check_proc.communicate()
+            
+            if check_proc.returncode != 0:
+                print(f"  [yellow]⚠ Wireless interface {interface} not found[/yellow]")
+                return result
+            
             # Note: This would require actual wireless interface
             print(f"  [yellow]⚠ Kismet requires wireless interface: {interface}[/yellow]")
             
