@@ -6,6 +6,7 @@ Menu-driven interface for the framework (SOLE ENTRY POINT).
 import asyncio
 import os
 import sys
+import subprocess
 from pathlib import Path
 from typing import Optional
 from rich.console import Console
@@ -313,9 +314,15 @@ class InteractiveMode:
         # Import and call actual scope add function
         try:
             from security import ScopeManager
-            scope_manager = ScopeManager()
-            scope_manager.add_target(target)
-            self.console.print(f"[green]✓ Target added: {target}[/green]")
+            scope_file = Path.cwd() / "config" / "scope.yaml"
+            scope_manager = ScopeManager(str(scope_file))
+            scope_manager.load_scope()
+            # Add target to scope config
+            if scope_manager.config:
+                scope_manager.config.allowed_targets.append(target)
+                self.console.print(f"[green]✓ Target added: {target}[/green]")
+            else:
+                self.console.print("[red]✗ Failed to load scope configuration[/red]")
         except Exception as e:
             self.console.print(f"[red]✗ Failed to add target: {e}[/red]")
         await asyncio.sleep(1)
@@ -325,17 +332,23 @@ class InteractiveMode:
         self.console.print("[cyan]Listing targets...[/cyan]")
         try:
             from security import ScopeManager
-            scope_manager = ScopeManager()
-            scope = scope_manager.load_scope()
+            scope_file = Path.cwd() / "config" / "scope.yaml"
+            scope_manager = ScopeManager(str(scope_file))
+            await scope_manager.load_scope()
             
             table = Table(title="Targets in Scope")
             table.add_column("Type", style="cyan")
             table.add_column("Value", style="green")
             
-            for domain in scope.get("allowed_domains", []):
-                table.add_row("Domain", domain)
-            for cidr in scope.get("allowed_cidrs", []):
-                table.add_row("CIDR", cidr)
+            if scope_manager.config:
+                for domain in scope_manager.config.allowed_domains:
+                    table.add_row("Domain", domain)
+                for cidr in scope_manager.config.allowed_cidrs:
+                    table.add_row("CIDR", cidr)
+                for target in scope_manager.config.allowed_targets:
+                    table.add_row("Target", target)
+            else:
+                self.console.print("[yellow]No scope configuration loaded[/yellow]")
             
             self.console.print(table)
         except Exception as e:
@@ -348,13 +361,14 @@ class InteractiveMode:
         self.console.print("[cyan]Validating scope...[/cyan]")
         try:
             from security import ScopeManager
-            scope_manager = ScopeManager()
-            is_valid = scope_manager.validate_scope()
+            scope_file = Path.cwd() / "config" / "scope.yaml"
+            scope_manager = ScopeManager(str(scope_file))
+            loaded = await scope_manager.load_scope()
             
-            if is_valid:
-                self.console.print("[green]✓ Scope is valid[/green]")
+            if loaded:
+                self.console.print("[green]✓ Scope configuration loaded successfully[/green]")
             else:
-                self.console.print("[red]✗ Scope validation failed[/red]")
+                self.console.print("[red]✗ Failed to load scope configuration[/red]")
         except Exception as e:
             self.console.print(f"[red]✗ Validation error: {e}[/red]")
         
@@ -366,9 +380,12 @@ class InteractiveMode:
         self.console.print("[yellow]This will open your default editor to edit config/scope.yaml[/yellow]")
         # Import and call actual scope edit function
         try:
-            from security import ScopeManager
-            scope_manager = ScopeManager()
-            scope_manager.edit_scope()
+            scope_file = Path.cwd() / "config" / "scope.yaml"
+            
+            # Use system's default editor
+            editor = os.environ.get("EDITOR", "nano")
+            subprocess.run([editor, str(scope_file)])
+            
             self.console.print("[green]✓ Scope editor opened[/green]")
         except Exception as e:
             self.console.print(f"[red]✗ Failed to open editor: {e}[/red]")
