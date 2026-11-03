@@ -30,6 +30,16 @@ class TimeoutConfig:
     live_discovery: int = 60
     dns: int = 30
     ssl: int = 30
+    api: int = 30
+    http_scan: int = 30
+    advanced_web: int = 600
+    password_cracking: int = 3600
+    reverse_engineering: int = 300
+    wireless: int = 300
+    ai: int = 300
+    download: int = 300
+    post_assessment: int = 600
+    kev_due_days: int = 30
 
 
 @dataclass
