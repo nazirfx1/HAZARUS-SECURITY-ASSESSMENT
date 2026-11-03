@@ -109,6 +109,9 @@ class InteractiveMode:
         self.show_banner()
         self.banner_shown = True
         
+        # Startup tool check
+        await self.startup_tool_check()
+        
         while True:
             if self.current_target:
                 self.console.print(f"[green]Current Target: {self.current_target}[/green]\n")
@@ -1536,11 +1539,13 @@ class InteractiveMode:
         """External tools management submenu."""
         self.console.clear()
         
-        from tools import ToolRegistry, ToolDetector, ToolInstaller
+        from tools import ToolRegistry, ToolDetector, ToolInstaller, ToolConfigurer, ToolValidator
         
         registry = ToolRegistry()
         detector = ToolDetector(registry)
         installer = ToolInstaller(registry)
+        configurer = ToolConfigurer(registry)
+        validator = ToolValidator(registry)
         
         while True:
             self.console.print(Panel(
@@ -1549,14 +1554,15 @@ class InteractiveMode:
 [bold cyan][2][/bold cyan] Check Installation Status
 [bold cyan][3][/bold cyan] Install Missing Tools
 [bold cyan][4][/bold cyan] Install Specific Tool
-[bold cyan][5][/bold cyan] Update Installed Tools
+[bold cyan][5][/bold cyan] Configure Tools
+[bold cyan][6][/bold cyan] Validate Tools
 [bold cyan][0][/bold cyan] Back to Main Menu
 """,
                 title="[bold red]External Tools[/bold red]",
                 border_style="red"
             ))
             
-            choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
+            choice = self.console.input("\n[bold red]Select option [0-6]: [/bold red]")
             
             if choice == "0":
                 break
@@ -1569,8 +1575,9 @@ class InteractiveMode:
             elif choice == "4":
                 await self.install_specific_tool(installer)
             elif choice == "5":
-                self.console.print("[yellow]Update feature coming soon[/yellow]")
-                await asyncio.sleep(1)
+                await self.configure_tools(configurer)
+            elif choice == "6":
+                await self.validate_tools(validator)
     
     async def list_tools(self, detector: ToolDetector):
         """List all tools with their status."""
@@ -1668,6 +1675,69 @@ class InteractiveMode:
         
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
+    
+    async def configure_tools(self, configurer: ToolConfigurer):
+        """Configure all tools for HAZARUS integration."""
+        self.console.print("\n[bold cyan]Configuring Tools...[/bold cyan]\n")
+        
+        with self.console.status("[dim]Configuring tools...[/dim]", spinner="dots"):
+            results = await configurer.configure_all()
+        
+        configured = sum(1 for s in results.values() if s)
+        total = len(results)
+        
+        self.console.print(f"\n[green]✓ Configuration Complete: {configured}/{total} tools configured[/green]\n")
+        
+        for tool_name, success in results.items():
+            if success:
+                self.console.print(f"  [green]✓ {tool_name}[/green]")
+            else:
+                self.console.print(f"  [yellow]⚠ {tool_name} - No configuration needed[/yellow]")
+        
+        self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
+        self.console.input("")
+    
+    async def validate_tools(self, validator: ToolValidator):
+        """Validate all installed tools."""
+        self.console.print("\n[bold cyan]Validating Tools...[/bold cyan]\n")
+        
+        with self.console.status("[dim]Validating tools...[/dim]", spinner="dots"):
+            results = await validator.validate_all()
+        
+        valid = sum(1 for s in results.values() if s)
+        total = len(results)
+        
+        self.console.print(f"\n[green]✓ Validation Complete: {valid}/{total} tools valid[/green]\n")
+        
+        for tool_name, is_valid in results.items():
+            if is_valid:
+                self.console.print(f"  [green]✓ {tool_name}[/green]")
+            else:
+                self.console.print(f"  [red]✗ {tool_name} - Validation failed[/red]")
+        
+        self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
+        self.console.input("")
+    
+    async def startup_tool_check(self):
+        """Check required tools on startup."""
+        try:
+            from tools import ToolDetector, ToolRegistry
+            
+            registry = ToolRegistry()
+            detector = ToolDetector(registry)
+            
+            required_status = await detector.check_required_tools()
+            
+            missing = [name for name, status in required_status.items() if not status.installed]
+            
+            if missing:
+                self.console.print(f"\n[yellow]⚠ Missing Required Tools: {', '.join(missing)}[/yellow]")
+                self.console.print("[yellow]⚠ Some features may not work correctly.[/yellow]")
+                self.console.print("[yellow]⚠ Run [15] External Tools → [3] Install Missing Tools to fix.[/yellow]\n")
+                await asyncio.sleep(2)
+        except Exception as e:
+            # Silently skip if tools module has issues
+            pass
 
     # Placeholder methods for other menus
     async def api_assessment_menu(self):
