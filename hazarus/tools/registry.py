@@ -591,6 +591,97 @@ class ToolRegistry:
                 exit_code=0
             )
         )
+        
+        # Phase 1 Critical Tools
+        self.tools['theharvester'] = ToolMetadata(
+            name="theHarvester",
+            description="OSINT data collection",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="theHarvester",
+                version_flag="--version",
+                version_pattern=r"([0-9.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="theharvester",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="theHarvester --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['burp'] = ToolMetadata(
+            name="Burp Suite",
+            description="Web application testing",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="burpsuite",
+                version_flag="--version",
+                version_pattern=r"Burp Suite ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="burpsuite",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="burpsuite --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['naabu'] = ToolMetadata(
+            name="Naabu",
+            description="High-performance port discovery",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="naabu",
+                version_flag="-version",
+                version_pattern=r"naabu ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="projectdiscovery/naabu",
+                asset_pattern=r"naabu_.*_linux_amd64\.zip",
+                version="2.0+",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="naabu -version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['katana'] = ToolMetadata(
+            name="Katana",
+            description="Modern web crawling",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="katana",
+                version_flag="-version",
+                version_pattern=r"Katana ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="projectdiscovery/katana",
+                asset_pattern=r"katana_.*_linux_amd64\.zip",
+                version="1.0+",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="katana -version",
+                exit_code=0
+            )
+        )
     
     def _parse_tool_config(self, name: str, config: dict) -> ToolMetadata:
         """Parse tool configuration from YAML."""
