@@ -218,10 +218,16 @@ class AdvancedWebTools:
                 self.logger.info(f"WhatWeb found {len(result.technologies)} technologies")
 
             except json.JSONDecodeError:
-                # Fallback to plain text parsing
-                tech_pattern = r'([A-Z][a-zA-Z0-9]+)\s+[\d.]+'
+                # Fallback to plain text parsing - improved regex
+                # Match patterns like "WordPress, PHP, Nginx, etc."
+                tech_pattern = r'([A-Z][a-zA-Z0-9]+(?:\s+[\d.]+)?)'
                 result.technologies = list(set(re.findall(tech_pattern, output)))
                 self.logger.warning("Could not parse WhatWeb JSON, using fallback parsing")
+                
+                # Also try to extract server from plain text
+                server_match = re.search(r'Server:\s+([^\s]+)', output)
+                if server_match:
+                    result.server = server_match.group(1)
 
         except Exception as e:
             self.logger.error(f"WhatWeb failed: {e}")
