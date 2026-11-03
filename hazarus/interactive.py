@@ -85,22 +85,24 @@ class InteractiveMode:
         """Display main menu."""
         menu = Panel(
             """
-[bold cyan][1][/bold cyan] Target Management
-[bold cyan][2][/bold cyan] Reconnaissance
-[bold cyan][3][/bold cyan] Network Scanning
-[bold cyan][4][/bold cyan] Web Assessment
-[bold cyan][5][/bold cyan] API Assessment
-[bold cyan][6][/bold cyan] Vulnerability Research
-[bold cyan][7][/bold cyan] Exploitation
-[bold cyan][8][/bold cyan] Post-Assessment Audits
-[bold cyan][9][/bold cyan] Source Code Analysis
-[bold cyan][10][/bold cyan] Reporting
-[bold cyan][11][/bold cyan] Configuration
-[bold cyan][12][/bold cyan] Advanced Tools
-[bold cyan][13][/bold cyan] Asset Intelligence
-[bold cyan][14][/bold cyan] Comprehensive Assessment
-[bold cyan][15][/bold cyan] External Tools
-[bold red][0][/bold red] Exit
+[bold cyan][01][/bold cyan] Target Management
+[bold cyan][02][/bold cyan] Reconnaissance & Intelligence
+[bold cyan][03][/bold cyan] Network Security Assessment
+[bold cyan][04][/bold cyan] Web Application & API Pentesting
+[bold cyan][05][/bold cyan] Host & Infrastructure Pentesting
+[bold cyan][06][/bold cyan] Mobile Application Pentesting
+[bold cyan][07][/bold cyan] Digital Forensics & Incident Response
+[bold cyan][08][/bold cyan] Wireless Security Assessment
+[bold cyan][09][/bold cyan] Vulnerability Research & Exploitation
+[bold cyan][10][/bold cyan] Post-Assessment & Security Audits
+[bold cyan][11][/bold cyan] Source Code Security Analysis
+[bold cyan][12][/bold cyan] Reporting & Evidence Management
+[bold cyan][13][/bold cyan] Configuration
+[bold cyan][14][/bold cyan] Advanced Tools
+[bold cyan][15][/bold cyan] Asset Intelligence
+[bold cyan][16][/bold cyan] Comprehensive Assessment
+[bold cyan][17][/bold cyan] External Tools
+[bold red][00][/bold red] Exit
 """,
             title="[bold red]Main Menu[/bold red]",
             border_style="red"
@@ -110,54 +112,62 @@ class InteractiveMode:
     async def run(self):
         """Run interactive mode."""
         self.console.clear()
-        
+
         # Show banner only once at startup
         self.show_banner()
         self.banner_shown = True
-        
+
         # Startup tool check
         await self.startup_tool_check()
-        
+
         while True:
             if self.current_target:
                 self.console.print(f"[green]Current Target: {self.current_target}[/green]\n")
-            
+
             self.show_main_menu()
 
-            choice = self.console.input("\n[bold red]Select option [0-15]: [/bold red]")
+            choice = self.console.input("\n[bold red]Select option [00-17]: [/bold red]")
 
-            if choice == "0":
+            if choice in ["0", "00"]:
                 self.console.print("[green]Exiting HAZARUS...[/green]")
                 break
-            elif choice == "1":
+            elif choice in ["1", "01"]:
                 await self.target_management_menu()
-            elif choice == "2":
+            elif choice in ["2", "02"]:
                 await self.reconnaissance_menu()
-            elif choice == "3":
+            elif choice in ["3", "03"]:
                 await self.network_scanning_menu()
-            elif choice == "4":
-                await self.web_assessment_menu()
-            elif choice == "5":
-                await self.api_assessment_menu()
-            elif choice == "6":
-                await self.vulnerability_research_menu()
-            elif choice == "7":
-                await self.exploitation_menu()
-            elif choice == "8":
+            elif choice in ["4", "04"]:
+                await self.web_api_pentesting_menu()
+            elif choice in ["5", "05"]:
+                self.console.print("[yellow]⚠ Host & Infrastructure Pentesting not yet implemented[/yellow]")
+                await asyncio.sleep(1)
+            elif choice in ["6", "06"]:
+                self.console.print("[yellow]⚠ Mobile Application Pentesting not yet implemented[/yellow]")
+                await asyncio.sleep(1)
+            elif choice in ["7", "07"]:
+                self.console.print("[yellow]⚠ Digital Forensics & Incident Response not yet implemented[/yellow]")
+                await asyncio.sleep(1)
+            elif choice in ["8", "08"]:
+                self.console.print("[yellow]⚠ Wireless Security Assessment not yet implemented[/yellow]")
+                await asyncio.sleep(1)
+            elif choice in ["9", "09"]:
+                await self.vulnerability_exploitation_menu()
+            elif choice in ["10"]:
                 await self.post_assessment_menu()
-            elif choice == "9":
+            elif choice in ["11"]:
                 await self.source_code_analysis_menu()
-            elif choice == "10":
+            elif choice in ["12"]:
                 await self.reporting_menu()
-            elif choice == "11":
+            elif choice in ["13"]:
                 await self.configuration_menu()
-            elif choice == "12":
+            elif choice in ["14"]:
                 await self.advanced_tools_menu()
-            elif choice == "13":
+            elif choice in ["15"]:
                 await self.asset_intelligence_menu()
-            elif choice == "14":
+            elif choice in ["16"]:
                 await self.comprehensive_assessment_menu()
-            elif choice == "15":
+            elif choice in ["17"]:
                 await self.external_tools_menu()
             else:
                 self.console.print("[red]Invalid option. Please try again.[/red]")
@@ -171,9 +181,9 @@ class InteractiveMode:
             self.console.print(Panel("[bold]Target Management[/bold]", border_style="red"))
             self.console.print("[1] Add Target")
             self.console.print("[2] List Targets")
-            self.console.print("[3] Validate Scope")
-            self.console.print("[4] Edit Scope")
-            self.console.print("[5] Set Current Target")
+            self.console.print("[3] Set Current Target")
+            self.console.print("[4] Validate Scope")
+            self.console.print("[5] Edit Scope")
             self.console.print("[6] Delete Target")
             self.console.print("[0] Back to Main Menu")
 
@@ -188,14 +198,14 @@ class InteractiveMode:
             elif choice == "2":
                 await self.list_targets()
             elif choice == "3":
-                await self.validate_scope()
-            elif choice == "4":
-                await self.edit_scope()
-            elif choice == "5":
                 target = self.console.input("Enter target to set as current: ")
                 self.current_target = target
                 self.console.print(f"[green]Current target set to: {target}[/green]")
                 await asyncio.sleep(1)
+            elif choice == "4":
+                await self.validate_scope()
+            elif choice == "5":
+                await self.edit_scope()
             elif choice == "6":
                 target = self.console.input("Enter target to delete: ")
                 await self.delete_target(target)
@@ -208,9 +218,9 @@ class InteractiveMode:
             self.console.print(Panel("[bold]Reconnaissance[/bold]", border_style="red"))
             self.console.print("[1] Quick Recon (DNS + Subdomains)")
             self.console.print("[2] Full Recon (DNS + Subdomains + WHOIS + Origin IP)")
-            self.console.print("[3] Advanced Recon (All Tools)")
-            self.console.print("[4] Subdomain Takeover Check")
-            self.console.print("[5] Virtual Host Enumeration")
+            self.console.print("[3] Subdomain Takeover Check")
+            self.console.print("[4] Virtual Host Enumeration")
+            self.console.print("[5] Advanced Recon (All Tools)")
             self.console.print("[0] Back to Main Menu")
 
             choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
@@ -228,9 +238,9 @@ class InteractiveMode:
                 mode = {
                     "1": "quick",
                     "2": "full",
-                    "3": "advanced",
-                    "4": "takeover",
-                    "5": "vhost"
+                    "3": "takeover",
+                    "4": "vhost",
+                    "5": "advanced"
                 }[choice]
                 
                 await self.run_recon(target, mode)
@@ -241,10 +251,10 @@ class InteractiveMode:
         while True:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Network Scanning[/bold]", border_style="red"))
-            self.console.print("[1] Quick Scan (Common Ports)")
-            self.console.print("[2] Deep Scan (All Ports)")
-            self.console.print("[3] Advanced Scan (With Scripts)")
-            self.console.print("[4] Live Host Discovery")
+            self.console.print("[1] Live Host Discovery")
+            self.console.print("[2] Quick Scan (Common Ports)")
+            self.console.print("[3] Deep Scan (All Ports)")
+            self.console.print("[4] Advanced Scan (With Scripts)")
             self.console.print("[0] Back to Main Menu")
 
             choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
@@ -260,10 +270,10 @@ class InteractiveMode:
                     continue
                 
                 mode = {
-                    "1": "quick",
-                    "2": "deep",
-                    "3": "advanced",
-                    "4": "live"
+                    "1": "live",
+                    "2": "quick",
+                    "3": "deep",
+                    "4": "advanced"
                 }[choice]
                 
                 await self.run_scan(target, mode)
@@ -292,7 +302,7 @@ class InteractiveMode:
                     self.console.print("[red]No target specified.[/red]")
                     await asyncio.sleep(1)
                     continue
-                
+
                 mode = {
                     "1": "basic",
                     "2": "aggressive",
@@ -300,8 +310,63 @@ class InteractiveMode:
                     "4": "gobuster",
                     "5": "whatweb"
                 }[choice]
-                
+
                 await self.run_web(target, mode)
+
+    async def web_api_pentesting_menu(self):
+        """Combined Web Application & API Pentesting submenu."""
+        self.console.clear()
+        while True:
+            self.console.print("\n" + "="*80)
+            self.console.print(Panel("[bold]Web Application & API Pentesting[/bold]", border_style="red"))
+            self.console.print("[bold cyan]Web Assessment:[/bold cyan]")
+            self.console.print("[1] Basic Web Assessment")
+            self.console.print("[2] Aggressive Web Assessment")
+            self.console.print("[3] WPScan")
+            self.console.print("[4] Gobuster")
+            self.console.print("[5] WhatWeb")
+            self.console.print("")
+            self.console.print("[bold cyan]API Assessment:[/bold cyan]")
+            self.console.print("[6] REST Endpoint Discovery")
+            self.console.print("[7] GraphQL Endpoint Discovery")
+            self.console.print("[8] API Security Testing")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-8]: [/bold red]")
+
+            if choice == "0":
+                self.console.clear()
+                break
+            elif choice in ["1", "2", "3", "4", "5"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+
+                mode = {
+                    "1": "basic",
+                    "2": "aggressive",
+                    "3": "wpscan",
+                    "4": "gobuster",
+                    "5": "whatweb"
+                }[choice]
+
+                await self.run_web(target, mode)
+            elif choice in ["6", "7", "8"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+
+                mode = {
+                    "6": "rest",
+                    "7": "graphql",
+                    "8": "security"
+                }[choice]
+
+                await self.run_api(target, mode)
 
     async def comprehensive_assessment_menu(self):
         """Comprehensive assessment submenu."""
@@ -1917,14 +1982,70 @@ class InteractiveMode:
                     self.console.print("[red]No target specified.[/red]")
                     await asyncio.sleep(1)
                     continue
-                
+
                 mode = {
                     "1": "list",
                     "2": "check",
                     "3": "search",
                     "4": "lab"
                 }[choice]
-                
+
+                await self.run_exploitation(target, mode)
+
+    async def vulnerability_exploitation_menu(self):
+        """Combined Vulnerability Research & Exploitation submenu."""
+        self.console.clear()
+        while True:
+            self.console.print("\n" + "="*80)
+            self.console.print(Panel("[bold]Vulnerability Research & Exploitation[/bold]", border_style="red"))
+            self.console.print("[bold cyan]Vulnerability Research:[/bold cyan]")
+            self.console.print("[1] CVE Search")
+            self.console.print("[2] Exploit Intelligence (SearchSploit)")
+            self.console.print("[3] Exploit Registry")
+            self.console.print("[4] Historical Vulnerability Data")
+            self.console.print("")
+            self.console.print("[bold cyan]Exploitation:[/bold cyan]")
+            self.console.print("[5] List Available Exploits")
+            self.console.print("[6] Check Exploit Compatibility")
+            self.console.print("[7] Exploit Registry Search")
+            self.console.print("[8] Lab Environment Check")
+            self.console.print("[yellow]Note: Exploitation requires lab verification[/yellow]")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-8]: [/bold red]")
+
+            if choice == "0":
+                self.console.clear()
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+
+                mode = {
+                    "1": "cve",
+                    "2": "searchsploit",
+                    "3": "registry",
+                    "4": "historical"
+                }[choice]
+
+                await self.run_vulnerability_research(target, mode)
+            elif choice in ["5", "6", "7", "8"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+
+                mode = {
+                    "5": "list",
+                    "6": "check",
+                    "7": "search",
+                    "8": "lab"
+                }[choice]
+
                 await self.run_exploitation(target, mode)
 
     async def post_assessment_menu(self):
@@ -2001,8 +2122,8 @@ class InteractiveMode:
             self.console.print(Panel("[bold]Reporting[/bold]", border_style="red"))
             self.console.print("[1] View Recent Assessments")
             self.console.print("[2] Generate Markdown Report")
-            self.console.print("[3] Generate PDF Report")
-            self.console.print("[4] Generate HTML Report")
+            self.console.print("[3] Generate HTML Report")
+            self.console.print("[4] Generate PDF Report")
             self.console.print("[5] Export Assessment Data")
             self.console.print("[0] Back to Main Menu")
 
@@ -2016,8 +2137,8 @@ class InteractiveMode:
             elif choice in ["2", "3", "4", "5"]:
                 mode = {
                     "2": "markdown",
-                    "3": "pdf",
-                    "4": "html",
+                    "3": "html",
+                    "4": "pdf",
                     "5": "export"
                 }[choice]
                 
@@ -2103,11 +2224,11 @@ class InteractiveMode:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Advanced Tools[/bold]", border_style="red"))
             self.console.print("[1] Advanced Subdomain Discovery")
-            self.console.print("[2] DNS over HTTPS")
-            self.console.print("[3] DNS over TLS")
-            self.console.print("[4] NSEC Zone Walk")
-            self.console.print("[5] Enhanced Live Host Discovery")
-            self.console.print("[6] Enhanced Origin IP Discovery")
+            self.console.print("[2] Enhanced Live Host Discovery")
+            self.console.print("[3] Enhanced Origin IP Discovery")
+            self.console.print("[4] DNS over HTTPS")
+            self.console.print("[5] DNS over TLS")
+            self.console.print("[6] NSEC Zone Walk")
             self.console.print("[0] Back to Main Menu")
 
             choice = self.console.input("\n[bold red]Select option [0-6]: [/bold red]")
@@ -2124,11 +2245,11 @@ class InteractiveMode:
                 
                 mode = {
                     "1": "subdomains",
-                    "2": "doh",
-                    "3": "dot",
-                    "4": "nsec",
-                    "5": "live_hosts",
-                    "6": "origin_ip"
+                    "2": "live_hosts",
+                    "3": "origin_ip",
+                    "4": "doh",
+                    "5": "dot",
+                    "6": "nsec"
                 }[choice]
                 
                 await self.run_advanced_tool(target, mode)
@@ -2140,10 +2261,10 @@ class InteractiveMode:
             self.console.print("\n" + "="*80)
             self.console.print(Panel("[bold]Asset Intelligence[/bold]", border_style="red"))
             self.console.print("[1] View Asset Inventory")
-            self.console.print("[2] View Asset Lifecycle")
-            self.console.print("[3] View Asset Risk Scores")
-            self.console.print("[4] View Asset Changes")
-            self.console.print("[5] Asset Classification")
+            self.console.print("[2] Asset Classification")
+            self.console.print("[3] View Asset Lifecycle")
+            self.console.print("[4] View Asset Risk Scores")
+            self.console.print("[5] View Asset Changes")
             self.console.print("[0] Back to Main Menu")
 
             choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
@@ -2154,10 +2275,10 @@ class InteractiveMode:
             elif choice in ["1", "2", "3", "4", "5"]:
                 mode = {
                     "1": "inventory",
-                    "2": "lifecycle",
-                    "3": "risk",
-                    "4": "changes",
-                    "5": "classification"
+                    "2": "classification",
+                    "3": "lifecycle",
+                    "4": "risk",
+                    "5": "changes"
                 }[choice]
                 
                 await self.run_asset_intelligence(mode)
