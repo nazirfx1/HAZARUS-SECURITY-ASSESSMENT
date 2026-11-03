@@ -106,7 +106,6 @@ class InteractiveMode:
         
         # Show banner only once at startup
         self.show_banner()
-        self.show_config()
         self.banner_shown = True
         
         while True:
