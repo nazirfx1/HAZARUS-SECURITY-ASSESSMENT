@@ -802,28 +802,352 @@ class InteractiveMode:
         self.console.input("")
 
     async def run_comprehensive(self, target: str, mode: str):
-        """Run comprehensive assessment."""
+        """Run comprehensive assessment with all phases."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]SCANNER DEBUG[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Mode: {mode}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        # Determine phases based on mode
+        if mode == "standard":
+            phases = ["privacy", "recon", "scan", "web"]
+            aggressive = False
+            active = False
+            live_hosts = False
+        elif mode == "full":
+            phases = ["privacy", "recon", "scan", "web", "api", "research", "exploit", "post_audit", "lateral", "code"]
+            aggressive = True
+            active = True
+            live_hosts = True
+        else:  # custom
+            phases = ["privacy", "recon", "scan", "web"]  # Default for custom
+            aggressive = False
+            active = False
+            live_hosts = False
+        
         self.console.print(f"[cyan]Running {mode} comprehensive assessment on {target}...[/cyan]")
-        self.console.print("[yellow]This will run multiple phases and may take some time...[/yellow]")
+        self.console.print(f"[yellow]Phases: {', '.join(phases)}[/yellow]")
+        if aggressive:
+            self.console.print("[red]⚠ Aggressive scanning enabled[/red]")
+        if active:
+            self.console.print("[yellow]⚠ Active scanning enabled[/yellow]")
+        if live_hosts:
+            self.console.print("[green]✓ Live host discovery enabled[/green]")
+        self.console.print()
         
-        # This would call the comprehensive assessment logic
-        # For now, show a placeholder
-        phases = {
-            "standard": ["Privacy Check", "Reconnaissance", "Network Scan", "Web Assessment"],
-            "full": ["Privacy Check", "Reconnaissance", "Network Scan", "Web Assessment", 
-                   "API Assessment", "Vulnerability Research", "Exploit Listing", 
-                   "Post-Exploitation Audit", "Lateral Movement Audit", "Source Code Analysis"],
-            "custom": []
-        }
+        # Check sudo for live hosts
+        import os
+        is_sudo = os.environ.get('SUDO_UID') is not None
+        if live_hosts and not is_sudo:
+            self.console.print("[yellow]⚠ Live host discovery requires sudo - running without[/yellow]")
+            live_hosts = False
         
-        phase_list = phases.get(mode, [])
+        phase_results = {}
         
-        for i, phase in enumerate(phase_list, 1):
-            self.console.print(f"[cyan][{i}/{len(phase_list)}] {phase}[/cyan]")
-            await asyncio.sleep(0.5)  # Simulate phase
+        # Phase 1: Privacy Check
+        if "privacy" in phases:
+            self.console.print(f"[yellow][Phase 1/4] Privacy Check...[/yellow]")
+            try:
+                from anonymity.anonsurf import AnonsurfManager
+                from anonymity.dns_leak import DNSLeakChecker
+                from anonymity.ipv6_check import IPv6Checker
+                
+                anonsurf = AnonsurfManager()
+                dns_checker = DNSLeakChecker()
+                ipv6_checker = IPv6Checker()
+                
+                installed = await anonsurf.check_installed()
+                running = await anonsurf.check_running()
+                tor_available = await anonsurf.check_tor_connectivity()
+                dns_result = await dns_checker.check_leaks()
+                dns_leak = dns_result.get("leaking", False)
+                ipv6_enabled = await ipv6_checker.check_ipv6_enabled()
+                ipv6_exposed = ipv6_enabled
+                
+                self.console.print(f"  Anonsurf: {'✓ Running' if running else '✗ Not running'}")
+                self.console.print(f"  Tor: {'✓ Available' if tor_available else '✗ Not available'}")
+                self.console.print(f"  DNS Leak: {'⚠ Detected' if dns_leak else '✓ No leak'}")
+                self.console.print(f"  IPv6: {'⚠ Exposed' if ipv6_exposed else '✓ Protected'}")
+                
+                phase_results['privacy'] = {
+                    'running': running,
+                    'tor_available': tor_available,
+                    'dns_leak': dns_leak,
+                    'ipv6_exposed': ipv6_exposed
+                }
+            except Exception as e:
+                self.console.print(f"  [red]✗ Privacy check failed: {e}[/red]")
+                phase_results['privacy'] = None
+            self.console.print()
         
-        self.console.print("[green]✓ Comprehensive assessment complete[/green]")
-        self.console.input("\nPress Enter to continue...")
+        # Phase 2: Reconnaissance
+        if "recon" in phases:
+            self.console.print(f"[yellow][Phase 2/4] Reconnaissance...[/yellow]")
+            try:
+                from reconnaissance.dns import DNSRecon
+                from reconnaissance.whois import WhoisRecon
+                from reconnaissance.subdomains import SubdomainDiscovery
+                from reconnaissance.origin_ip import OriginIPDiscovery
+                
+                dns_recon = DNSRecon()
+                dns_result = await dns_recon.enumerate_records(target)
+                
+                self.console.print(f"  DNS Records: {len(dns_result.records)}")
+                self.console.print(f"  Nameservers: {len(dns_result.nameservers)}")
+                
+                # Amass
+                amass_subdomains = []
+                try:
+                    amass_result = await dns_recon.query_amass_advanced(target, active=active)
+                    amass_subdomains = amass_result.get("subdomains", [])
+                    self.console.print(f"  Amass: {len(amass_subdomains)} subdomains")
+                except Exception as e:
+                    self.console.print(f"  [yellow]⚠ Amass failed: {e}[/yellow]")
+                
+                # crt.sh
+                crtsh_subdomains = []
+                try:
+                    crtsh_subdomains = await dns_recon.query_crtsh(target)
+                    self.console.print(f"  crt.sh: {len(crtsh_subdomains)} subdomains")
+                except Exception as e:
+                    self.console.print(f"  [yellow]⚠ crt.sh failed: {e}[/yellow]")
+                
+                # Brute force
+                bruteforce_subdomains = []
+                try:
+                    subdiscovery = SubdomainDiscovery()
+                    bruteforce_result = await subdiscovery.discover(target)
+                    bruteforce_subdomains = list(bruteforce_result.subdomains) if bruteforce_result.subdomains else []
+                    self.console.print(f"  Brute force: {len(bruteforce_subdomains)} subdomains")
+                except Exception as e:
+                    self.console.print(f"  [yellow]⚠ Brute force failed: {e}[/yellow]")
+                
+                # WHOIS
+                whois_registrar = "Unknown"
+                try:
+                    whois_recon = WhoisRecon()
+                    whois_result = await whois_recon.query(target)
+                    if whois_result:
+                        whois_registrar = whois_result.registrar
+                        self.console.print(f"  WHOIS: {whois_registrar}")
+                except Exception as e:
+                    self.console.print(f"  [yellow]⚠ WHOIS failed: {e}[/yellow]")
+                
+                # Origin IP
+                origin_ips = []
+                try:
+                    origin_discovery = OriginIPDiscovery()
+                    origin_result = await origin_discovery.discover(target)
+                    origin_ips = getattr(origin_result, 'origin_ips', [])
+                    self.console.print(f"  Origin IPs: {len(origin_ips)} potential IPs")
+                except Exception as e:
+                    self.console.print(f"  [yellow]⚠ Origin IP discovery failed: {e}[/yellow]")
+                
+                phase_results['recon'] = {
+                    'dns_records': len(dns_result.records),
+                    'amass_subdomains': len(amass_subdomains),
+                    'crtsh_subdomains': len(crtsh_subdomains),
+                    'bruteforce_subdomains': len(bruteforce_subdomains),
+                    'origin_ips': len(origin_ips)
+                }
+            except Exception as e:
+                self.console.print(f"  [red]✗ Reconnaissance failed: {e}[/red]")
+                import traceback
+                self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
+                phase_results['recon'] = None
+            self.console.print()
+        
+        # Phase 3: Network Scan
+        if "scan" in phases:
+            self.console.print(f"[yellow][Phase 3/4] Network Scanning...[/yellow]")
+            try:
+                from scanning.nmap import NmapScanner
+                
+                nmap = NmapScanner()
+                if aggressive:
+                    nmap_result = await nmap.advanced_scan(
+                        targets=[target],
+                        ports="1-65535",
+                        tcp_scan=True,
+                        udp_scan=True,
+                        service_detection=True,
+                        os_detection=True,
+                        script_scan=True,
+                        vuln_scan=True,
+                        traceroute=True,
+                        aggressive=True,
+                        timing=4
+                    )
+                else:
+                    nmap_result = await nmap.scan(
+                        targets=[target],
+                        ports="1-1000",
+                        scan_type="sT"
+                    )
+                
+                open_ports = 0
+                hosts = getattr(nmap_result, 'hosts', [])
+                for host in hosts:
+                    ports = getattr(host, 'ports', [])
+                    for port in ports:
+                        if getattr(port, 'state', None) == "open":
+                            open_ports += 1
+                
+                self.console.print(f"  Open ports: {open_ports}")
+                phase_results['scan'] = {'open_ports': open_ports}
+            except Exception as e:
+                self.console.print(f"  [red]✗ Network scan failed: {e}[/red]")
+                phase_results['scan'] = None
+            self.console.print()
+        
+        # Phase 4: Web Assessment
+        if "web" in phases:
+            self.console.print(f"[yellow][Phase 4/4] Web Assessment...[/yellow]")
+            try:
+                from scanning.http_scanner import HTTPScanner
+                from scanning.web_tools import AdvancedWebTools
+                
+                scanner = HTTPScanner(timeout=30, skip_advanced=False)
+                web_result = await scanner.scan(target)
+                
+                self.console.print(f"  Security headers: {len(web_result.security_headers)}")
+                self.console.print(f"  Cookies: {len(web_result.cookies)}")
+                self.console.print(f"  Vulnerabilities: {len(web_result.vulnerabilities)}")
+                
+                # Advanced web tools
+                if active or aggressive:
+                    web_tools = AdvancedWebTools(timeout=600)
+                    
+                    # WhatWeb
+                    whatweb_technologies = []
+                    try:
+                        whatweb_result = await web_tools.whatweb_scan(target, aggressive=aggressive)
+                        whatweb_technologies = getattr(whatweb_result, 'technologies', [])
+                        self.console.print(f"  WhatWeb: {len(whatweb_technologies)} technologies")
+                    except Exception as e:
+                        self.console.print(f"  [yellow]⚠ WhatWeb failed: {e}[/yellow]")
+                    
+                    # WPScan
+                    wpscan_version = None
+                    wpscan_plugins = 0
+                    try:
+                        wpscan_result = await web_tools.wpscan_scan(target, aggressive=aggressive)
+                        if getattr(wpscan_result, 'is_wordpress', False):
+                            wpscan_version = getattr(wpscan_result, 'version', None)
+                            wpscan_plugins = len(getattr(wpscan_result, 'plugins', []))
+                            self.console.print(f"  WordPress: {wpscan_version}")
+                            self.console.print(f"  WordPress Plugins: {wpscan_plugins}")
+                    except Exception as e:
+                        self.console.print(f"  [yellow]⚠ WPScan failed: {e}[/yellow]")
+                    
+                    # Gobuster
+                    gobuster_dirs = 0
+                    try:
+                        gobuster_result = await web_tools.gobuster_scan(target, aggressive=aggressive)
+                        gobuster_dirs = getattr(gobuster_result, 'total_found', 0)
+                        self.console.print(f"  Gobuster: {gobuster_dirs} directories")
+                    except Exception as e:
+                        self.console.print(f"  [yellow]⚠ Gobuster failed: {e}[/yellow]")
+                
+                phase_results['web'] = {
+                    'security_headers': len(web_result.security_headers),
+                    'cookies': len(web_result.cookies),
+                    'vulnerabilities': len(web_result.vulnerabilities),
+                    'whatweb_technologies': len(whatweb_technologies) if active or aggressive else 0,
+                    'wordpress': wpscan_version is not None if active or aggressive else False,
+                    'gobuster_directories': gobuster_dirs if active or aggressive else 0
+                }
+            except Exception as e:
+                self.console.print(f"  [red]✗ Web assessment failed: {e}[/red]")
+                import traceback
+                self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
+                phase_results['web'] = None
+            self.console.print()
+        
+        # Additional phases for full mode
+        if mode == "full":
+            # API Assessment
+            if "api" in phases:
+                self.console.print(f"[yellow][Phase 5/10] API Assessment...[/yellow]")
+                self.console.print("  [dim]API assessment not yet implemented[/dim]")
+                self.console.print()
+            
+            # Vulnerability Research
+            if "research" in phases:
+                self.console.print(f"[yellow][Phase 6/10] Vulnerability Research...[/yellow]")
+                try:
+                    from vulnerability.exploitdb import ExploitDB
+                    exploitdb = ExploitDB()
+                    result = await exploitdb.search(target)
+                    exploits = getattr(result, 'exploits', [])
+                    self.console.print(f"  Exploits found: {len(exploits)}")
+                    phase_results['research'] = {'exploits': len(exploits)}
+                except Exception as e:
+                    self.console.print(f"  [red]✗ Vulnerability research failed: {e}[/red]")
+                    phase_results['research'] = None
+                self.console.print()
+            
+            # Exploit Listing
+            if "exploit" in phases:
+                self.console.print(f"[yellow][Phase 7/10] Exploit Listing...[/yellow]")
+                try:
+                    from exploitation.exploit_registry import ExploitRegistry
+                    registry = ExploitRegistry()
+                    exploits = registry.list_exploits()
+                    self.console.print(f"  Total exploits in registry: {len(exploits)}")
+                    phase_results['exploit'] = {'total': len(exploits)}
+                except Exception as e:
+                    self.console.print(f"  [red]✗ Exploit listing failed: {e}[/red]")
+                    phase_results['exploit'] = None
+                self.console.print()
+            
+            # Post-Assessment Audit
+            if "post_audit" in phases:
+                self.console.print(f"[yellow][Phase 8/10] Post-Assessment Audit...[/yellow]")
+                self.console.print("  [dim]Post-assessment audit not yet implemented[/dim]")
+                self.console.print()
+            
+            # Lateral Movement Audit
+            if "lateral" in phases:
+                self.console.print(f"[yellow][Phase 9/10] Lateral Movement Audit...[/yellow]")
+                self.console.print("  [dim]Lateral movement audit not yet implemented[/dim]")
+                self.console.print()
+            
+            # Source Code Analysis
+            if "code" in phases:
+                self.console.print(f"[yellow][Phase 10/10] Source Code Analysis...[/yellow]")
+                self.console.print("  [dim]Source code analysis requires code path - skipping[/dim]")
+                self.console.print()
+        
+        # Summary
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold green]COMPREHENSIVE ASSESSMENT COMPLETE[/bold green]")
+        self.console.print(f"{'='*80}")
+        
+        if phase_results.get('privacy'):
+            p = phase_results['privacy']
+            self.console.print(f"[dim]Privacy - Anonsurf: {'✓' if p['running'] else '✗'}, Tor: {'✓' if p['tor_available'] else '✗'}, DNS Leak: {'✓' if not p['dns_leak'] else '✗'}[/dim]")
+        
+        if phase_results.get('recon'):
+            r = phase_results['recon']
+            self.console.print(f"[dim]Recon - DNS: {r['dns_records']}, Amass: {r['amass_subdomains']}, crt.sh: {r['crtsh_subdomains']}, Brute: {r['bruteforce_subdomains']}[/dim]")
+        
+        if phase_results.get('scan'):
+            s = phase_results['scan']
+            self.console.print(f"[dim]Scan - Open Ports: {s['open_ports']}[/dim]")
+        
+        if phase_results.get('web'):
+            w = phase_results['web']
+            self.console.print(f"[dim]Web - Headers: {w['security_headers']}, Cookies: {w['cookies']}, Vulns: {w['vulnerabilities']}[/dim]")
+        
+        self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
 
     # Placeholder methods for other menus
     async def api_assessment_menu(self):
