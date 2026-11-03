@@ -1,7 +1,7 @@
 [project]
 name = "hazarus"
 version = "2.0.0"
-description = "HAZARUS Security Assessment Framework - Professional-grade modular security assessment platform"
+description = "HAZARUS Security Assessment Framework - Interactive menu-driven security assessment platform for Parrot Security OS"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
@@ -14,7 +14,9 @@ keywords = [
     "vulnerability-assessment",
     "cybersecurity",
     "exploitation",
-    "reconnaissance"
+    "reconnaissance",
+    "interactive",
+    "terminal-ui"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -76,6 +78,9 @@ dashboard = [
 
 [project.scripts]
 hazarus = "hazarus.cli:main_entry"
+
+[project.entry-points."hazarus.interactive"]
+interactive = "hazarus.interactive:InteractiveMode"
 
 [build-system]
 requires = ["setuptools>=68.0.0", "wheel"]

@@ -8,12 +8,11 @@
 
 ### ASSESS. VALIDATE. SECURE.
 
-*Advanced security assessment framework for Parrot Security OS*
+*Interactive security assessment framework for Parrot Security OS*
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Linux](https://img.shields.io/badge/linux-parrot%20os-lightgrey.svg)](https://www.parrotsec.org/)
 [![License](https://img.shields.io/badge/license-MIT-red.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 </div>
 
@@ -21,7 +20,7 @@
 
 ## Overview
 
-HAZARUS is a modular, offensive-security oriented assessment framework engineered for Parrot Security OS. It provides reconnaissance, vulnerability assessment, controlled exploitation validation, and post-assessment security auditing capabilities through a unified command-line interface and optional web dashboard.
+HAZARUS is a modular, offensive-security oriented assessment framework engineered for Parrot Security OS. It provides reconnaissance, vulnerability assessment, controlled exploitation validation, and post-assessment security auditing capabilities through an **interactive menu-driven interface**.
 
 The framework is designed for authorized security research, penetration testing, and defensive validation. All assessments require explicit target authorization and enforce strict scope boundaries.
 
@@ -40,26 +39,31 @@ The framework is designed for authorized security research, penetration testing,
 - WHOIS/RDAP queries
 - Certificate Transparency log queries
 - Subdomain discovery via passive sources
-- Passive asset fingerprinting
-- Technology identification
+- Amass and Subfinder integration
+- DNS over HTTPS (DoH)
+- Enhanced live host discovery
+- Subdomain takeover detection
 - Asset inventory and relationship mapping
 
 ### NETWORK ASSESSMENT
 - Nmap integration for port and service discovery
 - Service version identification
-- TLS/SSL configuration analysis
-- HTTP security header evaluation
-- Web application crawling
-- API endpoint discovery
+- OS fingerprinting
+- Advanced scanning with scripts
+- UDP and TCP scanning
+- Traceroute and network path analysis
 
 ### WEB & API SECURITY
 - Nuclei vulnerability scanning
 - OWASP ZAP integration
 - Nikto web server scanning
-- HTTP security header checks
-- TLS configuration assessment
+- HTTP security header evaluation
+- TLS/SSL configuration analysis
 - Cookie security analysis
 - CORS configuration review
+- WhatWeb technology detection
+- WPScan WordPress security
+- Gobuster directory enumeration
 - OpenAPI/Swagger analysis
 
 ### VULNERABILITY INTELLIGENCE
@@ -105,7 +109,7 @@ The framework is designed for authorized security research, penetration testing,
 
 ```mermaid
 flowchart TD
-    A[HAZARUS CLI] --> B[Assessment Orchestrator]
+    A[Interactive Mode] --> B[Assessment Orchestrator]
     B --> C[Scope & Authorization]
     B --> D[Privacy Verification]
     B --> E[Reconnaissance]
@@ -126,7 +130,7 @@ flowchart TD
 
 ## Assessment Methodology
 
-HAZARUS follows a phased assessment approach:
+HAZARUS follows a phased assessment approach through interactive menus:
 
 1. **Privacy Verification** - Anonsurf and Tor connectivity are verified before assessment begins
 2. **Scope Validation** - All targets are validated against authorized scope
@@ -136,30 +140,6 @@ HAZARUS follows a phased assessment approach:
 6. **Validation** - Controlled exploitation in isolated lab environments (authorized only)
 7. **Post-Assessment** - Security audits for privilege escalation, lateral movement, persistence
 8. **Reporting** - Comprehensive evidence-based reports
-
-## Exploitation and Validation Capabilities
-
-HAZARUS provides controlled exploitation capabilities with strict safety controls:
-
-- **Metasploit RPC Integration** - Connect to local msfrpcd for module execution
-- **Exploit Registry** - Metadata database for exploit information
-- **Target Validation** - Platform, service, and version compatibility checks
-- **Lab Environment** - Isolated execution in authorized CIDR ranges
-- **Snapshot Management** - Clean snapshot restoration before/after execution
-- **Approval Workflow** - Explicit operator approval required for exploitation
-- **Audit Logging** - All exploitation operations are logged
-- **Automatic Cleanup** - Post-execution cleanup and rollback
-
-## Post-Assessment Security Auditing
-
-Post-assessment modules analyze security posture changes:
-
-- **Privilege Escalation** - SUID/SGID, sudo permissions, Linux capabilities, Windows service permissions
-- **Credential Exposure** - SSH keys, password files, cached credentials
-- **Lateral Movement** - Network segmentation, trust relationships, AD configuration
-- **Persistence** - Systemd services, cron jobs, scheduled tasks, registry autoruns
-- **Segmentation** - Network interface analysis, routing tables, firewall rules
-- **Exfiltration Simulation** - Synthetic data testing of egress controls
 
 ## Installation
 
@@ -174,16 +154,13 @@ Post-assessment modules analyze security posture changes:
 
 ```bash
 # Clone repository
-git clone <REPOSITORY_URL>
-cd hazarus
+git clone https://github.com/nazirfx1/HAZARUS-SECURITY-ASSESSMENT.git
+cd HAZARUS-SECURITY-ASSESSMENT
 
-# Run installation script
-sudo bash install.sh
-```
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-### Manual Install
-
-```bash
 # Install Python dependencies
 pip install -r requirements.txt
 
@@ -208,46 +185,60 @@ docker run -it --net=host hazarus:2.0.0
 ### Verification
 
 ```bash
-# Display help
-hazarus --help
-
-# Initialize configuration
-hazarus init
+# Start interactive mode
+hazarus
 ```
 
 ## Quick Start
 
 ```bash
-# Initialize project
-hazarus init
+# Start interactive mode
+hazarus
 
-# Edit scope configuration
-nano config/scope.yaml
-
-# Validate scope
-hazarus scope validate
-
-# Check privacy/anonymity
-hazarus privacy check
-
-# Perform reconnaissance
-hazarus recon example.com
-
-# Run network scan
-hazarus scan 192.168.1.0/24
-
-# Run web assessment
-hazarus web https://example.com
-
-# Research vulnerabilities
-hazarus research --cve-id CVE-2021-44228
-
-# Generate report
-hazarus report <assessment-id> --format html
-
-# Start web dashboard
-hazarus dashboard
+# Or with sudo for advanced features
+sudo hazarus
 ```
+
+### Interactive Mode Menu
+
+Once started, you'll see the main menu with 14 sections:
+
+1. **Target Management** - Add, list, validate, edit, and delete targets
+2. **Reconnaissance** - Quick, Full, and Advanced reconnaissance options
+3. **Network Scanning** - Quick, Deep, Advanced, and Live Host Discovery
+4. **Web Assessment** - Basic, Aggressive, WPScan, Gobuster, WhatWeb
+5. **API Assessment** - REST and GraphQL endpoint discovery
+6. **Vulnerability Research** - CVE and exploit intelligence
+7. **Exploitation** - Metasploit integration and exploit registry
+8. **Post-Assessment Audits** - Privilege, persistence, lateral movement
+9. **Source Code Analysis** - Semgrep, Gitleaks, Trivy
+10. **Reporting** - Generate assessment reports
+11. **Configuration** - View and edit framework settings
+12. **Advanced Tools** - Additional utilities
+13. **Asset Intelligence** - Asset inventory and mapping
+14. **Comprehensive Assessment** - Full multi-phase assessment (Standard/Full/Custom)
+
+### Comprehensive Assessment
+
+The most powerful feature is the **Comprehensive Assessment** which orchestrates all phases:
+
+**Standard Mode (4 Phases):**
+- Privacy Check
+- Reconnaissance
+- Network Scanning
+- Web Assessment
+
+**Full Mode (10 Phases):**
+- Privacy Check
+- Reconnaissance (10 tools: DNS, Amass, crt.sh, Brute Force, WHOIS, Subfinder, DoH, Live Hosts, Takeover, Origin IP)
+- Network Scanning (with sudo: advanced Nmap with OS detection, scripts, traceroute)
+- Web Assessment (WhatWeb, WPScan, Gobuster)
+- API Assessment
+- Vulnerability Research
+- Exploit Listing
+- Post-Assessment Audit
+- Lateral Movement Audit
+- Source Code Analysis
 
 ## Configuration
 
@@ -344,8 +335,6 @@ Evidence is collected in `~/.hazarus/evidence/` and includes:
 ## Technology Stack
 
 - **Language:** Python 3.11+
-- **CLI Framework:** Typer
-- **Validation:** Pydantic
 - **Terminal UI:** Rich
 - **Database:** SQLAlchemy (SQLite)
 - **Web Framework:** FastAPI
@@ -354,12 +343,12 @@ Evidence is collected in `~/.hazarus/evidence/` and includes:
 - **DNS:** dnspython
 - **HTML Parsing:** BeautifulSoup4
 - **Cryptography:** Python cryptography
-- **External Tools:** Nmap, Anonsurf, Nikto, Nuclei, Semgrep, Gitleaks, Trivy
+- **External Tools:** Nmap, Anonsurf, Nikto, Nuclei, Semgrep, Gitleaks, Trivy, Amass, Subfinder
 
 ## Project Structure
 
 ```
-hazarus/
+HAZARUS-SECURITY-ASSESSMENT/
 ├── assets/                          # Project assets
 │   └── hazarus-banner.png
 ├── core/                            # Core engine and orchestration
@@ -368,7 +357,8 @@ hazarus/
 │   ├── scheduler.py
 │   ├── event_bus.py
 │   ├── task_manager.py
-│   └── state_manager.py
+│   ├── state_manager.py
+│   └── config.py
 ├── security/                        # Scope, authorization, safety
 │   ├── scope.py
 │   ├── authorization.py
@@ -387,15 +377,24 @@ hazarus/
 │   ├── whois.py
 │   ├── subdomains.py
 │   ├── crtsh.py
-│   ├── passive_recon.py
-│   └── asset_inventory.py
+│   ├── origin_ip.py
+│   ├── live_hosts.py
+│   ├── advanced/
+│   │   ├── subdomains.py
+│   │   ├── dns.py
+│   │   ├── live_hosts.py
+│   │   ├── origin_ip.py
+│   │   └── passive.py
+│   └── security/
+│       └── subdomain_takeover.py
 ├── scanning/                         # Network and service scanning
 │   ├── nmap.py
 │   ├── service_detection.py
 │   ├── tls_analysis.py
 │   ├── http_scanner.py
 │   ├── web_crawler.py
-│   └── api_discovery.py
+│   ├── api_discovery.py
+│   └── web_tools.py
 ├── vulnerability/                    # Vulnerability assessment
 │   ├── nuclei.py
 │   ├── owasp_zap.py
@@ -449,8 +448,6 @@ hazarus/
 │   └── external_apis/
 ├── config/                          # Configuration files
 ├── scripts/                         # Utility scripts
-│   ├── update.sh
-│   └── __init__.py
 ├── tests/                           # Test suite
 │   ├── test_core.py
 │   ├── test_integration.py
@@ -459,15 +456,15 @@ hazarus/
 │   ├── USER_GUIDE.md
 │   ├── EXPLOITATION.md
 │   └── METASPLOIT_INTEGRATION.md
-├── hazarus/                         # CLI entry point
+├── hazarus/                         # Entry point
 │   ├── __init__.py
-│   └── cli.py
+│   ├── cli.py
+│   └── interactive.py
 ├── Dockerfile
-├── install.sh
-├── uninstall.sh
 ├── pyproject.toml
 ├── requirements.txt
 ├── AGENTS.md
+├── SECURITY.md
 └── README.md
 ```
 
@@ -510,12 +507,13 @@ hazarus/
 
 ### Implemented Features
 
+- [x] Interactive menu-driven interface
 - [x] Core engine and orchestration
 - [x] Scope management and authorization
 - [x] Privacy verification (Anonsurf, Tor, DNS, IPv6)
-- [x] Reconnaissance (DNS, WHOIS, subdomains, CT logs)
-- [x] Network scanning (Nmap, service detection, TLS)
-- [x] Web assessment (HTTP headers, crawling, API discovery)
+- [x] Reconnaissance (DNS, WHOIS, subdomains, CT logs, Amass, Subfinder, DoH)
+- [x] Network scanning (Nmap, service detection, TLS, OS fingerprinting)
+- [x] Web assessment (HTTP headers, crawling, API discovery, WhatWeb, WPScan, Gobuster)
 - [x] Vulnerability scanning (Nuclei, ZAP, Nikto)
 - [x] CVE research and correlation
 - [x] Exploitation subsystem with Metasploit RPC
@@ -523,7 +521,9 @@ hazarus/
 - [x] Post-assessment audits
 - [x] Code analysis (Semgrep, Gitleaks, Trivy)
 - [x] Reporting (JSON, Markdown, HTML, PDF)
-- [x] Web dashboard (FastAPI + React)
+- [x] Comprehensive assessment (Standard/Full/Custom modes)
+- [x] Real-time progress indicators
+- [x] Deep debug output
 - [x] Installation scripts and Docker support
 
 ### In-Progress Features
@@ -535,7 +535,6 @@ hazarus/
 
 ### Planned Features
 
-- [ ] CI/CD pipeline integration
 - [ ] Additional dashboard visualizations
 - [ ] Collaboration features for team assessments
 - [ ] Automated scheduling
@@ -630,12 +629,11 @@ Developed by the HAZARUS Security Team
 
 Built with:
 - Python 3.11+
-- Typer (CLI)
-- Pydantic (Validation)
 - Rich (Terminal UI)
 - FastAPI (Web API)
 - Nmap, OWASP ZAP, Nuclei, Nikto
 - Semgrep, Gitleaks, Trivy
+- Amass, Subfinder
 - Parrot Security OS community
 
 ---
