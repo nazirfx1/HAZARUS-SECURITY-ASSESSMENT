@@ -15,6 +15,7 @@ from rich.table import Table
 from rich.layout import Layout
 from rich.text import Text
 from datetime import datetime
+from hazarus.tools.registry import ToolStatus
 
 
 class InteractiveMode:
@@ -34,6 +35,8 @@ class InteractiveMode:
                 'http_scan': 30
             }
         }
+        # Track failed installations for retry functionality
+        self.failed_installations = {}
 
     def show_banner(self):
         """Display HAZARUS banner."""
@@ -1708,15 +1711,16 @@ class InteractiveMode:
 [bold cyan][2][/bold cyan] Check Installation Status
 [bold cyan][3][/bold cyan] Install Missing Tools
 [bold cyan][4][/bold cyan] Install Specific Tool
-[bold cyan][5][/bold cyan] Configure Tools
-[bold cyan][6][/bold cyan] Validate Tools
+[bold cyan][5][/bold cyan] Retry Failed Installations
+[bold cyan][6][/bold cyan] Configure Tools
+[bold cyan][7][/bold cyan] Validate Tools
 [bold cyan][0][/bold cyan] Back to Main Menu
 """,
                 title="[bold red]External Tools[/bold red]",
                 border_style="red"
             ))
             
-            choice = self.console.input("\n[bold red]Select option [0-6]: [/bold red]")
+            choice = self.console.input("\n[bold red]Select option [0-7]: [/bold red]")
             
             if choice == "0":
                 break
@@ -1729,8 +1733,10 @@ class InteractiveMode:
             elif choice == "4":
                 await self.install_specific_tool(installer)
             elif choice == "5":
-                await self.configure_tools(configurer)
+                await self.retry_failed_installations(installer)
             elif choice == "6":
+                await self.configure_tools(configurer)
+            elif choice == "7":
                 await self.validate_tools(validator)
     
     async def list_tools(self, detector: 'ToolDetector'):
@@ -1779,7 +1785,7 @@ class InteractiveMode:
         self.console.input("")
     
     async def install_missing_tools(self, installer: 'ToolInstaller'):
-        """Install all missing tools."""
+        """Install all missing tools with per-tool progress and retry options."""
         self.console.print("\n[bold cyan]Installing Missing Tools...[/bold cyan]\n")
         
         # Check for sudo
@@ -1790,45 +1796,318 @@ class InteractiveMode:
             self.console.print("[yellow]⚠ Sudo not detected. Some tools may fail to install.[/yellow]")
             self.console.print("[yellow]⚠ Tools will be installed to ~/.local/bin where possible.[/yellow]\n")
         
-        with self.console.status("[dim]Installing tools...[/dim]", spinner="dots"):
-            results = await installer.install_all_missing(sudo=has_sudo)
+        # Get missing tools
+        missing = await installer.detector.check_missing_tools()
         
+        if not missing:
+            self.console.print("[green]✓ All tools are already installed![/green]")
+            self.console.input("\n[yellow]Press Enter to continue...[/yellow]")
+            return
+        
+        self.console.print(f"[cyan]Found {len(missing)} missing tools to install[/cyan]\n")
+        
+        # Install tools with per-tool progress
+        results = {}
+        failed_tools = {}
+        
+        for idx, tool_name in enumerate(missing.keys(), 1):
+            self.console.print(f"[dim][{idx}/{len(missing)}] Installing {tool_name}...[/dim]")
+            
+            with self.console.status(f"[dim]Installing {tool_name}...[/dim]", spinner="dots"):
+                status = await installer.install_tool(tool_name, sudo=has_sudo)
+            
+            results[tool_name] = status
+            
+            if status.installed:
+                method = status.installation_method.value if status.installation_method else "unknown"
+                self.console.print(f"  [green]✓ {tool_name} installed via {method}[/green]")
+            else:
+                failed_tools[tool_name] = status
+                error_msg = self._get_actionable_error_message(status.compatible_reason)
+                self.console.print(f"  [red]✗ {tool_name} failed[/red]")
+                self.console.print(f"    [dim]{error_msg}[/dim]")
+        
+        # Summary
         installed = sum(1 for s in results.values() if s.installed)
         total = len(results)
         
         self.console.print(f"\n[green]✓ Installation Complete: {installed}/{total} tools installed[/green]\n")
         
-        for tool_name, status in results.items():
-            if status.installed:
-                self.console.print(f"  [green]✓ {tool_name}[/green]")
-            else:
-                self.console.print(f"  [red]✗ {tool_name} - {status.compatible_reason}[/red]")
+        # Store failed installations for retry
+        self.failed_installations = failed_tools
+        
+        # Offer retry for failed tools
+        if failed_tools:
+            self.console.print(f"[yellow]⚠ {len(failed_tools)} tools failed to install[/yellow]")
+            self.console.print("[yellow]Failed tools:[/yellow]")
+            for tool_name, status in failed_tools.items():
+                self.console.print(f"  [red]✗ {tool_name}[/red]")
+            
+            retry = self.console.input("\n[bold cyan]Retry failed installations? [y/N]: [/bold cyan]")
+            if retry.lower() in ['y', 'yes']:
+                await self.retry_failed_installations(installer)
         
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
     
     async def install_specific_tool(self, installer: 'ToolInstaller'):
-        """Install a specific tool."""
+        """Install a specific tool with fallback methods."""
         tool_name = self.console.input("\n[bold cyan]Enter tool name to install: [/bold cyan]")
         
         if not tool_name:
             return
         
+        # Check if tool exists in registry
+        tool = installer.registry.get_tool(tool_name)
+        if not tool:
+            self.console.print(f"[red]✗ Tool '{tool_name}' not found in registry[/red]")
+            self.console.print("[yellow]Use option [1] to list available tools[/yellow]")
+            self.console.input("\n[yellow]Press Enter to continue...[/yellow]")
+            return
+        
+        # Show available installation methods
         self.console.print(f"\n[bold cyan]Installing {tool_name}...[/bold cyan]\n")
+        
+        if tool.installation:
+            methods = [tool.installation.type] + tool.installation.fallback_methods
+            self.console.print(f"[dim]Available installation methods:[/dim]")
+            for i, method in enumerate(methods, 1):
+                self.console.print(f"  [dim]{i}. {method.value}[/dim]")
         
         import os
         has_sudo = os.environ.get('SUDO_UID') is not None
         
-        with self.console.status("[dim]Installing...[/dim]", spinner="dots"):
+        # Try installation with fallback
+        with self.console.status(f"[dim]Installing {tool_name}...[/dim]", spinner="dots"):
             status = await installer.install_tool(tool_name, sudo=has_sudo)
         
         if status.installed:
-            self.console.print(f"[green]✓ {tool_name} installed successfully[/green]")
+            method = status.installation_method.value if status.installation_method else "unknown"
+            self.console.print(f"[green]✓ {tool_name} installed successfully via {method}[/green]")
         else:
-            self.console.print(f"[red]✗ {tool_name} installation failed: {status.compatible_reason}[/red]")
+            self.console.print(f"[red]✗ {tool_name} installation failed[/red]")
+            error_msg = self._get_actionable_error_message(status.compatible_reason)
+            self.console.print(f"[yellow]  Reason: {error_msg}[/yellow]")
+            
+            # Check if there are alternative methods to try
+            if tool.installation and tool.installation.fallback_methods:
+                self.console.print(f"\n[yellow]Alternative installation methods available:[/yellow]")
+                for i, method in enumerate(tool.installation.fallback_methods, 1):
+                    self.console.print(f"  [cyan]{i}. {method.value}[/cyan]")
+                
+                try_alt = self.console.input("\n[bold cyan]Try alternative method? [y/N]: [/bold cyan]")
+                if try_alt.lower() in ['y', 'yes']:
+                    # Try each fallback method
+                    for method in tool.installation.fallback_methods:
+                        self.console.print(f"\n[dim]Trying {method.value}...[/dim]")
+                        with self.console.status(f"[dim]Installing via {method.value}...[/dim]", spinner="dots"):
+                            # Force specific installation method
+                            installer_func = installer.installers.get(method)
+                            if installer_func:
+                                try:
+                                    success = await installer_func(tool, has_sudo)
+                                    if success:
+                                        # Verify installation
+                                        new_status = await installer.detector.check_tool(tool_name)
+                                        if new_status.installed:
+                                            self.console.print(f"[green]✓ {tool_name} installed successfully via {method.value}[/green]")
+                                            status = new_status
+                                            break
+                                except Exception as e:
+                                    self.console.print(f"[red]✗ {method.value} failed: {str(e)}[/red]")
+            
+            # Store failed installation for retry
+            if not status.installed:
+                self.failed_installations[tool_name] = status
         
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
+    
+    async def retry_failed_installations(self, installer: 'ToolInstaller'):
+        """Retry failed installations with alternative methods."""
+        self.console.print("\n[bold cyan]Retry Failed Installations[/bold cyan]\n")
+        
+        if not self.failed_installations:
+            self.console.print("[green]✓ No failed installations to retry[/green]")
+            self.console.input("\n[yellow]Press Enter to continue...[/yellow]")
+            return
+        
+        self.console.print(f"[yellow]Found {len(self.failed_installations)} failed installations[/yellow]\n")
+        
+        # Show failed tools with indices
+        failed_list = list(self.failed_installations.items())
+        for idx, (tool_name, status) in enumerate(failed_list, 1):
+            error_msg = self._get_actionable_error_message(status.compatible_reason)
+            self.console.print(f"[cyan][{idx}][/cyan] [red]{tool_name}[/red]")
+            self.console.print(f"    [dim]{error_msg}[/dim]")
+        
+        self.console.print("\n[bold cyan]Options:[/bold cyan]")
+        self.console.print("[cyan][all][/cyan] Retry all failed tools")
+        self.console.print("[cyan][#]     Retry specific tool (enter number)")
+        self.console.print("[cyan][0]     Cancel")
+        
+        choice = self.console.input("\n[bold red]Select option: [/bold red]")
+        
+        if choice.lower() == 'all':
+            await self._retry_all_failed(installer)
+        elif choice == '0':
+            self.console.print("[yellow]Cancelled[/yellow]")
+        elif choice.isdigit() and 1 <= int(choice) <= len(failed_list):
+            tool_name = failed_list[int(choice) - 1][0]
+            await self._retry_single_tool(installer, tool_name)
+        else:
+            self.console.print("[red]Invalid option[/red]")
+        
+        self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
+        self.console.input("")
+    
+    async def _retry_all_failed(self, installer: 'ToolInstaller'):
+        """Retry all failed installations."""
+        import os
+        has_sudo = os.environ.get('SUDO_UID') is not None
+        
+        self.console.print("\n[cyan]Retrying all failed installations...[/cyan]\n")
+        
+        for tool_name in list(self.failed_installations.keys()):
+            self.console.print(f"[dim]Retrying {tool_name}...[/dim]")
+            
+            with self.console.status(f"[dim]Installing {tool_name}...[/dim]", spinner="dots"):
+                status = await installer.install_tool(tool_name, sudo=has_sudo)
+            
+            if status.installed:
+                method = status.installation_method.value if status.installation_method else "unknown"
+                self.console.print(f"  [green]✓ {tool_name} installed via {method}[/green]")
+                # Remove from failed list
+                del self.failed_installations[tool_name]
+            else:
+                error_msg = self._get_actionable_error_message(status.compatible_reason)
+                self.console.print(f"  [red]✗ {tool_name} still failed[/red]")
+                self.console.print(f"    [dim]{error_msg}[/dim]")
+        
+        # Suggest alternative methods for still-failed tools
+        if self.failed_installations:
+            self.console.print(f"\n[yellow]⚠ {len(self.failed_installations)} tools still failed[/yellow]")
+            self.console.print("[yellow]Suggestions:[/yellow]")
+            for tool_name, status in self.failed_installations.items():
+                tool = installer.registry.get_tool(tool_name)
+                if tool and tool.installation and tool.installation.fallback_methods:
+                    self.console.print(f"  [cyan]{tool_name}:[/cyan]")
+                    for method in tool.installation.fallback_methods:
+                        self.console.print(f"    [dim]- Try manual installation via {method.value}[/dim]")
+                else:
+                    self.console.print(f"  [cyan]{tool_name}:[/cyan]")
+                    self.console.print(f"    [dim]- Check https://github.com/{tool.installation.repo if tool and tool.installation else 'search'} for manual installation[/dim]")
+    
+    async def _retry_single_tool(self, installer: 'ToolInstaller', tool_name: str):
+        """Retry a single failed tool installation."""
+        import os
+        has_sudo = os.environ.get('SUDO_UID') is not None
+        
+        self.console.print(f"\n[cyan]Retrying {tool_name}...[/cyan]\n")
+        
+        # Check for alternative methods
+        tool = installer.registry.get_tool(tool_name)
+        if tool and tool.installation and tool.installation.fallback_methods:
+            self.console.print("[yellow]Alternative installation methods:[/yellow]")
+            for i, method in enumerate(tool.installation.fallback_methods, 1):
+                self.console.print(f"  [cyan][{i}][/cyan] {method.value}")
+            self.console.print(f"  [cyan][{len(tool.installation.fallback_methods) + 1}][/cyan] Retry primary method")
+            
+            choice = self.console.input("\n[bold red]Select method: [/bold red]")
+            
+            if choice.isdigit():
+                choice_idx = int(choice)
+                if choice_idx == len(tool.installation.fallback_methods) + 1:
+                    # Retry primary
+                    with self.console.status(f"[dim]Installing via {tool.installation.type.value}...[/dim]", spinner="dots"):
+                        status = await installer.install_tool(tool_name, sudo=has_sudo)
+                elif 1 <= choice_idx <= len(tool.installation.fallback_methods):
+                    # Try specific fallback
+                    method = tool.installation.fallback_methods[choice_idx - 1]
+                    installer_func = installer.installers.get(method)
+                    if installer_func:
+                        with self.console.status(f"[dim]Installing via {method.value}...[/dim]", spinner="dots"):
+                            try:
+                                success = await installer_func(tool, has_sudo)
+                                if success:
+                                    status = await installer.detector.check_tool(tool_name)
+                                else:
+                                    status = ToolStatus(
+                                        name=tool_name,
+                                        installed=False,
+                                        compatible=False,
+                                        compatible_reason=f"Installation via {method.value} failed"
+                                    )
+                            except Exception as e:
+                                status = ToolStatus(
+                                    name=tool_name,
+                                    installed=False,
+                                    compatible=False,
+                                    compatible_reason=f"Error: {str(e)}"
+                                )
+                    else:
+                        self.console.print(f"[red]✗ Unsupported method: {method.value}[/red]")
+                        return
+                else:
+                    self.console.print("[red]Invalid option[/red]")
+                    return
+        else:
+            # No fallbacks, just retry
+            with self.console.status(f"[dim]Installing {tool_name}...[/dim]", spinner="dots"):
+                status = await installer.install_tool(tool_name, sudo=has_sudo)
+        
+        if status.installed:
+            method = status.installation_method.value if status.installation_method else "unknown"
+            self.console.print(f"[green]✓ {tool_name} installed successfully via {method}[/green]")
+            del self.failed_installations[tool_name]
+        else:
+            error_msg = self._get_actionable_error_message(status.compatible_reason)
+            self.console.print(f"[red]✗ {tool_name} installation failed[/red]")
+            self.console.print(f"[yellow]  Reason: {error_msg}[/yellow]")
+    
+    def _get_actionable_error_message(self, error_reason: str) -> str:
+        """Convert error messages to actionable suggestions."""
+        if not error_reason:
+            return "Unknown error"
+        
+        error_lower = error_reason.lower()
+        
+        # Permission errors
+        if 'permission' in error_lower or 'denied' in error_lower or 'sudo' in error_lower:
+            return "Permission denied - Run with sudo or install to user directory"
+        
+        # Network errors
+        if 'network' in error_lower or 'connection' in error_lower or 'timeout' in error_lower:
+            return "Network error - Check internet connection and retry"
+        
+        # Rate limiting
+        if 'rate' in error_lower or 'limit' in error_lower or '429' in error_lower:
+            return "Rate limited - Wait and retry, or use alternative method"
+        
+        # Package not found
+        if 'not found' in error_lower or 'package' in error_lower or '404' in error_lower:
+            return "Package not found - Try alternative installation method"
+        
+        # Dependency errors
+        if 'dependency' in error_lower or 'missing' in error_lower:
+            return "Missing dependency - Install required dependencies first"
+        
+        # Disk space
+        if 'disk' in error_lower or 'space' in error_lower:
+            return "Disk space full - Free up space and retry"
+        
+        # Installation method specific
+        if 'apt' in error_lower:
+            return "APT installation failed - Try: sudo apt update && sudo apt install <package>"
+        
+        if 'pip' in error_lower:
+            return "Pip installation failed - Try: pip install --user <package> or use --break-system-packages"
+        
+        if 'github' in error_lower or 'download' in error_lower:
+            return "GitHub download failed - Check repo URL or download manually"
+        
+        # Default
+        return error_reason
     
     async def configure_tools(self, configurer: 'ToolConfigurer'):
         """Configure all tools for HAZARUS integration."""

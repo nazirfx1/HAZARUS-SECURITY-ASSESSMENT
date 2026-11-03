@@ -24,7 +24,7 @@ class ToolDetector:
         self.cache: Dict[str, ToolStatus] = {}
     
     async def check_tool(self, tool_name: str) -> ToolStatus:
-        """Check if a tool is installed and get its version.
+        """Check if a tool is installed and get its version with fallback commands.
         
         Args:
             tool_name: Name of the tool to check
@@ -53,58 +53,62 @@ class ToolDetector:
                 compatible_reason="No detection configuration"
             )
         
-        try:
-            # Check if command exists
-            which_result = await self._run_command(
-                ["which", tool.detection.command]
-            )
-            
-            if which_result.returncode != 0:
-                return ToolStatus(
+        # Build list of commands to try (primary + fallbacks)
+        commands_to_try = [tool.detection.command] + tool.detection.fallback_commands
+        
+        # Try each command in order
+        for detection_command in commands_to_try:
+            try:
+                # Check if command exists
+                which_result = await self._run_command(
+                    ["which", detection_command]
+                )
+                
+                if which_result.returncode != 0:
+                    continue  # Try next command
+                
+                # Get command path
+                command_path = which_result.stdout.strip()
+                
+                # Get version
+                version_result = await self._run_command(
+                    [detection_command, tool.detection.version_flag]
+                )
+                
+                version = None
+                if version_result.returncode == 0:
+                    version = self._parse_version(
+                        version_result.stdout,
+                        tool.detection.version_pattern
+                    )
+                
+                # Check compatibility
+                compatible, reason = self._check_compatibility(tool, version)
+                
+                status = ToolStatus(
                     name=tool_name,
-                    installed=False,
-                    compatible=False,
-                    compatible_reason="Command not found in PATH"
+                    installed=True,
+                    version=version,
+                    path=command_path,
+                    compatible=compatible,
+                    compatible_reason=reason,
+                    last_checked=datetime.now().isoformat(),
+                    detection_command=detection_command
                 )
-            
-            # Get command path
-            command_path = which_result.stdout.strip()
-            
-            # Get version
-            version_result = await self._run_command(
-                [tool.detection.command, tool.detection.version_flag]
-            )
-            
-            version = None
-            if version_result.returncode == 0:
-                version = self._parse_version(
-                    version_result.stdout,
-                    tool.detection.version_pattern
-                )
-            
-            # Check compatibility
-            compatible, reason = self._check_compatibility(tool, version)
-            
-            status = ToolStatus(
-                name=tool_name,
-                installed=True,
-                version=version,
-                path=command_path,
-                compatible=compatible,
-                compatible_reason=reason,
-                last_checked=datetime.now().isoformat()
-            )
-            
-            self.cache[tool_name] = status
-            return status
-            
-        except Exception as e:
-            return ToolStatus(
-                name=tool_name,
-                installed=False,
-                compatible=False,
-                compatible_reason=f"Detection error: {str(e)}"
-            )
+                
+                self.cache[tool_name] = status
+                return status
+                
+            except Exception as e:
+                continue  # Try next command
+        
+        # All commands failed
+        return ToolStatus(
+            name=tool_name,
+            installed=False,
+            compatible=False,
+            compatible_reason="Command not found in PATH (tried all fallback commands)"
+        )
     
     async def check_all_tools(self) -> Dict[str, ToolStatus]:
         """Check all registered tools.

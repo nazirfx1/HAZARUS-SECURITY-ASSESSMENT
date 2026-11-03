@@ -47,6 +47,7 @@ class ToolInstallation:
     version: Optional[str] = None
     sudo_required: bool = True
     install_path: Optional[str] = None
+    fallback_methods: List[InstallationType] = field(default_factory=list)
 
 
 @dataclass
@@ -91,6 +92,9 @@ class ToolStatus:
     compatible: bool = True
     compatible_reason: Optional[str] = None
     last_checked: Optional[str] = None
+    installation_method: Optional[InstallationType] = None
+    detection_command: Optional[str] = None
+    error_code: Optional[str] = None
 
 
 class ToolRegistry:
@@ -322,7 +326,11 @@ class ToolRegistry:
                 type=InstallationType.PIP,
                 package="semgrep",
                 version="1.0+",
-                sudo_required=False
+                sudo_required=False,
+                fallback_methods=[InstallationType.GITHUB],
+                repo="semgrep/semgrep",
+                asset_pattern=r"semgrep-.*-linux_amd64\.tgz",
+                install_path="/usr/local/bin"
             ),
             validation=ToolValidation(
                 test_command="semgrep --version",
@@ -387,7 +395,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="zap-cli",
                 version_flag="-version",
-                version_pattern=r"ZAP ([\d.]+)"
+                version_pattern=r"ZAP ([\d.]+)",
+                fallback_commands=["zap", "zaproxy"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
