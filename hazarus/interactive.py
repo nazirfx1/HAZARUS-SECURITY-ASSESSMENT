@@ -160,9 +160,10 @@ class InteractiveMode:
             self.console.print("[3] Validate Scope")
             self.console.print("[4] Edit Scope")
             self.console.print("[5] Set Current Target")
+            self.console.print("[6] Delete Target")
             self.console.print("[0] Back to Main Menu")
 
-            choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
+            choice = self.console.input("\n[bold red]Select option [0-6]: [/bold red]")
 
             if choice == "0":
                 break
@@ -180,6 +181,9 @@ class InteractiveMode:
                 self.current_target = target
                 self.console.print(f"[green]Current target set to: {target}[/green]")
                 await asyncio.sleep(1)
+            elif choice == "6":
+                target = self.console.input("Enter target to delete: ")
+                await self.delete_target(target)
 
     async def reconnaissance_menu(self):
         """Reconnaissance submenu."""
@@ -314,17 +318,113 @@ class InteractiveMode:
         # Import and call actual scope add function
         try:
             from security import ScopeManager
+            import yaml
+            
             scope_file = Path.cwd() / "config" / "scope.yaml"
             scope_manager = ScopeManager(str(scope_file))
-            scope_manager.load_scope()
-            # Add target to scope config
+            await scope_manager.load_scope()
+            
+            # Add target to scope config and save
             if scope_manager.config:
-                scope_manager.config.allowed_targets.append(target)
+                # Determine target type and add to appropriate list
+                target_type = scope_manager._classify_target(target)
+                
+                if target_type.name == "DOMAIN":
+                    if target not in scope_manager.config.allowed_domains:
+                        scope_manager.config.allowed_domains.append(target)
+                elif target_type.name == "CIDR":
+                    if target not in scope_manager.config.allowed_cidrs:
+                        scope_manager.config.allowed_cidrs.append(target)
+                else:
+                    if target not in scope_manager.config.allowed_targets:
+                        scope_manager.config.allowed_targets.append(target)
+                
+                # Save to file
+                scope_data = {
+                    "allowed_targets": scope_manager.config.allowed_targets,
+                    "allowed_domains": scope_manager.config.allowed_domains,
+                    "allowed_cidrs": scope_manager.config.allowed_cidrs,
+                    "excluded_targets": scope_manager.config.excluded_targets,
+                    "allowed_ports": scope_manager.config.allowed_ports,
+                    "assessment_window": scope_manager.config.assessment_window,
+                    "intensity": scope_manager.config.intensity,
+                    "rate_limit": scope_manager.config.rate_limit,
+                    "request_limit": scope_manager.config.request_limit,
+                    "operator_id": scope_manager.config.operator_id,
+                    "client_id": scope_manager.config.client_id,
+                    "emergency_contact": scope_manager.config.emergency_contact,
+                    "notes": scope_manager.config.notes
+                }
+                
+                with open(scope_file, "w") as f:
+                    yaml.dump(scope_data, f, default_flow_style=False)
+                
                 self.console.print(f"[green]✓ Target added: {target}[/green]")
             else:
                 self.console.print("[red]✗ Failed to load scope configuration[/red]")
         except Exception as e:
             self.console.print(f"[red]✗ Failed to add target: {e}[/red]")
+        await asyncio.sleep(1)
+
+    async def delete_target(self, target: str):
+        """Delete target from scope."""
+        self.console.print(f"[cyan]Deleting target: {target}[/cyan]")
+        try:
+            from security import ScopeManager
+            import yaml
+            
+            scope_file = Path.cwd() / "config" / "scope.yaml"
+            scope_manager = ScopeManager(str(scope_file))
+            await scope_manager.load_scope()
+            
+            if scope_manager.config:
+                # Remove from all possible lists
+                removed = False
+                
+                if target in scope_manager.config.allowed_targets:
+                    scope_manager.config.allowed_targets.remove(target)
+                    removed = True
+                
+                if target in scope_manager.config.allowed_domains:
+                    scope_manager.config.allowed_domains.remove(target)
+                    removed = True
+                
+                if target in scope_manager.config.allowed_cidrs:
+                    scope_manager.config.allowed_cidrs.remove(target)
+                    removed = True
+                
+                if target in scope_manager.config.excluded_targets:
+                    scope_manager.config.excluded_targets.remove(target)
+                    removed = True
+                
+                if removed:
+                    # Save to file
+                    scope_data = {
+                        "allowed_targets": scope_manager.config.allowed_targets,
+                        "allowed_domains": scope_manager.config.allowed_domains,
+                        "allowed_cidrs": scope_manager.config.allowed_cidrs,
+                        "excluded_targets": scope_manager.config.excluded_targets,
+                        "allowed_ports": scope_manager.config.allowed_ports,
+                        "assessment_window": scope_manager.config.assessment_window,
+                        "intensity": scope_manager.config.intensity,
+                        "rate_limit": scope_manager.config.rate_limit,
+                        "request_limit": scope_manager.config.request_limit,
+                        "operator_id": scope_manager.config.operator_id,
+                        "client_id": scope_manager.config.client_id,
+                        "emergency_contact": scope_manager.config.emergency_contact,
+                        "notes": scope_manager.config.notes
+                    }
+                    
+                    with open(scope_file, "w") as f:
+                        yaml.dump(scope_data, f, default_flow_style=False)
+                    
+                    self.console.print(f"[green]✓ Target deleted: {target}[/green]")
+                else:
+                    self.console.print(f"[yellow]⚠ Target not found in scope: {target}[/yellow]")
+            else:
+                self.console.print("[red]✗ Failed to load scope configuration[/red]")
+        except Exception as e:
+            self.console.print(f"[red]✗ Failed to delete target: {e}[/red]")
         await asyncio.sleep(1)
 
     async def list_targets(self):
