@@ -93,6 +93,7 @@ class InteractiveMode:
 [bold cyan][12][/bold cyan] Advanced Tools
 [bold cyan][13][/bold cyan] Asset Intelligence
 [bold cyan][14][/bold cyan] Comprehensive Assessment
+[bold cyan][15][/bold cyan] External Tools
 [bold red][0][/bold red] Exit
 """,
             title="[bold red]Main Menu[/bold red]",
@@ -114,7 +115,7 @@ class InteractiveMode:
             
             self.show_main_menu()
 
-            choice = self.console.input("\n[bold red]Select option [0-14]: [/bold red]")
+            choice = self.console.input("\n[bold red]Select option [0-15]: [/bold red]")
 
             if choice == "0":
                 self.console.print("[green]Exiting HAZARUS...[/green]")
@@ -147,6 +148,8 @@ class InteractiveMode:
                 await self.asset_intelligence_menu()
             elif choice == "14":
                 await self.comprehensive_assessment_menu()
+            elif choice == "15":
+                await self.external_tools_menu()
             else:
                 self.console.print("[red]Invalid option. Please try again.[/red]")
                 await asyncio.sleep(1)
@@ -1527,6 +1530,143 @@ class InteractiveMode:
             self.console.print(f"[yellow]⚠ Report generation failed: {e}[/yellow]")
         
         self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
+    
+    async def external_tools_menu(self):
+        """External tools management submenu."""
+        self.console.clear()
+        
+        from tools import ToolRegistry, ToolDetector, ToolInstaller
+        
+        registry = ToolRegistry()
+        detector = ToolDetector(registry)
+        installer = ToolInstaller(registry)
+        
+        while True:
+            self.console.print(Panel(
+                """
+[bold cyan][1][/bold cyan] List Tools
+[bold cyan][2][/bold cyan] Check Installation Status
+[bold cyan][3][/bold cyan] Install Missing Tools
+[bold cyan][4][/bold cyan] Install Specific Tool
+[bold cyan][5][/bold cyan] Update Installed Tools
+[bold cyan][0][/bold cyan] Back to Main Menu
+""",
+                title="[bold red]External Tools[/bold red]",
+                border_style="red"
+            ))
+            
+            choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
+            
+            if choice == "0":
+                break
+            elif choice == "1":
+                await self.list_tools(detector)
+            elif choice == "2":
+                await self.check_tool_status(detector)
+            elif choice == "3":
+                await self.install_missing_tools(installer)
+            elif choice == "4":
+                await self.install_specific_tool(installer)
+            elif choice == "5":
+                self.console.print("[yellow]Update feature coming soon[/yellow]")
+                await asyncio.sleep(1)
+    
+    async def list_tools(self, detector: ToolDetector):
+        """List all tools with their status."""
+        self.console.print("\n[bold cyan]Tool Status Report[/bold cyan]\n")
+        
+        status_table = Table()
+        status_table.add_column("Tool", style="cyan")
+        status_table.add_column("Status", style="green")
+        status_table.add_column("Version", style="yellow")
+        status_table.add_column("Required", style="red")
+        
+        all_status = await detector.check_all_tools()
+        
+        for tool_name, status in all_status.items():
+            tool = detector.registry.get_tool(tool_name)
+            status_str = "✓ Installed" if status.installed else "✗ Missing"
+            version_str = status.version or "N/A"
+            required_str = "Yes" if tool.required else "No"
+            
+            status_table.add_row(tool_name, status_str, version_str, required_str)
+        
+        self.console.print(status_table)
+        self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
+        self.console.input("")
+    
+    async def check_tool_status(self, detector: ToolDetector):
+        """Check and display tool installation status."""
+        self.console.print("\n[bold cyan]Checking Tool Installation Status...[/bold cyan]\n")
+        
+        with self.console.status("[dim]Scanning for tools...[/dim]", spinner="dots"):
+            all_status = await detector.check_all_tools()
+        
+        installed = sum(1 for s in all_status.values() if s.installed)
+        total = len(all_status)
+        
+        self.console.print(f"[green]✓ Installed: {installed}/{total} tools[/green]\n")
+        
+        missing = [name for name, status in all_status.items() if not status.installed]
+        if missing:
+            self.console.print("[yellow]Missing Tools:[/yellow]")
+            for tool in missing:
+                self.console.print(f"  [red]✗ {tool}[/red]")
+        
+        self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
+        self.console.input("")
+    
+    async def install_missing_tools(self, installer: ToolInstaller):
+        """Install all missing tools."""
+        self.console.print("\n[bold cyan]Installing Missing Tools...[/bold cyan]\n")
+        
+        # Check for sudo
+        import os
+        has_sudo = os.environ.get('SUDO_UID') is not None
+        
+        if not has_sudo:
+            self.console.print("[yellow]⚠ Sudo not detected. Some tools may fail to install.[/yellow]")
+            self.console.print("[yellow]⚠ Tools will be installed to ~/.local/bin where possible.[/yellow]\n")
+        
+        with self.console.status("[dim]Installing tools...[/dim]", spinner="dots"):
+            results = await installer.install_all_missing(sudo=has_sudo)
+        
+        installed = sum(1 for s in results.values() if s.installed)
+        total = len(results)
+        
+        self.console.print(f"\n[green]✓ Installation Complete: {installed}/{total} tools installed[/green]\n")
+        
+        for tool_name, status in results.items():
+            if status.installed:
+                self.console.print(f"  [green]✓ {tool_name}[/green]")
+            else:
+                self.console.print(f"  [red]✗ {tool_name} - {status.compatible_reason}[/red]")
+        
+        self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
+        self.console.input("")
+    
+    async def install_specific_tool(self, installer: ToolInstaller):
+        """Install a specific tool."""
+        tool_name = self.console.input("\n[bold cyan]Enter tool name to install: [/bold cyan]")
+        
+        if not tool_name:
+            return
+        
+        self.console.print(f"\n[bold cyan]Installing {tool_name}...[/bold cyan]\n")
+        
+        import os
+        has_sudo = os.environ.get('SUDO_UID') is not None
+        
+        with self.console.status("[dim]Installing...[/dim]", spinner="dots"):
+            status = await installer.install_tool(tool_name, sudo=has_sudo)
+        
+        if status.installed:
+            self.console.print(f"[green]✓ {tool_name} installed successfully[/green]")
+        else:
+            self.console.print(f"[red]✗ {tool_name} installation failed: {status.compatible_reason}[/red]")
+        
+        self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
 
     # Placeholder methods for other menus
