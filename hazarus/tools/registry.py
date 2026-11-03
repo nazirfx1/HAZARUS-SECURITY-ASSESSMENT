@@ -682,6 +682,99 @@ class ToolRegistry:
                 exit_code=0
             )
         )
+        
+        # Phase 1 Remaining Critical Tools
+        self.tools['nvd_api'] = ToolMetadata(
+            name="NVD API",
+            description="CVE metadata and CVSS",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="python3",
+                version_flag="--version",
+                version_pattern=r"Python ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="requests",
+                version="2.31+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="python3 -c \"import requests\"",
+                exit_code=0
+            )
+        )
+        
+        self.tools['cisa_kev'] = ToolMetadata(
+            name="CISA KEV",
+            description="Known exploited vulnerabilities",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="cisa-kev",
+                version_flag="--version",
+                version_pattern=r"cisa-kev ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="cisagov/KEV",
+                asset_pattern=r"kev_.*_linux_amd64\.tar\.gz",
+                version="1.0+",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="cisa-kev --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['cvemap'] = ToolMetadata(
+            name="CVEMap",
+            description="CVE discovery and research",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="cvemap",
+                version_flag="-v",
+                version_pattern=r"cvemap ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="Pwntester/CVEMap",
+                asset_pattern=r"cvemap_.*_linux_amd64\.zip",
+                version="3.0+",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="cvemap -v",
+                exit_code=0
+            )
+        )
+        
+        self.tools['pocsuite3'] = ToolMetadata(
+            name="Pocsuite3",
+            description="PoC development and validation",
+            category=ToolCategory.RECOMMENDED,
+            required=False,
+            detection=ToolDetection(
+                command="pocsuite3",
+                version_flag="--version",
+                version_pattern=r"pocsuite3 ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="pocsuite3",
+                version="2.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="pocsuite3 --version",
+                exit_code=0
+            )
+        )
     
     def _parse_tool_config(self, name: str, config: dict) -> ToolMetadata:
         """Parse tool configuration from YAML."""

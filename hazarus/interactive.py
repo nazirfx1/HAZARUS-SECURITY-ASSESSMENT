@@ -1118,6 +1118,7 @@ class InteractiveMode:
                 from reconnaissance.origin_ip import OriginIPDiscovery
                 from reconnaissance.advanced import AdvancedSubdomainTools, AdvancedDNS, EnhancedLiveHostDiscovery, EnhancedOriginIPDiscovery
                 from reconnaissance.security import SubdomainTakeoverDetector
+                from reconnaissance.osint import TheHarvester
                 
                 dns_recon = DNSRecon()
                 dns_result = await dns_recon.enumerate_records(target)
@@ -1226,6 +1227,15 @@ class InteractiveMode:
                         self.console.print(f"  Origin IPs: {len(origin_ips)}")
                 except Exception as e:
                     self.console.print(f"  [yellow]⚠ Origin IP discovery failed: {e}[/yellow]")
+                
+                # theHarvester OSINT (Phase 1 critical tool)
+                try:
+                    harvester = TheHarvester()
+                    osint_result = await harvester.harvest(target)
+                    self.console.print(f"  OSINT emails: {len(osint_result.emails)}")
+                    self.console.print(f"  OSINT hosts: {len(osint_result.domains)}")
+                except Exception as e:
+                    self.console.print(f"  [yellow]⚠ theHarvester failed: {e}[/yellow]")
                 
                 phase_results['recon'] = {
                     'dns_records': len(dns_result.records),
@@ -1402,14 +1412,37 @@ class InteractiveMode:
             # Vulnerability Research
             if "research" in phases:
                 self.console.print(f"[yellow][Phase {phases.index('research') + 1}/{len(phases)}] Vulnerability Research...[/yellow]")
-                self.console.print(f"  [dim]Steps: Search ExploitDB, CVE lookup[/dim]")
+                self.console.print(f"  [dim]Steps: Search ExploitDB, NVD API, CISA KEV, CVEMap[/dim]")
                 try:
-                    from vulnerability import ExploitIntelligence
+                    from vulnerability import ExploitIntelligence, NVDClient, CISAKEVClient, CVEMapScanner
                     exploitdb = ExploitIntelligence()
+                    nvd_client = NVDClient()
+                    cisa_client = CISAKEVClient()
+                    cvemap = CVEMapScanner()
+                    
+                    # Search ExploitDB
                     result = await exploitdb.search(target)
                     exploits = getattr(result, 'exploits', [])
                     self.console.print(f"  Exploits found: {len(exploits)}")
-                    phase_results['research'] = {'exploits': len(exploits)}
+                    
+                    # Search NVD
+                    nvd_cves = await nvd_client.search_cve(target)
+                    self.console.print(f"  NVD CVEs found: {len(nvd_cves)}")
+                    
+                    # Search CISA KEV
+                    cisa_kev = await cisa_client.search_kev(target)
+                    self.console.print(f"  CISA KEV found: {len(cisa_kev)}")
+                    
+                    # Search CVEMap
+                    cvemap_results = await cvemap.search_cve(target)
+                    self.console.print(f"  CVEMap results: {len(cvemap_results)}")
+                    
+                    phase_results['research'] = {
+                        'exploits': len(exploits),
+                        'nvd_cves': len(nvd_cves),
+                        'cisa_kev': len(cisa_kev),
+                        'cvemap': len(cvemap_results)
+                    }
                 except Exception as e:
                     self.console.print(f"  [red]✗ Vulnerability research failed: {e}[/red]")
                     phase_results['research'] = None
