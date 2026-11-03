@@ -325,7 +325,7 @@ class NmapScanner:
         traceroute: bool = True,
         aggressive: bool = False,
         timing: int = 4,
-        timeout: int = 600
+        timeout: int = 900  # Increased from 600 to 900 for comprehensive scans
     ) -> NmapResult:
         """Advanced deep scan with comprehensive enumeration."""
         self.logger.info(f"Advanced scanning {len(targets)} targets, ports {ports}")

@@ -359,7 +359,7 @@ class DNSRecon:
             try:
                 import httpx
                 import urllib.parse
-                async with httpx.AsyncClient(timeout=30) as client:
+                async with httpx.AsyncClient(timeout=30.0) as client:
                     # Use proper crt.sh API format with URL encoding
                     query = f"%.{domain}"
                     encoded_query = urllib.parse.quote(query)
@@ -381,10 +381,13 @@ class DNSRecon:
                                     subdomains.add(name)
 
                         return list(subdomains)
-                    elif response.status_code == 502:
-                        self.logger.warning(f"crt.sh returned 502 (Bad Gateway), retrying...")
+                    elif response.status_code in [502, 503, 504]:
+                        self.logger.warning(f"crt.sh returned status {response.status_code}, retrying...")
                         await asyncio.sleep(2 ** attempt)  # Exponential backoff
                         continue
+                    elif response.status_code == 404:
+                        self.logger.warning(f"crt.sh returned 404 (Not Found) - no certificates for domain")
+                        return []
                     else:
                         self.logger.warning(f"crt.sh returned status {response.status_code}")
                         return []
