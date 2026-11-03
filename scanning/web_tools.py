@@ -254,14 +254,15 @@ class AdvancedWebTools:
 
             self.logger.info(f"Running Gobuster for {target}")
 
-            # Build gobuster command
+            # Build gobuster command with reduced thread count
             cmd = [
                 "gobuster", "dir",
                 "-u", target,
                 "-w", wordlist,
-                "-t", "50",  # 50 threads
+                "-t", "20",  # Reduced from 50 to 20 to prevent connection resets
                 "-x", "php,html,js,css,txt,xml",
-                "-k"  # Skip SSL verification
+                "-k",  # Skip SSL verification
+                "--timeout", "10s"  # Add explicit timeout
             ]
 
             if aggressive:

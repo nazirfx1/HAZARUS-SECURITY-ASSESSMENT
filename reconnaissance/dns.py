@@ -353,40 +353,50 @@ class DNSRecon:
 
         return result
 
-    async def query_crtsh(self, domain: str) -> List[str]:
-        """Query crt.sh for subdomain enumeration."""
-        try:
-            import httpx
-            import urllib.parse
-            async with httpx.AsyncClient(timeout=30) as client:
-                # Use proper crt.sh API format with URL encoding
-                query = f"%.{domain}"
-                encoded_query = urllib.parse.quote(query)
-                response = await client.get(
-                    f"https://crt.sh/?q={encoded_query}&output=json"
-                )
+    async def query_crtsh(self, domain: str, max_retries: int = 3) -> List[str]:
+        """Query crt.sh for subdomain enumeration with retry logic."""
+        for attempt in range(max_retries):
+            try:
+                import httpx
+                import urllib.parse
+                async with httpx.AsyncClient(timeout=30) as client:
+                    # Use proper crt.sh API format with URL encoding
+                    query = f"%.{domain}"
+                    encoded_query = urllib.parse.quote(query)
+                    response = await client.get(
+                        f"https://crt.sh/?q={encoded_query}&output=json"
+                    )
 
-                if response.status_code == 200:
-                    import json
-                    data = response.json()
-                    subdomains = set()
+                    if response.status_code == 200:
+                        import json
+                        data = response.json()
+                        subdomains = set()
 
-                    for cert in data:
-                        name_value = cert.get('name_value', '')
-                        # Split by newlines if multiple names
-                        for name in name_value.split('\n'):
-                            name = name.strip()
-                            if name and domain in name and not name.startswith('*'):
-                                subdomains.add(name)
+                        for cert in data:
+                            name_value = cert.get('name_value', '')
+                            # Split by newlines if multiple names
+                            for name in name_value.split('\n'):
+                                name = name.strip()
+                                if name and domain in name and not name.startswith('*'):
+                                    subdomains.add(name)
 
-                    return list(subdomains)
-                else:
-                    self.logger.warning(f"crt.sh returned status {response.status_code}")
-                    return []
+                        return list(subdomains)
+                    elif response.status_code == 502:
+                        self.logger.warning(f"crt.sh returned 502 (Bad Gateway), retrying...")
+                        await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                        continue
+                    else:
+                        self.logger.warning(f"crt.sh returned status {response.status_code}")
+                        return []
 
-        except Exception as e:
-            self.logger.warning(f"crt.sh query failed: {e}")
-            return []
+            except Exception as e:
+                self.logger.warning(f"crt.sh query failed (attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                return []
+        
+        return []
 
     async def zone_transfer(self, domain: str, nameserver: str) -> bool:
         """Attempt DNS zone transfer."""

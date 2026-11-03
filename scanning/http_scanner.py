@@ -56,7 +56,7 @@ class HTTPSecurityResult:
 class HTTPScanner:
     """HTTP scanning module."""
 
-    def __init__(self, timeout: int = 10, connect_timeout: int = 5, skip_advanced: bool = False):
+    def __init__(self, timeout: int = 30, connect_timeout: int = 10, skip_advanced: bool = False):
         self.timeout = timeout
         self.connect_timeout = connect_timeout
         self.skip_advanced = skip_advanced
