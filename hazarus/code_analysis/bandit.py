@@ -55,6 +55,11 @@ class BanditScanner:
             if proc.returncode != 0:
                 raise RuntimeError("Bandit not installed")
             
+            # Get timeout from config
+            from core.config import get_config
+            config = get_config()
+            timeout = config.get('timeouts.code_analysis', 300)
+            
             # Build command
             cmd = [
                 "bandit",
