@@ -162,7 +162,7 @@ class ToolRegistry:
                 default_args="-sS -sV -O"
             ),
             validation=ToolValidation(
-                test_command="nmap localhost",
+                test_command="nmap --version",
                 exit_code=0
             )
         )

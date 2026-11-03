@@ -65,7 +65,7 @@ class InteractiveMode:
         config_table.add_row("Assessment Intensity", "normal")
         config_table.add_row("Privacy Mode", "strict")
         config_table.add_row("Max Threads", "10")
-        config_table.add_row("Timeout", "300s")
+        config_table.add_row("Timeout", f"{self.config.get('timeouts.default', 30)}s")
 
         # Privacy settings
         config_table.add_row("", "")
@@ -946,7 +946,7 @@ class InteractiveMode:
             
             self.console.print("[yellow][1/4] HTTP Security Scan...[/yellow]")
             self.console.print(f"  [dim]Target: {target}[/dim]")
-            self.console.print(f"  [dim]Timeout: 30s[/dim]")
+            self.console.print(f"  [dim]Timeout: {self.config.get('timeouts.http_scan', 30)}s[/dim]")
             self.console.print(f"  [dim]Checks: Headers, Cookies, Vulns[/dim]")
             
             with self.console.status("[dim]Scanning HTTP security...[/dim]", spinner="dots"):
@@ -1514,11 +1514,50 @@ class InteractiveMode:
                 try:
                     from code_analysis import SemgrepScanner, GitleaksScanner, TrivyScanner, BanditScanner
                     
-                    # Note: This would require a code path - for now showing placeholder
-                    self.console.print(f"  [yellow]⚠ Source code analysis requires code path[/yellow]")
-                    self.console.print(f"  [dim]Tools available: Semgrep, Gitleaks, Trivy, Bandit[/dim]")
+                    # Check if code path is provided in target
+                    code_path = target if target and os.path.exists(target) else None
                     
-                    phase_results['code'] = {'status': 'requires_code_path'}
+                    if code_path:
+                        self.console.print(f"  [dim]Code path: {code_path}[/dim]")
+                        
+                        # Semgrep
+                        try:
+                            semgrep = SemgrepScanner()
+                            semgrep_result = await semgrep.scan(code_path)
+                            self.console.print(f"  Semgrep issues: {semgrep_result.total_issues}")
+                        except Exception as e:
+                            self.console.print(f"  [yellow]⚠ Semgrep failed: {e}[/yellow]")
+                        
+                        # Gitleaks
+                        try:
+                            gitleaks = GitleaksScanner()
+                            gitleaks_result = await gitleaks.scan(code_path)
+                            self.console.print(f"  Gitleaks secrets: {len(gitleaks_result.secrets)}")
+                        except Exception as e:
+                            self.console.print(f"  [yellow]⚠ Gitleaks failed: {e}[/yellow]")
+                        
+                        # Trivy
+                        try:
+                            trivy = TrivyScanner()
+                            trivy_result = await trivy.scan(code_path)
+                            self.console.print(f"  Trivy vulnerabilities: {len(trivy_result.vulnerabilities)}")
+                        except Exception as e:
+                            self.console.print(f"  [yellow]⚠ Trivy failed: {e}[/yellow]")
+                        
+                        # Bandit
+                        try:
+                            bandit = BanditScanner()
+                            bandit_result = await bandit.scan(code_path)
+                            self.console.print(f"  Bandit issues: {bandit_result.total_issues}")
+                        except Exception as e:
+                            self.console.print(f"  [yellow]⚠ Bandit failed: {e}[/yellow]")
+                        
+                        phase_results['code'] = {'path': code_path, 'scanned': True}
+                    else:
+                        self.console.print(f"  [yellow]⚠ Source code analysis requires code path[/yellow]")
+                        self.console.print(f"  [dim]Usage: Provide local directory path as target[/dim]")
+                        self.console.print(f"  [dim]Tools available: Semgrep, Gitleaks, Trivy, Bandit[/dim]")
+                        phase_results['code'] = {'scanned': False, 'reason': 'no_code_path'}
                 except Exception as e:
                     self.console.print(f"  [red]✗ Source code analysis failed: {e}[/red]")
                     phase_results['code'] = None
@@ -1783,7 +1822,7 @@ class InteractiveMode:
             # Silently skip if tools module has issues
             pass
 
-    # Placeholder methods for other menus
+    # Additional menu methods (if needed for future expansion)
     async def api_assessment_menu(self):
         """API assessment submenu."""
         self.console.clear()

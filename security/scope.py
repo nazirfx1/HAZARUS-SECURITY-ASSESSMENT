@@ -578,7 +578,7 @@ class ScopeManager:
             "operator_id": "OPERATOR_EMAIL@example.com",
             "client_id": "client-001",
             "emergency_contact": "EMERGENCY_CONTACT@example.com",
-            "notes": "Assessment scope description - REPLACE ALL PLACEHOLDER VALUES"
+            "notes": "Assessment scope configuration and authorization details"
         }
 
         with open(output_path, "w") as f:
