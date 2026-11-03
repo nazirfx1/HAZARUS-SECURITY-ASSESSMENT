@@ -178,16 +178,25 @@ class ToolInstaller:
         if not tool.installation or not tool.installation.package:
             return False
         
-        # Use pip with --user by default
-        cmd = ["pip", "install", "--user", tool.installation.package]
-        
-        if use_sudo:
-            # System-wide install
-            cmd = ["pip", "install", tool.installation.package]
-            cmd.insert(0, "sudo")
-        
-        result = await self._run_command(cmd)
-        return result.returncode == 0
+        try:
+            # Use pip with --user by default
+            cmd = ["pip", "install", "--user", tool.installation.package]
+            
+            if use_sudo:
+                # System-wide install
+                cmd = ["pip", "install", tool.installation.package]
+                cmd.insert(0, "sudo")
+            
+            result = await self._run_command(cmd)
+            
+            if result.returncode != 0:
+                print(f"Pip install failed: {result.stderr}")
+                return False
+            
+            return True
+        except Exception as e:
+            print(f"Pip install error: {e}")
+            return False
     
     async def _install_github(self, tool: ToolMetadata, use_sudo: bool) -> bool:
         """Install tool from GitHub releases.
@@ -202,50 +211,63 @@ class ToolInstaller:
         if not tool.installation or not tool.installation.repo:
             return False
         
-        from .downloader import GitHubDownloader
-        
-        downloader = GitHubDownloader()
-        
-        # Download asset
-        asset_path = await downloader.download_latest_release(
-            tool.installation.repo,
-            tool.installation.asset_pattern
-        )
-        
-        if not asset_path:
-            return False
-        
-        # Extract
-        extract_dir = await downloader.extract_archive(asset_path)
-        
-        if not extract_dir:
-            return False
-        
-        # Install
-        install_path = tool.installation.install_path or "/usr/local/bin"
-        
-        if use_sudo:
-            # System-wide install
+        try:
+            from .downloader import GitHubDownloader
+            
+            downloader = GitHubDownloader()
+            
+            # Download asset
+            print(f"  Downloading {tool.name} from GitHub...")
+            asset_path = await downloader.download_latest_release(
+                tool.installation.repo,
+                tool.installation.asset_pattern
+            )
+            
+            if not asset_path:
+                print(f"  Download failed for {tool.name}")
+                return False
+            
+            print(f"  Extracting {tool.name}...")
+            # Extract
+            extract_dir = await downloader.extract_archive(asset_path)
+            
+            if not extract_dir:
+                print(f"  Extraction failed for {tool.name}")
+                return False
+            
+            # Install
             install_path = tool.installation.install_path or "/usr/local/bin"
-            cmd = ["sudo", "cp", "-r", f"{extract_dir}/*", install_path]
-            result = await self._run_command(cmd)
-            success = result.returncode == 0
-        else:
-            # User-space install
-            install_path = Path.home() / ".local" / "bin"
-            install_path.mkdir(parents=True, exist_ok=True)
             
-            # Copy binaries
-            for file in Path(extract_dir).glob("*"):
-                if file.is_file() and os.access(file, os.X_OK):
-                    shutil.copy(file, install_path / file.name)
+            if use_sudo:
+                # System-wide install
+                install_path = tool.installation.install_path or "/usr/local/bin"
+                cmd = ["sudo", "cp", "-r", f"{extract_dir}/*", install_path]
+                result = await self._run_command(cmd)
+                success = result.returncode == 0
+                if not success:
+                    print(f"  Install failed: {result.stderr}")
+            else:
+                # User-space install
+                install_path = Path.home() / ".local" / "bin"
+                install_path.mkdir(parents=True, exist_ok=True)
+                
+                # Copy binaries
+                copied = False
+                for file in Path(extract_dir).glob("*"):
+                    if file.is_file() and os.access(file, os.X_OK):
+                        shutil.copy(file, install_path / file.name)
+                        copied = True
+                
+                success = copied
             
-            success = True
-        
-        # Cleanup
-        shutil.rmtree(asset_path.parent, ignore_errors=True)
-        
-        return success
+            # Cleanup
+            shutil.rmtree(asset_path.parent, ignore_errors=True)
+            
+            return success
+            
+        except Exception as e:
+            print(f"  GitHub install error for {tool.name}: {e}")
+            return False
     
     async def _install_snap(self, tool: ToolMetadata, use_sudo: bool) -> bool:
         """Install tool via Snap.
