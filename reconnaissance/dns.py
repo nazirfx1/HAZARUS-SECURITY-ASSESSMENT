@@ -245,7 +245,7 @@ class DNSRecon:
             return []
 
     async def query_amass_advanced(self, domain: str) -> Dict[str, Any]:
-        """Query Amass for advanced OSINT capabilities (v4.1.0 compatible)."""
+        """Query Amass for advanced OSINT capabilities (v5.0.0 compatible)."""
         result = {
             "subdomains": [],
             "dns_records": {},
@@ -267,10 +267,10 @@ class DNSRecon:
                 self.logger.info("Amass not installed, skipping advanced query")
                 return result
 
-            # 1. Comprehensive subdomain enumeration (passive mode for speed)
-            self.logger.info(f"Running Amass passive enumeration for {domain}")
+            # 1. Comprehensive subdomain enumeration (passive + active for certificates)
+            self.logger.info(f"Running Amass enumeration for {domain}")
             proc = await asyncio.create_subprocess_exec(
-                "amass", "enum", "-passive", "-d", domain,
+                "amass", "enum", "-passive", "-active", "-d", domain,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -279,8 +279,8 @@ class DNSRecon:
             stdout_text = stdout.decode()
             stderr_text = stderr.decode()
 
-            self.logger.debug(f"Amass stdout: {stdout_text[:500]}")
-            self.logger.debug(f"Amass stderr: {stderr_text[:500]}")
+            self.logger.debug(f"Amass enum stdout: {stdout_text[:500]}")
+            self.logger.debug(f"Amass enum stderr: {stderr_text[:500]}")
 
             if proc.returncode != 0:
                 self.logger.warning(f"Amass enum failed with exit code {proc.returncode}: {stderr_text}")
@@ -289,12 +289,32 @@ class DNSRecon:
                 result["subdomains"] = [s for s in subdomains if s and domain in s]
                 self.logger.info(f"Amass found {len(result['subdomains'])} subdomains")
 
-            # Note: The following advanced features are not available in Amass v4.1.0
-            # - intel -asn: Syntax changed in newer versions
-            # - cert: Command doesn't exist in v4.1.0
-            # - intel -nw: Flag doesn't exist in v4.1.0
-            # - intel -infra: Flag doesn't exist in v4.1.0
-            # These features require Amass v4.2.0+ or different syntax
+            # 2. Intel/WHOIS for domain information
+            self.logger.info(f"Running Amass intel for {domain}")
+            proc = await asyncio.create_subprocess_exec(
+                "amass", "intel", "-whois", "-d", domain,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
+
+            self.logger.debug(f"Amass intel stdout: {stdout_text[:500]}")
+            self.logger.debug(f"Amass intel stderr: {stderr_text[:500]}")
+
+            if proc.returncode == 0 and stdout_text:
+                # Parse intel output for related domains/infrastructure
+                lines = stdout_text.strip().split('\n')
+                result["infrastructure"] = [line for line in lines if line and domain in line]
+
+            # Note: Amass v5.0.0 changed significantly:
+            # - intel -asn: Now takes ASN as input, not output
+            # - cert: Command removed, use enum -active for certificate enumeration
+            # - intel -nw: Flag removed
+            # - intel -infra: Flag removed
+            # New subcommands: subs, viz, track for asset database analysis
 
             self.logger.info(f"Amass advanced query complete for {domain}")
 
