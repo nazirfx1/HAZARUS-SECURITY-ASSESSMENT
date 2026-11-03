@@ -55,6 +55,11 @@ class HashcatAuditor:
             if proc.returncode != 0:
                 raise RuntimeError("Hashcat not installed")
             
+            # Get timeout from config
+            from core.config import get_config
+            config = get_config()
+            timeout = config.get('timeouts.password_cracking', 3600)
+            
             # Build command
             cmd = ["hashcat", hash_file]
             

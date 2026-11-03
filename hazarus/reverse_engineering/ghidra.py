@@ -52,6 +52,11 @@ class GhidraAnalyzer:
             if proc.returncode != 0:
                 raise RuntimeError("Ghidra not installed")
             
+            # Get timeout from config
+            from core.config import get_config
+            config = get_config()
+            timeout = config.get('timeouts.reverse_engineering', 600)
+            
             # Build command (simplified)
             cmd = ["analyzeHeadless", target, "-import", target]
             
