@@ -934,7 +934,7 @@ class InteractiveMode:
         
         # Phase 1: Privacy Check
         if "privacy" in phases:
-            self.console.print(f"[yellow][Phase 1/4] Privacy Check...[/yellow]")
+            self.console.print(f"[yellow][Phase {phases.index('privacy') + 1}/{len(phases)}] Privacy Check...[/yellow]")
             try:
                 from anonymity.anonsurf import AnonsurfManager
                 from anonymity.dns_leak import DNSLeakChecker
@@ -970,7 +970,7 @@ class InteractiveMode:
         
         # Phase 2: Reconnaissance
         if "recon" in phases:
-            self.console.print(f"[yellow][Phase 2/4] Reconnaissance...[/yellow]")
+            self.console.print(f"[yellow][Phase {phases.index('recon') + 1}/{len(phases)}] Reconnaissance...[/yellow]")
             try:
                 from reconnaissance.dns import DNSRecon
                 from reconnaissance.whois import WhoisRecon
@@ -1047,7 +1047,7 @@ class InteractiveMode:
         
         # Phase 3: Network Scan
         if "scan" in phases:
-            self.console.print(f"[yellow][Phase 3/4] Network Scanning...[/yellow]")
+            self.console.print(f"[yellow][Phase {phases.index('scan') + 1}/{len(phases)}] Network Scanning...[/yellow]")
             try:
                 from scanning.nmap import NmapScanner
                 
@@ -1090,7 +1090,7 @@ class InteractiveMode:
         
         # Phase 4: Web Assessment
         if "web" in phases:
-            self.console.print(f"[yellow][Phase 4/4] Web Assessment...[/yellow]")
+            self.console.print(f"[yellow][Phase {phases.index('web') + 1}/{len(phases)}] Web Assessment...[/yellow]")
             try:
                 from scanning.http_scanner import HTTPScanner
                 from scanning.web_tools import AdvancedWebTools
@@ -1156,13 +1156,36 @@ class InteractiveMode:
         if mode == "full":
             # API Assessment
             if "api" in phases:
-                self.console.print(f"[yellow][Phase 5/10] API Assessment...[/yellow]")
-                self.console.print("  [dim]API assessment not yet implemented[/dim]")
+                self.console.print(f"[yellow][Phase {phases.index('api') + 1}/{len(phases)}] API Assessment...[/yellow]")
+                try:
+                    from scanning.api_discovery import APIDiscovery
+                    api_discovery = APIDiscovery()
+                    
+                    # REST endpoint discovery
+                    rest_result = await api_discovery.discover_rest_endpoints(target)
+                    self.console.print(f"  REST endpoints: {len(rest_result.endpoints)}")
+                    
+                    # GraphQL endpoint discovery
+                    graphql_result = await api_discovery.discover_graphql_endpoints(target)
+                    self.console.print(f"  GraphQL endpoints: {len(graphql_result.endpoints)}")
+                    
+                    # API security scan
+                    security_result = await api_discovery.scan_api_security(target)
+                    self.console.print(f"  Security issues: {len(security_result.issues)}")
+                    
+                    phase_results['api'] = {
+                        'rest_endpoints': len(rest_result.endpoints),
+                        'graphql_endpoints': len(graphql_result.endpoints),
+                        'security_issues': len(security_result.issues)
+                    }
+                except Exception as e:
+                    self.console.print(f"  [red]✗ API assessment failed: {e}[/red]")
+                    phase_results['api'] = None
                 self.console.print()
             
             # Vulnerability Research
             if "research" in phases:
-                self.console.print(f"[yellow][Phase 6/10] Vulnerability Research...[/yellow]")
+                self.console.print(f"[yellow][Phase {phases.index('research') + 1}/{len(phases)}] Vulnerability Research...[/yellow]")
                 try:
                     from vulnerability.exploitdb import ExploitDB
                     exploitdb = ExploitDB()
@@ -1177,7 +1200,7 @@ class InteractiveMode:
             
             # Exploit Listing
             if "exploit" in phases:
-                self.console.print(f"[yellow][Phase 7/10] Exploit Listing...[/yellow]")
+                self.console.print(f"[yellow][Phase {phases.index('exploit') + 1}/{len(phases)}] Exploit Listing...[/yellow]")
                 try:
                     from exploitation.exploit_registry import ExploitRegistry
                     registry = ExploitRegistry()
@@ -1191,19 +1214,49 @@ class InteractiveMode:
             
             # Post-Assessment Audit
             if "post_audit" in phases:
-                self.console.print(f"[yellow][Phase 8/10] Post-Assessment Audit...[/yellow]")
-                self.console.print("  [dim]Post-assessment audit not yet implemented[/dim]")
+                self.console.print(f"[yellow][Phase {phases.index('post_audit') + 1}/{len(phases)}] Post-Assessment Audit...[/yellow]")
+                try:
+                    from post_assessment.privilege_audit import PrivilegeAudit
+                    from post_assessment.persistence_audit import PersistenceAudit
+                    
+                    privilege_audit = PrivilegeAudit()
+                    privilege_result = await privilege_audit.audit(target)
+                    self.console.print(f"  Privilege findings: {len(privilege_result.findings)}")
+                    
+                    persistence_audit = PersistenceAudit()
+                    persistence_result = await persistence_audit.audit(target)
+                    self.console.print(f"  Persistence mechanisms: {len(persistence_result.mechanisms)}")
+                    
+                    phase_results['post_audit'] = {
+                        'privilege_findings': len(privilege_result.findings),
+                        'persistence_mechanisms': len(persistence_result.mechanisms)
+                    }
+                except Exception as e:
+                    self.console.print(f"  [red]✗ Post-assessment audit failed: {e}[/red]")
+                    phase_results['post_audit'] = None
                 self.console.print()
             
             # Lateral Movement Audit
             if "lateral" in phases:
-                self.console.print(f"[yellow][Phase 9/10] Lateral Movement Audit...[/yellow]")
-                self.console.print("  [dim]Lateral movement audit not yet implemented[/dim]")
+                self.console.print(f"[yellow][Phase {phases.index('lateral') + 1}/{len(phases)}] Lateral Movement Audit...[/yellow]")
+                try:
+                    from post_assessment.lateral_movement_audit import LateralMovementAudit
+                    
+                    lateral_audit = LateralMovementAudit()
+                    lateral_result = await lateral_audit.audit(target)
+                    self.console.print(f"  Lateral paths: {len(lateral_result.paths)}")
+                    
+                    phase_results['lateral'] = {
+                        'lateral_paths': len(lateral_result.paths)
+                    }
+                except Exception as e:
+                    self.console.print(f"  [red]✗ Lateral movement audit failed: {e}[/red]")
+                    phase_results['lateral'] = None
                 self.console.print()
             
             # Source Code Analysis
             if "code" in phases:
-                self.console.print(f"[yellow][Phase 10/10] Source Code Analysis...[/yellow]")
+                self.console.print(f"[yellow][Phase {phases.index('code') + 1}/{len(phases)}] Source Code Analysis...[/yellow]")
                 self.console.print("  [dim]Source code analysis requires code path - skipping[/dim]")
                 self.console.print()
         
