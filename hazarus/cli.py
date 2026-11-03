@@ -364,6 +364,12 @@ def recon(
         "--output",
         "-o",
         help="Output file for results"
+    ),
+    active: bool = typer.Option(
+        False,
+        "--active",
+        "-a",
+        help="Enable active Amass enumeration (slower but more thorough)"
     )
 ) -> None:
     """Run reconnaissance on targets."""
@@ -377,6 +383,11 @@ def recon(
         console.print("[green]✓ Running with sudo privileges - advanced features enabled[/green]")
     else:
         console.print("[yellow]⚠ Not running with sudo - some features may be limited (use 'sudo hazarus' for full capabilities)[/yellow]")
+
+    if active:
+        console.print("[yellow]⚠ Active Amass enumeration enabled - this may take several minutes[/yellow]")
+    else:
+        console.print("[green]✓ Passive Amass enumeration (fast)[/green]")
 
     async def _run_recon():
         from reconnaissance.dns import DNSRecon
@@ -500,7 +511,7 @@ def recon(
                     amass_subdomains = []
                     if amass_available:
                         try:
-                            amass_result = await dns_recon.query_amass_advanced(target)
+                            amass_result = await dns_recon.query_amass_advanced(target, active=active)
                             amass_subdomains = amass_result.get("subdomains", [])
                             
                             if amass_subdomains:

@@ -244,8 +244,14 @@ class DNSRecon:
             self.logger.warning(f"Amass query failed: {e}")
             return []
 
-    async def query_amass_advanced(self, domain: str) -> Dict[str, Any]:
-        """Query Amass for advanced OSINT capabilities (v5.0.0 compatible)."""
+    async def query_amass_advanced(self, domain: str, active: bool = False, timeout: int = 300) -> Dict[str, Any]:
+        """Query Amass for advanced OSINT capabilities (v5.0.0 compatible).
+
+        Args:
+            domain: Target domain
+            active: Enable active enumeration (slower but more thorough)
+            timeout: Timeout in seconds for Amass commands
+        """
         result = {
             "subdomains": [],
             "dns_records": {},
@@ -267,14 +273,30 @@ class DNSRecon:
                 self.logger.info("Amass not installed, skipping advanced query")
                 return result
 
-            # 1. Comprehensive subdomain enumeration (passive + active for certificates)
-            self.logger.info(f"Running Amass enumeration for {domain}")
+            # 1. Subdomain enumeration (passive by default, optional active)
+            mode = "passive + active" if active else "passive"
+            self.logger.info(f"Running Amass {mode} enumeration for {domain}")
+
+            if active:
+                cmd = ["amass", "enum", "-passive", "-active", "-d", domain]
+            else:
+                cmd = ["amass", "enum", "-passive", "-d", domain]
+
             proc = await asyncio.create_subprocess_exec(
-                "amass", "enum", "-passive", "-active", "-d", domain,
+                *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            stdout, stderr = await proc.communicate()
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                self.logger.warning(f"Amass enumeration timed out after {timeout}s")
+                return result
 
             stdout_text = stdout.decode()
             stderr_text = stderr.decode()
@@ -289,25 +311,33 @@ class DNSRecon:
                 result["subdomains"] = [s for s in subdomains if s and domain in s]
                 self.logger.info(f"Amass found {len(result['subdomains'])} subdomains")
 
-            # 2. Intel/WHOIS for domain information
+            # 2. Intel/WHOIS for domain information (fast)
             self.logger.info(f"Running Amass intel for {domain}")
             proc = await asyncio.create_subprocess_exec(
                 "amass", "intel", "-whois", "-d", domain,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            stdout, stderr = await proc.communicate()
 
-            stdout_text = stdout.decode()
-            stderr_text = stderr.decode()
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=60  # Shorter timeout for intel
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                self.logger.warning("Amass intel timed out")
+            else:
+                stdout_text = stdout.decode()
+                stderr_text = stderr.decode()
 
-            self.logger.debug(f"Amass intel stdout: {stdout_text[:500]}")
-            self.logger.debug(f"Amass intel stderr: {stderr_text[:500]}")
+                self.logger.debug(f"Amass intel stdout: {stdout_text[:500]}")
+                self.logger.debug(f"Amass intel stderr: {stderr_text[:500]}")
 
-            if proc.returncode == 0 and stdout_text:
-                # Parse intel output for related domains/infrastructure
-                lines = stdout_text.strip().split('\n')
-                result["infrastructure"] = [line for line in lines if line and domain in line]
+                if proc.returncode == 0 and stdout_text:
+                    # Parse intel output for related domains/infrastructure
+                    lines = stdout_text.strip().split('\n')
+                    result["infrastructure"] = [line for line in lines if line and domain in line]
 
             # Note: Amass v5.0.0 changed significantly:
             # - intel -asn: Now takes ASN as input, not output
