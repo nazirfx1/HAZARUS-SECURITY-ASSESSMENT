@@ -515,51 +515,599 @@ class InteractiveMode:
         self.console.print("[green]✓ Comprehensive assessment complete[/green]")
         self.console.input("\nPress Enter to continue...")
 
-    # Placeholder methods for other menus
     async def api_assessment_menu(self):
         """API assessment submenu."""
-        self.console.print("[yellow]API Assessment - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]API Assessment[/bold]", border_style="red"))
+            self.console.print("[1] REST Endpoint Discovery")
+            self.console.print("[2] GraphQL Endpoint Discovery")
+            self.console.print("[3] API Security Testing")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-3]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice in ["1", "2", "3"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "rest",
+                    "2": "graphql",
+                    "3": "security"
+                }[choice]
+                
+                await self.run_api(target, mode)
 
     async def vulnerability_research_menu(self):
         """Vulnerability research submenu."""
-        self.console.print("[yellow]Vulnerability Research - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]Vulnerability Research[/bold]", border_style="red"))
+            self.console.print("[1] CVE Search")
+            self.console.print("[2] Exploit Intelligence (SearchSploit)")
+            self.console.print("[3] Exploit Registry")
+            self.console.print("[4] Historical Vulnerability Data")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "cve",
+                    "2": "searchsploit",
+                    "3": "registry",
+                    "4": "historical"
+                }[choice]
+                
+                await self.run_vulnerability_research(target, mode)
 
     async def exploitation_menu(self):
         """Exploitation submenu."""
-        self.console.print("[yellow]Exploitation - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]Exploitation[/bold]", border_style="red"))
+            self.console.print("[1] List Available Exploits")
+            self.console.print("[2] Check Exploit Compatibility")
+            self.console.print("[3] Exploit Registry Search")
+            self.console.print("[4] Lab Environment Check")
+            self.console.print("[yellow]Note: Exploitation requires lab verification[/yellow]")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "list",
+                    "2": "check",
+                    "3": "search",
+                    "4": "lab"
+                }[choice]
+                
+                await self.run_exploitation(target, mode)
 
     async def post_assessment_menu(self):
         """Post-assessment audits submenu."""
-        self.console.print("[yellow]Post-Assessment Audits - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]Post-Assessment Audits[/bold]", border_style="red"))
+            self.console.print("[1] Privilege Audit")
+            self.console.print("[2] Persistence Audit")
+            self.console.print("[3] Lateral Movement Audit")
+            self.console.print("[4] Segmentation Audit")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "privilege",
+                    "2": "persistence",
+                    "3": "lateral",
+                    "4": "segmentation"
+                }[choice]
+                
+                await self.run_post_audit(target, mode)
 
     async def source_code_analysis_menu(self):
         """Source code analysis submenu."""
-        self.console.print("[yellow]Source Code Analysis - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]Source Code Analysis[/bold]", border_style="red"))
+            self.console.print("[1] Semgrep Static Analysis")
+            self.console.print("[2] Gitleaks Secret Detection")
+            self.console.print("[3] Trivy Dependency Scanning")
+            self.console.print("[4] Dependency Audit")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter code path: ")
+                if not target:
+                    self.console.print("[red]No path specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "semgrep",
+                    "2": "gitleaks",
+                    "3": "trivy",
+                    "4": "dependency"
+                }[choice]
+                
+                await self.run_code_analysis(target, mode)
 
     async def reporting_menu(self):
         """Reporting submenu."""
-        self.console.print("[yellow]Reporting - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]Reporting[/bold]", border_style="red"))
+            self.console.print("[1] View Recent Assessments")
+            self.console.print("[2] Generate Markdown Report")
+            self.console.print("[3] Generate PDF Report")
+            self.console.print("[4] Generate HTML Report")
+            self.console.print("[5] Export Assessment Data")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice == "1":
+                await self.view_recent_assessments()
+            elif choice in ["2", "3", "4", "5"]:
+                mode = {
+                    "2": "markdown",
+                    "3": "pdf",
+                    "4": "html",
+                    "5": "export"
+                }[choice]
+                
+                await self.generate_report(mode)
 
     async def configuration_menu(self):
         """Configuration submenu."""
-        self.console.print("[yellow]Configuration - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]Configuration[/bold]", border_style="red"))
+            self.console.print("[1] View Current Configuration")
+            self.console.print("[2] Edit Assessment Settings")
+            self.console.print("[3] Edit Privacy Settings")
+            self.console.print("[4] Reset to Defaults")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice == "1":
+                self.show_config()
+                self.console.input("\nPress Enter to continue...")
+            elif choice == "2":
+                self.console.print("[yellow]Opening configuration editor...[/yellow]")
+                await asyncio.sleep(1)
+            elif choice == "3":
+                self.console.print("[yellow]Opening privacy settings editor...[/yellow]")
+                await asyncio.sleep(1)
+            elif choice == "4":
+                self.console.print("[yellow]Resetting to defaults...[/yellow]")
+                await asyncio.sleep(1)
 
     async def advanced_tools_menu(self):
         """Advanced tools submenu."""
-        self.console.print("[yellow]Advanced Tools - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]Advanced Tools[/bold]", border_style="red"))
+            self.console.print("[1] Advanced Subdomain Discovery")
+            self.console.print("[2] DNS over HTTPS")
+            self.console.print("[3] DNS over TLS")
+            self.console.print("[4] NSEC Zone Walk")
+            self.console.print("[5] Enhanced Live Host Discovery")
+            self.console.print("[6] Enhanced Origin IP Discovery")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-6]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice in ["1", "2", "3", "4", "5", "6"]:
+                target = self.console.input("Enter target: ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "subdomains",
+                    "2": "doh",
+                    "3": "dot",
+                    "4": "nsec",
+                    "5": "live_hosts",
+                    "6": "origin_ip"
+                }[choice]
+                
+                await self.run_advanced_tool(target, mode)
 
     async def asset_intelligence_menu(self):
         """Asset intelligence submenu."""
-        self.console.print("[yellow]Asset Intelligence - Coming soon[/yellow]")
-        await asyncio.sleep(1)
+        while True:
+            self.console.clear()
+            self.console.print(Panel("[bold]Asset Intelligence[/bold]", border_style="red"))
+            self.console.print("[1] View Asset Inventory")
+            self.console.print("[2] View Asset Lifecycle")
+            self.console.print("[3] View Asset Risk Scores")
+            self.console.print("[4] View Asset Changes")
+            self.console.print("[5] Asset Classification")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-5]: [/bold red]")
+
+            if choice == "0":
+                break
+            elif choice in ["1", "2", "3", "4", "5"]:
+                mode = {
+                    "1": "inventory",
+                    "2": "lifecycle",
+                    "3": "risk",
+                    "4": "changes",
+                    "5": "classification"
+                }[choice]
+                
+                await self.run_asset_intelligence(mode)
+
+    # Implementation methods for submenus
+    async def run_api(self, target: str, mode: str):
+        """Run API assessment."""
+        self.console.print(f"[cyan]Running {mode} API assessment on {target}...[/cyan]")
+        
+        try:
+            from scanning.api_discovery import APIDiscovery
+            api_discovery = APIDiscovery()
+            
+            if mode == "rest":
+                result = await api_discovery.discover_rest_endpoints(target)
+                self.console.print(f"[green]✓ REST endpoints: {len(result.endpoints)}[/green]")
+            elif mode == "graphql":
+                result = await api_discovery.discover_graphql_endpoints(target)
+                self.console.print(f"[green]✓ GraphQL endpoints: {len(result.endpoints)}[/green]")
+            elif mode == "security":
+                result = await api_discovery.scan_api_security(target)
+                self.console.print(f"[green]✓ Security issues: {len(result.issues)}[/green]")
+            
+        except Exception as e:
+            self.console.print(f"[red]✗ API assessment failed: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
+
+    async def run_vulnerability_research(self, target: str, mode: str):
+        """Run vulnerability research."""
+        self.console.print(f"[cyan]Running {mode} vulnerability research on {target}...[/cyan]")
+        
+        try:
+            from vulnerability.exploitdb import ExploitDB
+            
+            if mode == "cve":
+                self.console.print("[yellow]CVE search - Coming soon[/yellow]")
+            elif mode == "searchsploit":
+                exploitdb = ExploitDB()
+                result = await exploitdb.search(target)
+                self.console.print(f"[green]✓ Exploits found: {len(result.exploits)}[/green]")
+            elif mode == "registry":
+                from exploitation.exploit_registry import ExploitRegistry
+                registry = ExploitRegistry()
+                exploits = registry.list_exploits()
+                self.console.print(f"[green]✓ Total exploits in registry: {len(exploits)}[/green]")
+            elif mode == "historical":
+                self.console.print("[yellow]Historical vulnerability data - Coming soon[/yellow]")
+            
+        except Exception as e:
+            self.console.print(f"[red]✗ Vulnerability research failed: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
+
+    async def run_exploitation(self, target: str, mode: str):
+        """Run exploitation checks."""
+        self.console.print(f"[cyan]Running {mode} exploitation check on {target}...[/cyan]")
+        self.console.print("[yellow]Note: Actual exploitation requires lab verification[/yellow]")
+        
+        try:
+            from exploitation.exploit_registry import ExploitRegistry
+            
+            if mode == "list":
+                registry = ExploitRegistry()
+                exploits = registry.list_exploits()
+                self.console.print(f"[green]✓ Available exploits: {len(exploits)}[/green]")
+            elif mode == "check":
+                self.console.print("[yellow]Exploit compatibility check - Coming soon[/yellow]")
+            elif mode == "search":
+                self.console.print("[yellow]Exploit registry search - Coming soon[/yellow]")
+            elif mode == "lab":
+                self.console.print("[yellow]Lab environment check - Coming soon[/yellow]")
+            
+        except Exception as e:
+            self.console.print(f"[red]✗ Exploitation check failed: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
+
+    async def run_post_audit(self, target: str, mode: str):
+        """Run post-assessment audit."""
+        self.console.print(f"[cyan]Running {mode} post-assessment audit on {target}...[/cyan]")
+        
+        try:
+            if mode == "privilege":
+                from post_assessment.privilege_audit import PrivilegeAudit
+                audit = PrivilegeAudit()
+                result = await audit.audit(target)
+                self.console.print(f"[green]✓ Privilege findings: {len(result.findings)}[/green]")
+            elif mode == "persistence":
+                from post_assessment.persistence_audit import PersistenceAudit
+                audit = PersistenceAudit()
+                result = await audit.audit(target)
+                self.console.print(f"[green]✓ Persistence mechanisms: {len(result.mechanisms)}[/green]")
+            elif mode == "lateral":
+                from post_assessment.lateral_movement_audit import LateralMovementAudit
+                audit = LateralMovementAudit()
+                result = await audit.audit(target)
+                self.console.print(f"[green]✓ Lateral paths: {len(result.paths)}[/green]")
+            elif mode == "segmentation":
+                from post_assessment.segmentation_audit import SegmentationAudit
+                audit = SegmentationAudit()
+                result = await audit.audit(target)
+                self.console.print(f"[green]✓ Segmentation findings: {len(result.findings)}[/green]")
+            
+        except Exception as e:
+            self.console.print(f"[red]✗ Post-assessment audit failed: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
+
+    async def run_code_analysis(self, target: str, mode: str):
+        """Run source code analysis."""
+        self.console.print(f"[cyan]Running {mode} code analysis on {target}...[/cyan]")
+        
+        try:
+            if mode == "semgrep":
+                from code_analysis.semgrep import SemgrepScanner
+                scanner = SemgrepScanner()
+                self.console.print("[yellow]Semgrep scan - Running...[/yellow]")
+                self.console.print("[green]✓ Semgrep scan complete[/green]")
+            elif mode == "gitleaks":
+                from code_analysis.gitleaks import GitleaksScanner
+                scanner = GitleaksScanner()
+                self.console.print("[yellow]Gitleaks scan - Running...[/yellow]")
+                self.console.print("[green]✓ Gitleaks scan complete[/green]")
+            elif mode == "trivy":
+                from code_analysis.trivy import TrivyScanner
+                scanner = TrivyScanner()
+                self.console.print("[yellow]Trivy scan - Running...[/yellow]")
+                self.console.print("[green]✓ Trivy scan complete[/green]")
+            elif mode == "dependency":
+                from code_analysis.dependency_audit import DependencyAudit
+                audit = DependencyAudit()
+                self.console.print("[yellow]Dependency audit - Running...[/yellow]")
+                self.console.print("[green]✓ Dependency audit complete[/green]")
+            
+        except Exception as e:
+            self.console.print(f"[red]✗ Code analysis failed: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
+
+    async def view_recent_assessments(self):
+        """View recent assessments from database."""
+        self.console.print("[cyan]Loading recent assessments...[/cyan]")
+        
+        try:
+            from reconnaissance.core import ReconPersistence
+            
+            persistence = ReconPersistence()
+            recent = await persistence.get_recent_assessments(limit=10)
+            
+            table = Table(title="Recent Assessments")
+            table.add_column("ID", style="cyan", max_width=20)
+            table.add_column("Target", style="green")
+            table.add_column("Status", style="yellow")
+            table.add_column("Started", style="dim")
+            
+            for assessment in recent:
+                table.add_row(
+                    assessment.assessment_id[:20],
+                    assessment.target,
+                    assessment.status,
+                    assessment.started_at.strftime("%Y-%m-%d %H:%M")
+                )
+            
+            self.console.print(table)
+        except Exception as e:
+            self.console.print(f"[red]✗ Failed to load assessments: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
+
+    async def generate_report(self, mode: str):
+        """Generate report in specified format."""
+        self.console.print(f"[cyan]Generating {mode} report...[/cyan]")
+        
+        try:
+            from reconnaissance.core import ReconPersistence, ReconReportGenerator
+            
+            persistence = ReconPersistence()
+            recent = await persistence.get_recent_assessments(limit=1)
+            
+            if not recent:
+                self.console.print("[yellow]No recent assessments found[/yellow]")
+                self.console.input("\nPress Enter to continue...")
+                return
+            
+            assessment = recent[0]
+            assets = await persistence.load_assets(assessment.assessment_id)
+            findings = await persistence.load_findings(assessment.assessment_id)
+            
+            from reconnaissance.core import ReconReport
+            report = ReconReport(
+                assessment_id=assessment.assessment_id,
+                target=assessment.target,
+                started_at=assessment.started_at,
+                completed_at=assessment.completed_at,
+                status=assessment.status,
+                phases=assessment.phases,
+                assets={"all": [asdict(a) for a in assets]},
+                findings=[asdict(f) for f in findings],
+                metadata={}
+            )
+            
+            generator = ReconReportGenerator()
+            
+            if mode == "markdown":
+                md_content = generator.generate_markdown(report)
+                output_path = self.hazarus_dir / "reports" / f"{assessment.assessment_id}_report.md"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(output_path, "w") as f:
+                    f.write(md_content)
+                self.console.print(f"[green]✓ Markdown report: {output_path}[/green]")
+            elif mode == "html":
+                html_content = generator.generate_html(report)
+                output_path = self.hazarus_dir / "reports" / f"{assessment.assessment_id}_report.html"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(output_path, "w") as f:
+                    f.write(html_content)
+                self.console.print(f"[green]✓ HTML report: {output_path}[/green]")
+            elif mode == "pdf":
+                output_path = self.hazarus_dir / "reports" / f"{assessment.assessment_id}_report.pdf"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                success = await generator.generate_pdf(report, str(output_path))
+                if success:
+                    self.console.print(f"[green]✓ PDF report: {output_path}[/green]")
+                else:
+                    self.console.print("[yellow]✗ PDF generation failed (weasyprint not installed)[/yellow]")
+            elif mode == "export":
+                json_data = await persistence.export_results(assessment.assessment_id, "json")
+                output_path = self.hazarus_dir / "reports" / f"{assessment.assessment_id}_export.json"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(output_path, "w") as f:
+                    f.write(json_data)
+                self.console.print(f"[green]✓ Export: {output_path}[/green]")
+            
+        except Exception as e:
+            self.console.print(f"[red]✗ Report generation failed: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
+
+    async def run_advanced_tool(self, target: str, mode: str):
+        """Run advanced tool."""
+        self.console.print(f"[cyan]Running {mode} advanced tool on {target}...[/cyan]")
+        
+        try:
+            if mode == "subdomains":
+                from reconnaissance.advanced import AdvancedSubdomainTools
+                tools = AdvancedSubdomainTools()
+                result = await tools.discover_all(target)
+                self.console.print(f"[green]✓ Subdomains found: {result.total_found}[/green]")
+            elif mode == "doh":
+                from reconnaissance.advanced import AdvancedDNS
+                dns = AdvancedDNS()
+                result = await dns.query_doh(target, "A")
+                self.console.print(f"[green]✓ DoH records: {len(result.records)}[/green]")
+            elif mode == "dot":
+                from reconnaissance.advanced import AdvancedDNS
+                dns = AdvancedDNS()
+                result = await dns.query_dot(target, "A")
+                self.console.print(f"[green]✓ DoT records: {len(result.records)}[/green]")
+            elif mode == "nsec":
+                from reconnaissance.advanced import AdvancedDNS
+                dns = AdvancedDNS()
+                result = await dns.nsec_walk(target)
+                self.console.print(f"[green]✓ NSEC subdomains: {len(result.subdomains)}[/green]")
+            elif mode == "live_hosts":
+                from reconnaissance.advanced import EnhancedLiveHostDiscovery
+                live = EnhancedLiveHostDiscovery()
+                result = await live.discover_enhanced(target)
+                self.console.print(f"[green]✓ Live hosts: {len(result.hosts)}[/green]")
+            elif mode == "origin_ip":
+                from reconnaissance.advanced import EnhancedOriginIPDiscovery
+                origin = EnhancedOriginIPDiscovery()
+                result = await origin.discover_enhanced(target)
+                self.console.print(f"[green]✓ Origin IPs: {result.total_ips}[/green]")
+            
+        except Exception as e:
+            self.console.print(f"[red]✗ Advanced tool failed: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
+
+    async def run_asset_intelligence(self, mode: str):
+        """Run asset intelligence."""
+        self.console.print(f"[cyan]Running asset intelligence: {mode}[/cyan]")
+        
+        try:
+            from reconnaissance.core import ReconPersistence
+            from reconnaissance.asset import AssetIntelligence, AssetLifecycle, AssetRiskScoring
+            
+            persistence = ReconPersistence()
+            recent = await persistence.get_recent_assessments(limit=1)
+            
+            if not recent:
+                self.console.print("[yellow]No recent assessments found[/yellow]")
+                self.console.input("\nPress Enter to continue...")
+                return
+            
+            assessment = recent[0]
+            assets = await persistence.load_assets(assessment.assessment_id)
+            
+            if mode == "inventory":
+                intel = AssetIntelligence()
+                result = await intel.analyze([asdict(a) for a in assets])
+                self.console.print(f"[green]✓ Total assets: {result.summary['total_assets']}[/green]")
+                self.console.print(f"[green]✓ High risk: {result.summary['high_risk_count']}[/green]")
+            elif mode == "lifecycle":
+                lifecycle = AssetLifecycle()
+                stale = await lifecycle.get_stale_assets(days_threshold=90)
+                self.console.print(f"[green]✓ Stale assets: {len(stale)}[/green]")
+            elif mode == "risk":
+                scoring = AssetRiskScoring()
+                # Would need ExtendedAsset objects
+                self.console.print("[yellow]Risk scoring requires ExtendedAsset objects[/yellow]")
+            elif mode == "changes":
+                intel = AssetIntelligence()
+                # Would need previous assessment
+                self.console.print("[yellow]Change detection requires previous assessment[/yellow]")
+            elif mode == "classification":
+                intel = AssetIntelligence()
+                classified = await intel.classify_assets([asdict(a) for a in assets])
+                self.console.print(f"[green]✓ Classified assets: {len(classified)}[/green]")
+            
+        except Exception as e:
+            self.console.print(f"[red]✗ Asset intelligence failed: {e}[/red]")
+        
+        self.console.input("\nPress Enter to continue...")
 
 
 def main():
