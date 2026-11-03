@@ -75,7 +75,7 @@ dashboard = [
 ]
 
 [project.scripts]
-hazarus = "hazarus.cli:main"
+hazarus = "hazarus.cli:main_entry"
 
 [build-system]
 requires = ["setuptools>=68.0.0", "wheel"]
