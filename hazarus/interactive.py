@@ -1579,7 +1579,7 @@ class InteractiveMode:
             elif choice == "6":
                 await self.validate_tools(validator)
     
-    async def list_tools(self, detector: ToolDetector):
+    async def list_tools(self, detector: 'ToolDetector'):
         """List all tools with their status."""
         self.console.print("\n[bold cyan]Tool Status Report[/bold cyan]\n")
         
@@ -1603,7 +1603,7 @@ class InteractiveMode:
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
     
-    async def check_tool_status(self, detector: ToolDetector):
+    async def check_tool_status(self, detector: 'ToolDetector'):
         """Check and display tool installation status."""
         self.console.print("\n[bold cyan]Checking Tool Installation Status...[/bold cyan]\n")
         
@@ -1624,7 +1624,7 @@ class InteractiveMode:
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
     
-    async def install_missing_tools(self, installer: ToolInstaller):
+    async def install_missing_tools(self, installer: 'ToolInstaller'):
         """Install all missing tools."""
         self.console.print("\n[bold cyan]Installing Missing Tools...[/bold cyan]\n")
         
@@ -1653,7 +1653,7 @@ class InteractiveMode:
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
     
-    async def install_specific_tool(self, installer: ToolInstaller):
+    async def install_specific_tool(self, installer: 'ToolInstaller'):
         """Install a specific tool."""
         tool_name = self.console.input("\n[bold cyan]Enter tool name to install: [/bold cyan]")
         
@@ -1676,7 +1676,7 @@ class InteractiveMode:
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
     
-    async def configure_tools(self, configurer: ToolConfigurer):
+    async def configure_tools(self, configurer: 'ToolConfigurer'):
         """Configure all tools for HAZARUS integration."""
         self.console.print("\n[bold cyan]Configuring Tools...[/bold cyan]\n")
         
@@ -1697,7 +1697,7 @@ class InteractiveMode:
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
     
-    async def validate_tools(self, validator: ToolValidator):
+    async def validate_tools(self, validator: 'ToolValidator'):
         """Validate all installed tools."""
         self.console.print("\n[bold cyan]Validating Tools...[/bold cyan]\n")
         
