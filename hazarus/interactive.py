@@ -1438,7 +1438,6 @@ class InteractiveMode:
         # Generate report
         try:
             from reporting import ReportGenerator
-            from datetime import datetime
             from pathlib import Path
             
             report_dir = self.hazarus_dir / "reports"
