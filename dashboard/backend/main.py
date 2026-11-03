@@ -264,7 +264,16 @@ async def get_findings(
     if assessment_id not in assessments:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    # Placeholder - would load from actual assessment data
+    # Load from actual assessment data
+    assessment = assessments.get(assessment_id)
+    if assessment:
+        return {
+            "assessment_id": assessment_id,
+            "findings": assessment.get("findings", []),
+            "target": assessment.get("target"),
+            "status": assessment.get("status", "completed"),
+            "scan_date": assessment.get("scan_date")
+        }
     return {"assessment_id": assessment_id, "findings": []}
 
 
@@ -277,7 +286,16 @@ async def list_vulnerabilities(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    # Placeholder - would query vulnerability database
+    # Query vulnerability database (load from config/vulnerabilities.json)
+    try:
+        import json
+        vuln_file = Path("config/vulnerabilities.json")
+        if vuln_file.exists():
+            with open(vuln_file) as f:
+                vuln_data = json.load(f)
+            return {"vulnerabilities": vuln_data.get("vulnerabilities", [])}
+    except Exception:
+        pass
     return {"vulnerabilities": []}
 
 
