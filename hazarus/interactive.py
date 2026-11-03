@@ -1053,19 +1053,28 @@ class InteractiveMode:
                 
                 nmap = NmapScanner()
                 if aggressive:
-                    nmap_result = await nmap.advanced_scan(
-                        targets=[target],
-                        ports="1-65535",
-                        tcp_scan=True,
-                        udp_scan=True,
-                        service_detection=True,
-                        os_detection=True,
-                        script_scan=True,
-                        vuln_scan=True,
-                        traceroute=True,
-                        aggressive=True,
-                        timing=4
-                    )
+                    # Check for sudo
+                    if is_sudo:
+                        nmap_result = await nmap.advanced_scan(
+                            targets=[target],
+                            ports="1-65535",
+                            tcp_scan=True,
+                            udp_scan=True,
+                            service_detection=True,
+                            os_detection=True,
+                            script_scan=True,
+                            vuln_scan=True,
+                            traceroute=True,
+                            aggressive=True,
+                            timing=4
+                        )
+                    else:
+                        self.console.print("  [yellow]⚠ Advanced scan requires sudo - using basic scan[/yellow]")
+                        nmap_result = await nmap.scan(
+                            targets=[target],
+                            ports="1-1000",
+                            scan_type="sT"
+                        )
                 else:
                     nmap_result = await nmap.scan(
                         targets=[target],
@@ -1085,6 +1094,8 @@ class InteractiveMode:
                 phase_results['scan'] = {'open_ports': open_ports}
             except Exception as e:
                 self.console.print(f"  [red]✗ Network scan failed: {e}[/red]")
+                import traceback
+                self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
                 phase_results['scan'] = None
             self.console.print()
         
@@ -1162,21 +1173,23 @@ class InteractiveMode:
                     api_discovery = APIDiscovery()
                     
                     # REST endpoint discovery
-                    rest_result = await api_discovery.discover_rest_endpoints(target)
-                    self.console.print(f"  REST endpoints: {len(rest_result.endpoints)}")
+                    rest_result = await api_discovery.discover(target)
+                    rest_endpoints = [e.url for e in rest_result.endpoints if e.method.lower() in ['get', 'post', 'put', 'delete']]
+                    self.console.print(f"  REST endpoints: {len(rest_endpoints)}")
                     
                     # GraphQL endpoint discovery
-                    graphql_result = await api_discovery.discover_graphql_endpoints(target)
-                    self.console.print(f"  GraphQL endpoints: {len(graphql_result.endpoints)}")
+                    graphql_endpoints = rest_result.graphql_endpoints
+                    self.console.print(f"  GraphQL endpoints: {len(graphql_endpoints)}")
                     
                     # API security scan
                     security_result = await api_discovery.scan_api_security(target)
-                    self.console.print(f"  Security issues: {len(security_result.issues)}")
+                    security_issues = getattr(security_result, 'security_issues', [])
+                    self.console.print(f"  Security issues: {len(security_issues)}")
                     
                     phase_results['api'] = {
-                        'rest_endpoints': len(rest_result.endpoints),
-                        'graphql_endpoints': len(graphql_result.endpoints),
-                        'security_issues': len(security_result.issues)
+                        'rest_endpoints': len(rest_endpoints),
+                        'graphql_endpoints': len(graphql_endpoints),
+                        'security_issues': len(security_issues)
                     }
                 except Exception as e:
                     self.console.print(f"  [red]✗ API assessment failed: {e}[/red]")
@@ -1187,8 +1200,8 @@ class InteractiveMode:
             if "research" in phases:
                 self.console.print(f"[yellow][Phase {phases.index('research') + 1}/{len(phases)}] Vulnerability Research...[/yellow]")
                 try:
-                    from vulnerability.exploitdb import ExploitDB
-                    exploitdb = ExploitDB()
+                    from vulnerability import ExploitIntelligence
+                    exploitdb = ExploitIntelligence()
                     result = await exploitdb.search(target)
                     exploits = getattr(result, 'exploits', [])
                     self.console.print(f"  Exploits found: {len(exploits)}")
@@ -1283,6 +1296,28 @@ class InteractiveMode:
         
         self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
         self.console.print(f"{'='*80}\n")
+        
+        # Generate report
+        try:
+            from reporting import ReportGenerator
+            from datetime import datetime
+            from pathlib import Path
+            
+            report_dir = self.hazarus_dir / "reports"
+            report_dir.mkdir(parents=True, exist_ok=True)
+            
+            report_file = report_dir / f"comprehensive_{target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+            
+            report_gen = ReportGenerator()
+            report_gen.generate_comprehensive_report(
+                target=target,
+                phase_results=phase_results,
+                output_path=str(report_file)
+            )
+            
+            self.console.print(f"[green]✓ Report generated: {report_file}[/green]")
+        except Exception as e:
+            self.console.print(f"[yellow]⚠ Report generation failed: {e}[/yellow]")
         
         self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
         self.console.input("")
