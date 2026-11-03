@@ -167,13 +167,13 @@ class InteractiveMode:
                 break
             elif choice == "1":
                 target = self.console.input("Enter target (domain/IP): ")
-                self.add_target(target)
+                await self.add_target(target)
             elif choice == "2":
-                self.list_targets()
+                await self.list_targets()
             elif choice == "3":
-                self.validate_scope()
+                await self.validate_scope()
             elif choice == "4":
-                self.edit_scope()
+                await self.edit_scope()
             elif choice == "5":
                 target = self.console.input("Enter target to set as current: ")
                 self.current_target = target
@@ -307,7 +307,7 @@ class InteractiveMode:
                 await self.run_comprehensive(target, mode)
 
     # Implementation methods that call actual logic
-    def add_target(self, target: str):
+    async def add_target(self, target: str):
         """Add target to scope."""
         self.console.print(f"[cyan]Adding target: {target}[/cyan]")
         # Import and call actual scope add function
@@ -320,7 +320,7 @@ class InteractiveMode:
             self.console.print(f"[red]✗ Failed to add target: {e}[/red]")
         await asyncio.sleep(1)
 
-    def list_targets(self):
+    async def list_targets(self):
         """List all targets in scope."""
         self.console.print("[cyan]Listing targets...[/cyan]")
         try:
@@ -343,7 +343,7 @@ class InteractiveMode:
         
         self.console.input("\nPress Enter to continue...")
 
-    def validate_scope(self):
+    async def validate_scope(self):
         """Validate scope configuration."""
         self.console.print("[cyan]Validating scope...[/cyan]")
         try:
@@ -360,7 +360,7 @@ class InteractiveMode:
         
         self.console.input("\nPress Enter to continue...")
 
-    def edit_scope(self):
+    async def edit_scope(self):
         """Edit scope configuration."""
         self.console.print("[cyan]Opening scope editor...[/cyan]")
         self.console.print("[yellow]This will open your default editor to edit config/scope.yaml[/yellow]")
@@ -515,6 +515,7 @@ class InteractiveMode:
         self.console.print("[green]✓ Comprehensive assessment complete[/green]")
         self.console.input("\nPress Enter to continue...")
 
+    # Placeholder methods for other menus
     async def api_assessment_menu(self):
         """API assessment submenu."""
         while True:
@@ -959,6 +960,7 @@ class InteractiveMode:
         
         try:
             from reconnaissance.core import ReconPersistence, ReconReportGenerator
+            from dataclasses import asdict
             
             persistence = ReconPersistence()
             recent = await persistence.get_recent_assessments(limit=1)
