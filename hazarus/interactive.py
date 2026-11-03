@@ -530,7 +530,7 @@ class InteractiveMode:
             if result.records:
                 self.console.print("\n[bold cyan]DNS Records Found:[/bold cyan]")
                 for record in result.records[:10]:  # Show first 10
-                    self.console.print(f"  [dim]{record.type}[/dim] [green]{record.value}[/green]")
+                    self.console.print(f"  [dim]{record.record_type}[/dim] [green]{record.value}[/green]")
                 if len(result.records) > 10:
                     self.console.print(f"  [dim]... and {len(result.records) - 10} more[/dim]")
             
@@ -717,13 +717,15 @@ class InteractiveMode:
             
             if result.security_headers:
                 self.console.print("\n[bold cyan]Security Headers:[/bold cyan]")
-                for header, value in result.security_headers.items():
-                    self.console.print(f"  [cyan]{header}:[/cyan] [green]{value}[/green]")
+                for header in result.security_headers:
+                    self.console.print(f"  [cyan]{header.name}:[/cyan] [green]{header.value or 'Not Present'}[/green] [dim]({header.severity})[/dim]")
             
             if result.cookies:
                 self.console.print("\n[bold cyan]Cookies:[/bold cyan]")
                 for cookie in result.cookies[:10]:
-                    self.console.print(f"  [green]{cookie.name}[/green] [dim]({cookie.domain})[/dim]")
+                    cookie_name = cookie.get('name', 'unknown')
+                    cookie_domain = cookie.get('domain', 'unknown')
+                    self.console.print(f"  [green]{cookie_name}[/green] [dim]({cookie_domain})[/dim]")
                 if len(result.cookies) > 10:
                     self.console.print(f"  [dim]... and {len(result.cookies) - 10} more[/dim]")
             
@@ -733,26 +735,32 @@ class InteractiveMode:
                 if mode == "whatweb":
                     self.console.print(f"\n[yellow][2/4] Technology Detection...[/yellow]")
                     whatweb_result = await web_tools.whatweb_scan(target)
-                    self.console.print(f"[green]✓ Technologies: {len(whatweb_result.technologies)}[/green]")
-                    if whatweb_result.technologies:
+                    technologies = getattr(whatweb_result, 'technologies', [])
+                    self.console.print(f"[green]✓ Technologies: {len(technologies)}[/green]")
+                    if technologies:
                         self.console.print("\n[bold cyan]Technologies Detected:[/bold cyan]")
-                        for tech in whatweb_result.technologies[:15]:
+                        for tech in technologies[:15]:
                             self.console.print(f"  [green]{tech}[/green]")
                 elif mode == "gobuster":
                     self.console.print(f"\n[yellow][2/4] Directory Enumeration...[/yellow]")
                     gobuster_result = await web_tools.gobuster_scan(target)
-                    self.console.print(f"[green]✓ Directories: {gobuster_result.total_found}[/green]")
-                    if gobuster_result.directories:
+                    total_found = getattr(gobuster_result, 'total_found', 0)
+                    directories = getattr(gobuster_result, 'directories', [])
+                    self.console.print(f"[green]✓ Directories: {total_found}[/green]")
+                    if directories:
                         self.console.print("\n[bold cyan]Directories Found:[/bold cyan]")
-                        for dir in gobuster_result.directories[:15]:
+                        for dir in directories[:15]:
                             self.console.print(f"  [green]{dir}[/green]")
                 elif mode == "wpscan":
                     self.console.print(f"\n[yellow][2/4] WordPress Security Scan...[/yellow]")
                     wpscan_result = await web_tools.wpscan_scan(target)
-                    self.console.print(f"[green]✓ WordPress: {wpscan_result.is_wordpress}[/green]")
-                    if wpscan_result.is_wordpress:
-                        self.console.print(f"[dim]  Version: {wpscan_result.version or 'Unknown'}[/dim]")
-                        self.console.print(f"[dim]  Plugins: {len(wpscan_result.plugins)}[/dim]")
+                    is_wordpress = getattr(wpscan_result, 'is_wordpress', False)
+                    version = getattr(wpscan_result, 'version', None)
+                    plugins = getattr(wpscan_result, 'plugins', [])
+                    self.console.print(f"[green]✓ WordPress: {is_wordpress}[/green]")
+                    if is_wordpress:
+                        self.console.print(f"[dim]  Version: {version or 'Unknown'}[/dim]")
+                        self.console.print(f"[dim]  Plugins: {len(plugins)}[/dim]")
             
             # Summary
             self.console.print(f"\n{'='*80}")
