@@ -52,7 +52,38 @@ class NmapScanner:
 
     def __init__(self):
         self.logger = logging.getLogger("hazarus.nmap_scanner")
-        self.is_root = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
+        # Check for root privileges (works with sudo)
+        self.is_root = self._check_root()
+
+    def _check_root(self) -> bool:
+        """Check if running with root privileges (works with sudo)."""
+        try:
+            # Method 1: Check effective user ID
+            if hasattr(os, 'geteuid'):
+                if os.geteuid() == 0:
+                    self.logger.info("Running with root privileges (detected via geteuid)")
+                    return True
+
+            # Method 2: Check SUDO_UID environment variable
+            if os.environ.get('SUDO_UID') is not None:
+                self.logger.info("Running with root privileges (detected via SUDO_UID)")
+                return True
+
+            # Method 3: Check if we can write to /root (requires root)
+            try:
+                with open('/root/.hazarus_root_test', 'w') as f:
+                    f.write('test')
+                os.remove('/root/.hazarus_root_test')
+                self.logger.info("Running with root privileges (detected via /root write test)")
+                return True
+            except (PermissionError, IOError):
+                pass
+
+            self.logger.info("Not running with root privileges")
+            return False
+        except Exception as e:
+            self.logger.warning(f"Error checking root privileges: {e}")
+            return False
 
     async def scan(
         self,

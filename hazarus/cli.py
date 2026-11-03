@@ -370,6 +370,14 @@ def recon(
     console.print(Panel.fit("[bold blue]Reconnaissance[/bold blue]"))
     console.print(f"Targets: {', '.join(targets)}")
 
+    # Check if running with sudo
+    import os
+    is_sudo = os.environ.get('SUDO_UID') is not None
+    if is_sudo:
+        console.print("[green]✓ Running with sudo privileges - advanced features enabled[/green]")
+    else:
+        console.print("[yellow]⚠ Not running with sudo - some features may be limited (use 'sudo hazarus' for full capabilities)[/yellow]")
+
     async def _run_recon():
         from reconnaissance.dns import DNSRecon
         from reconnaissance.whois import WhoisRecon
@@ -712,14 +720,22 @@ def scan(
     console.print(f"Targets: {', '.join(targets)}")
     console.print(f"Ports: {ports}")
 
+    # Check if running with sudo
+    import os
+    is_sudo = os.environ.get('SUDO_UID') is not None
+    if is_sudo:
+        console.print("[green]✓ Running with sudo privileges - SYN scan and OS detection enabled[/green]")
+    else:
+        console.print("[yellow]⚠ Not running with sudo - using TCP connect scan (use 'sudo hazarus' for SYN scan and OS detection)[/yellow]")
+
     if basic:
         console.print("[yellow]Basic scanning mode[/yellow]")
     else:
         console.print("[green]Advanced deep scanning enabled (default)[/green]")
-        console.print("  - TCP SYN scan")
+        console.print("  - TCP SYN scan (with sudo) or TCP connect (without sudo)")
         console.print("  - UDP scan")
         console.print("  - Service detection")
-        console.print("  - OS detection")
+        console.print("  - OS detection (with sudo)")
         console.print("  - Script scanning")
         console.print("  - Vulnerability detection")
         console.print("  - Traceroute")
