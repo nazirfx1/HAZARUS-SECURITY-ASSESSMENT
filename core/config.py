@@ -93,6 +93,7 @@ class AssessmentConfig:
     request_limit: int = 10000
     max_threads: int = 10
     window: dict = field(default_factory=lambda: {"start": "00:00", "end": "23:59"})
+    wordlists: dict = field(default_factory=lambda: {"subdomains": "", "directories": "", "passwords": "", "usernames": ""})
 
 
 @dataclass
