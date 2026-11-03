@@ -1254,6 +1254,12 @@ def assess(
         "-s",
         help="Path to scope configuration file"
     ),
+    comprehensive: bool = typer.Option(
+        False,
+        "--comprehensive",
+        "-C",
+        help="Run comprehensive assessment (all phases with aggressive, active, and live hosts)"
+    ),
     privacy: bool = typer.Option(
         True,
         "--privacy",
@@ -1337,6 +1343,23 @@ def assess(
     console.print(Panel.fit("[bold blue]Comprehensive Security Assessment[/bold blue]"))
     console.print(f"Targets: {', '.join(targets)}")
     
+    # Handle --comprehensive flag (enables all phases with aggressive/active/live_hosts)
+    if comprehensive:
+        privacy = True
+        recon = True
+        scan = True
+        web = True
+        api = True
+        research = True
+        exploit_list = True
+        post_audit = True
+        lateral_audit = True
+        code_analyze = True
+        aggressive = True
+        active = True
+        live_hosts = True
+        console.print("[red]⚠ COMPREHENSIVE MODE: All phases enabled with aggressive, active, and live hosts[/red]")
+    
     # Check if running with sudo
     import os
     is_sudo = os.environ.get('SUDO_UID') is not None
@@ -1354,8 +1377,12 @@ def assess(
         if is_sudo:
             console.print("[green]✓ Live host discovery enabled[/green]")
         else:
-            console.print("[red]✗ Live host discovery requires sudo - disabled[/red]")
-            live_hosts = False
+            if comprehensive:
+                console.print("[red]✗ Live host discovery requires sudo - running without live hosts[/red]")
+                live_hosts = False
+            else:
+                console.print("[red]✗ Live host discovery requires sudo - disabled[/red]")
+                live_hosts = False
     
     # Show assessment plan
     console.print("\n[bold]Assessment Plan:[/bold]")
