@@ -9,6 +9,9 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from core.config import get_config
+config = get_config()
+
 
 @dataclass
 class OllamaResult:
@@ -64,7 +67,7 @@ class OllamaClient:
             
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(),
-                timeout=300
+                timeout=config.get('timeouts.ai', 300)
             )
             
             result.response = stdout.decode()

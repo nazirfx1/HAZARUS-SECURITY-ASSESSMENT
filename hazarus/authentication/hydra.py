@@ -9,6 +9,9 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from core.config import get_config
+config = get_config()
+
 
 @dataclass
 class HydraResult:
@@ -75,7 +78,7 @@ class HydraTester:
             
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(),
-                timeout=600
+                timeout=config.get('timeouts.advanced_web', 600)
             )
             
             # Parse output
