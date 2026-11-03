@@ -81,8 +81,20 @@ class PrivilegeAudit:
     async def _check_suid_files(self, result: PrivilegeAuditResult) -> None:
         """Check for SUID/SGID files."""
         try:
+            # Check if we're auditing a local system or remote target
+            # For remote targets, we can't check SUID files directly
+            if "/" not in result.target or not result.target.startswith("/"):
+                self.logger.info("Target is not a local path, skipping SUID file check")
+                result.findings.append(PrivilegeFinding(
+                    type="info",
+                    description="SUID file check skipped - target is not a local filesystem",
+                    severity="info",
+                    evidence="Remote target"
+                ))
+                return
+
             process = await asyncio.create_subprocess_exec(
-                "find", "/", "-perm", "-4000", "-o", "-perm", "-2000",
+                "find", result.target, "-perm", "-4000", "-o", "-perm", "-2000",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -98,6 +110,21 @@ class PrivilegeAudit:
                     "/bin/passwd", "/bin/su", "/usr/bin/sudo",
                     "/usr/bin/passwd", "/usr/bin/su"
                 ]
+                
+                for file in result.suid_files:
+                    if any(risk in file for risk in risky_files):
+                        result.findings.append(PrivilegeFinding(
+                            type="suid",
+                            description=f"Risky SUID file: {file}",
+                            severity="high",
+                            evidence=file,
+                            location=file
+                        ))
+                else:
+                    self.logger.info(f"Found {len(result.suid_files)} SUID/SGID files")
+
+        except Exception as e:
+            self.logger.warning(f"SUID file check failed: {e}")
 
                 for file in result.suid_files:
                     if file in risky_files:

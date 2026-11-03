@@ -70,6 +70,19 @@ class LateralMovementAudit:
     async def _discover_network_hosts(self, result: LateralMovementResult) -> None:
         """Discover hosts on the network."""
         try:
+            # Check if target is an IP/CIDR for network discovery
+            import ipaddress
+            try:
+                ipaddress.ip_network(result.target, strict=False)
+                is_network = True
+            except:
+                is_network = False
+
+            if not is_network:
+                self.logger.info("Target is not a network range, skipping network host discovery")
+                result.findings = []
+                return
+
             process = await asyncio.create_subprocess_exec(
                 "arp", "-a",
                 stdout=asyncio.subprocess.PIPE,
@@ -89,6 +102,9 @@ class LateralMovementAudit:
                             hosts.append(ip)
 
                 result.network_hosts = list(set(hosts))
+                self.logger.info(f"Discovered {len(result.network_hosts)} network hosts")
+            else:
+                self.logger.warning(f"ARP scan failed: {stderr.decode()}")
 
         except Exception as e:
             self.logger.error(f"Network discovery failed: {e}")
@@ -96,8 +112,80 @@ class LateralMovementAudit:
     async def _check_smb_shares(self, result: LateralMovementResult) -> None:
         """Check for accessible SMB shares."""
         try:
+            # Check if smbclient is available
+            proc = await asyncio.create_subprocess_exec(
+                "which", "smbclient",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await proc.communicate()
+
+            if proc.returncode != 0:
+                self.logger.info("smbclient not available, skipping SMB share check")
+                return
+
             process = await asyncio.create_subprocess_exec(
                 "smbclient", "-L", "localhost",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+
+            if process.returncode == 0:
+                shares = stdout.decode().strip().split("\n")
+                result.trust_relationships = [s for s in shares if s and "Share" not in s]
+                self.logger.info(f"Found {len(result.trust_relationships)} SMB shares")
+
+        except Exception as e:
+            self.logger.warning(f"SMB share check failed: {e}")
+
+    async def _check_ssh_known_hosts(self, result: LateralMovementResult) -> None:
+        """Check SSH known hosts for lateral movement paths."""
+        try:
+            import os
+            known_hosts = os.path.expanduser("~/.ssh/known_hosts")
+            
+            if os.path.exists(known_hosts):
+                with open(known_hosts, "r") as f:
+                    hosts = f.readlines()
+                
+                for host in hosts:
+                    if host.strip() and not host.startswith("#"):
+                        host_parts = host.split()[0]
+                        result.paths.append(LateralPath(
+                            source=result.target,
+                            destination=host_parts,
+                            method="ssh",
+                            accessible=True
+                        ))
+                
+                self.logger.info(f"Found {len(result.paths)} SSH known hosts")
+            else:
+                self.logger.info("No SSH known hosts file found")
+
+        except Exception as e:
+            self.logger.warning(f"SSH known hosts check failed: {e}")
+
+    async def _check_cached_credentials(self, result: LateralMovementResult) -> None:
+        """Check for cached credentials that could enable lateral movement."""
+        try:
+            import os
+            # Check common credential cache locations
+            credential_files = [
+                "~/.aws/credentials",
+                "~/.docker/config.json",
+                "~/.git-credentials",
+                "~/.netrc"
+            ]
+            
+            for cred_file in credential_files:
+                cred_path = os.path.expanduser(cred_file)
+                if os.path.exists(cred_path):
+                    result.trust_relationships.append(f"Credential file: {cred_file}")
+                    self.logger.warning(f"Found credential file: {cred_file}")
+
+        except Exception as e:
+            self.logger.warning(f"Cached credentials check failed: {e}")
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )

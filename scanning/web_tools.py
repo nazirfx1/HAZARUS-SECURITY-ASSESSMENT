@@ -80,13 +80,16 @@ class AdvancedWebTools:
 
             self.logger.info(f"Running WPScan for {target}")
 
-            # Build wpscan command
-            cmd = ["wpscan", "--url", target, "--no-update", "--enumerate"]
+            # Build wpscan command with improved error handling
+            cmd = ["wpscan", "--url", target, "--no-update", "--enumerate", "--no-banner"]
             
             if aggressive:
                 cmd.extend(["--plugins-detection", "aggressive", "--themes-detection", "aggressive"])
             else:
                 cmd.extend(["--plugins-detection", "vp", "--themes-detection", "vt"])
+
+            # Add timeout and rate limiting
+            cmd.extend(["--request-timeout", "30"])  # 30 second timeout per request
 
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -102,38 +105,38 @@ class AdvancedWebTools:
             except asyncio.TimeoutError:
                 proc.kill()
                 self.logger.warning("WPScan timed out")
-                result.errors.append("Scan timed out")
+                result.errors.append("Scan timed out after " + str(self.timeout) + " seconds")
                 return result
 
             output = stdout.decode()
             stderr_text = stderr.decode()
 
-            if proc.returncode != 0:
+            # WPScan returns non-zero even on success sometimes, check output
+            if "WordPress" in output or output.strip():
+                # Parse WPScan output
+                result.is_wordpress = "WordPress" in output
+
+                # Extract version
+                version_match = re.search(r'WordPress version ([\d.]+)', output)
+                if version_match:
+                    result.version = version_match.group(1)
+
+                # Extract plugins
+                plugin_matches = re.findall(r'plugin: ([^\s]+)', output)
+                result.plugins = list(set(plugin_matches))
+
+                # Extract themes
+                theme_matches = re.findall(r'theme: ([^\s]+)', output)
+                result.themes = list(set(theme_matches))
+
+                # Extract vulnerabilities
+                vuln_pattern = r'CVE-\d{4}-\d+'
+                result.vulnerabilities = list(set(re.findall(vuln_pattern, output)))
+
+                self.logger.info(f"WPScan found {len(result.plugins)} plugins, {len(result.themes)} themes")
+            else:
                 self.logger.warning(f"WPScan failed: {stderr_text}")
-                result.errors.append(stderr_text)
-                return result
-
-            # Parse WPScan output
-            result.is_wordpress = "WordPress" in output
-
-            # Extract version
-            version_match = re.search(r'WordPress version ([\d.]+)', output)
-            if version_match:
-                result.version = version_match.group(1)
-
-            # Extract plugins
-            plugin_matches = re.findall(r'plugin: ([^\s]+)', output)
-            result.plugins = list(set(plugin_matches))
-
-            # Extract themes
-            theme_matches = re.findall(r'theme: ([^\s]+)', output)
-            result.themes = list(set(theme_matches))
-
-            # Extract vulnerabilities
-            vuln_pattern = r'CVE-\d{4}-\d+'
-            result.vulnerabilities = list(set(re.findall(vuln_pattern, output)))
-
-            self.logger.info(f"WPScan found {len(result.plugins)} plugins, {len(result.themes)} themes")
+                result.errors.append(f"WPScan error: {stderr_text[:200]}")  # Truncate long errors
 
         except Exception as e:
             self.logger.error(f"WPScan failed: {e}")
@@ -341,38 +344,49 @@ class AdvancedWebTools:
 
             # WebExploit is interactive, so we'll do a simple info query
             # This is a defensive integration only - no actual exploitation
-            proc = await asyncio.create_subprocess_exec(
-                "websploit", "search", target,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-
-            try:
-                stdout, stderr = await asyncio.wait_for(
-                    proc.communicate(),
-                    timeout=60  # Shorter timeout for search
+            # Try different possible commands
+            commands_to_try = [
+                ["websploit", "search", target],
+                ["websploit", "--search", target],
+                ["websploit", "info", target]
+            ]
+            
+            for cmd in commands_to_try:
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
                 )
-            except asyncio.TimeoutError:
-                proc.kill()
-                self.logger.warning("WebExploit timed out")
-                result.errors.append("Search timed out")
-                return result
 
-            output = stdout.decode()
-            stderr_text = stderr.decode()
+                try:
+                    stdout, stderr = await asyncio.wait_for(
+                        proc.communicate(),
+                        timeout=60  # Shorter timeout for search
+                    )
+                    
+                    output = stdout.decode()
+                    stderr_text = stderr.decode()
 
-            if proc.returncode != 0:
-                self.logger.warning(f"WebExploit failed: {stderr_text}")
-                result.errors.append(stderr_text)
-                return result
+                    if proc.returncode == 0 and output.strip():
+                        # Parse output for exploit references
+                        for line in output.split('\n'):
+                            if 'exploit' in line.lower() or 'cve' in line.lower():
+                                result.exploits.append(line.strip())
+                        
+                        if result.exploits:
+                            self.logger.info(f"WebExploit found {len(result.exploits)} references")
+                            break
+                except asyncio.TimeoutError:
+                    proc.kill()
+                    self.logger.warning(f"WebExploit command timed out: {' '.join(cmd)}")
+                    continue
+                except Exception as e:
+                    self.logger.warning(f"WebExploit command failed: {' '.join(cmd)} - {e}")
+                    continue
 
-            # Parse output for exploit references
-            # This is read-only information gathering
-            for line in output.split('\n'):
-                if 'exploit' in line.lower() or 'cve' in line.lower():
-                    result.exploits.append(line.strip())
-
-            self.logger.info(f"WebExploit found {len(result.exploits)} references")
+            if not result.exploits:
+                self.logger.info("WebExploit: No exploit references found (tool may not support search command)")
+                result.errors.append("WebExploit search command not supported or no results")
 
         except Exception as e:
             self.logger.error(f"WebExploit failed: {e}")
