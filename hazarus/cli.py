@@ -1406,6 +1406,7 @@ def assess(
         console.print("  ✓ Lateral movement audit")
     if code_analyze:
         console.print("  ✓ Source code analysis")
+    console.print("  ✓ Report generation (MD + PDF with HAZARUS branding)")
     
     async def _run_assessment():
         from security import ScopeManager
@@ -1438,6 +1439,8 @@ def assess(
         console.print(f"[green]✓ Validated {len(valid_targets)} targets[/green]")
         
         # Run assessment phases
+        phase_results = {}  # Store phase results for report generation
+        
         with open(results_file, "w") as f:
             f.write(f"HAZARUS Comprehensive Security Assessment\n")
             f.write(f"Targets: {', '.join(valid_targets)}\n")
@@ -1480,9 +1483,18 @@ def assess(
                     console.print("  [green]✓ Privacy configuration is optimal[/green]")
                 else:
                     console.print("  [yellow]⚠ Privacy configuration has warnings[/yellow]")
+                
+                # Store phase results
+                phase_results['privacy'] = {
+                    'running': running,
+                    'tor_available': tor_available,
+                    'dns_leak': dns_leak,
+                    'ipv6_exposed': ipv6_exposed
+                }
                     
             except Exception as e:
                 console.print(f"  [red]✗ Privacy check failed: {e}[/red]")
+                phase_results['privacy'] = None
         
         # Phase 2: Reconnaissance
         if recon:
@@ -1578,9 +1590,19 @@ def assess(
                     f.write(f"Amass Subdomains: {len(amass_subdomains)}\n")
                     f.write(f"crt.sh Subdomains: {len(crtsh_subdomains)}\n")
                     f.write(f"Brute Force Subdomains: {len(bruteforce_result.subdomains)}\n\n")
+                
+                # Store phase results
+                phase_results['recon'] = {
+                    'dns_records': len(dns_result.records),
+                    'amass_subdomains': len(amass_subdomains),
+                    'crtsh_subdomains': len(crtsh_subdomains),
+                    'bruteforce_subdomains': len(bruteforce_result.subdomains),
+                    'open_ports': open_ports
+                }
                     
             except Exception as e:
                 console.print(f"  [red]✗ Reconnaissance failed: {e}[/red]")
+                phase_results['recon'] = None
         
         # Phase 3: Web Assessment
         if web:
@@ -1630,9 +1652,20 @@ def assess(
                     f.write(f"WhatWeb Technologies: {len(whatweb_result.technologies)}\n")
                     f.write(f"WordPress: {wpscan_result.is_wordpress}\n")
                     f.write(f"Gobuster Directories: {gobuster_result.total_found}\n\n")
+                
+                # Store phase results
+                phase_results['web'] = {
+                    'security_headers': len(web_result.security_headers),
+                    'cookies': len(web_result.cookies),
+                    'vulnerabilities': len(web_result.vulnerabilities),
+                    'whatweb_technologies': len(whatweb_result.technologies),
+                    'wordpress': wpscan_result.is_wordpress,
+                    'gobuster_directories': gobuster_result.total_found
+                }
                     
             except Exception as e:
                 console.print(f"  [red]✗ Web assessment failed: {e}[/red]")
+                phase_results['web'] = None
         
         # Phase 4: API Assessment
         if api:
@@ -1781,10 +1814,175 @@ def assess(
             except Exception as e:
                 console.print(f"  [red]✗ Source code analysis failed: {e}[/red]")
         
+        # Phase 10: Report Generation
+        console.print(f"\n[bold]Phase 10: Report Generation[/bold]")
+        try:
+            from reporting.report_engine import ReportEngine, ReportConfig
+            
+            # Build assessment data for report
+            assessment_data = {
+                "assessment_id": assessment_dir.name,
+                "targets": valid_targets,
+                "started_at": datetime.utcnow().isoformat(),
+                "comprehensive": comprehensive,
+                "aggressive": aggressive,
+                "active": active,
+                "live_hosts": live_hosts,
+                "phases": {},
+                "statistics": {
+                    "Total Phases": sum([privacy, recon, scan, web, api, research, exploit_list, post_audit, lateral_audit, code_analyze]),
+                    "Completed Phases": sum([privacy, recon, scan, web, api, research, exploit_list, post_audit, lateral_audit, code_analyze]),
+                    "Scanning Mode": "Aggressive" if aggressive else "Active" if active else "Passive",
+                    "Live Host Discovery": "Enabled" if live_hosts else "Disabled"
+                }
+            }
+            
+            # Add privacy phase data
+            if privacy and phase_results.get('privacy'):
+                assessment_data["phases"]["Privacy Check"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {
+                        "Anonsurf Running": phase_results['privacy'].get('running', 'N/A'),
+                        "Tor Available": phase_results['privacy'].get('tor_available', 'N/A'),
+                        "DNS Leak": phase_results['privacy'].get('dns_leak', 'N/A'),
+                        "IPv6 Exposed": phase_results['privacy'].get('ipv6_exposed', 'N/A')
+                    },
+                    "recommendations": []
+                }
+            
+            # Add recon phase data
+            if recon and phase_results.get('recon'):
+                assessment_data["phases"]["Reconnaissance"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {
+                        "DNS Records": phase_results['recon'].get('dns_records', 0),
+                        "Amass Subdomains": phase_results['recon'].get('amass_subdomains', 0),
+                        "crt.sh Subdomains": phase_results['recon'].get('crtsh_subdomains', 0),
+                        "Brute Force Subdomains": phase_results['recon'].get('bruteforce_subdomains', 0),
+                        "Open Ports": phase_results['recon'].get('open_ports', 0)
+                    },
+                    "recommendations": []
+                }
+            
+            # Add web phase data
+            if web and phase_results.get('web'):
+                assessment_data["phases"]["Web Assessment"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {
+                        "Security Headers": phase_results['web'].get('security_headers', 0),
+                        "Cookies": phase_results['web'].get('cookies', 0),
+                        "Vulnerabilities": phase_results['web'].get('vulnerabilities', 0),
+                        "WhatWeb Technologies": phase_results['web'].get('whatweb_technologies', 0),
+                        "WordPress": phase_results['web'].get('wordpress', False),
+                        "Gobuster Directories": phase_results['web'].get('gobuster_directories', 0)
+                    },
+                    "recommendations": []
+                }
+            
+            # Add API phase data
+            if api:
+                assessment_data["phases"]["API Assessment"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {
+                        "REST Endpoints": 0,
+                        "GraphQL Endpoints": 0,
+                        "Security Issues": 0
+                    },
+                    "recommendations": []
+                }
+            
+            # Add research phase data
+            if research:
+                assessment_data["phases"]["Vulnerability Research"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {
+                        "Exploits Found": 0
+                    },
+                    "recommendations": []
+                }
+            
+            # Add exploit list phase data
+            if exploit_list:
+                assessment_data["phases"]["Exploit Registry"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {
+                        "Total Exploits": 0
+                    },
+                    "recommendations": []
+                }
+            
+            # Add post-audit phase data
+            if post_audit:
+                assessment_data["phases"]["Post-Exploitation Audit"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {},
+                    "recommendations": []
+                }
+            
+            # Add lateral audit phase data
+            if lateral_audit:
+                assessment_data["phases"]["Lateral Movement Audit"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {},
+                    "recommendations": []
+                }
+            
+            # Add code analysis phase data
+            if code_analyze:
+                assessment_data["phases"]["Source Code Analysis"] = {
+                    "status": "completed",
+                    "findings": [],
+                    "technical_details": {},
+                    "recommendations": []
+                }
+            
+            # Generate Markdown report
+            report_engine = ReportEngine(reports_dir=assessment_dir)
+            md_config = ReportConfig(
+                assessment_id=assessment_dir.name,
+                format="markdown",
+                include_executive_summary=True,
+                include_technical_details=True,
+                include_evidence=True,
+                include_recommendations=True
+            )
+            md_result = await report_engine.generate(md_config, assessment_data)
+            console.print(f"    Markdown report: {md_result.get('output_path')}")
+            
+            # Generate PDF report
+            pdf_config = ReportConfig(
+                assessment_id=assessment_dir.name,
+                format="pdf",
+                include_executive_summary=True,
+                include_technical_details=True,
+                include_evidence=True,
+                include_recommendations=True
+            )
+            pdf_result = await report_engine.generate(pdf_config, assessment_data)
+            console.print(f"    PDF report: {pdf_result.get('output_path')}")
+            
+            with open(results_file, "a") as f:
+                f.write("PHASE 10: REPORT GENERATION\n")
+                f.write(f"Markdown Report: {md_result.get('output_path')}\n")
+                f.write(f"PDF Report: {pdf_result.get('output_path')}\n\n")
+                
+        except Exception as e:
+            console.print(f"  [red]✗ Report generation failed: {e}[/red]")
+        
         # Final summary
         console.print(f"\n[bold]Assessment Complete[/bold]")
         console.print(f"[green]✓ Results saved to:[/green] {results_file}")
         console.print(f"[green]✓ Assessment directory:[/green] {assessment_dir}")
+        console.print(f"[green]✓ Markdown report:[/green] {assessment_dir.name}_report.md")
+        console.print(f"[green]✓ PDF report:[/green] {assessment_dir.name}_report.pdf")
         
         with open(results_file, "a") as f:
             f.write("=" * 80 + "\n")

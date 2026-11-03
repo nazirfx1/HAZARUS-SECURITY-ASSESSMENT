@@ -30,20 +30,39 @@ class PDFReport:
         story = []
         styles = getSampleStyleSheet()
 
-        # Custom styles
+        # Custom styles with HAZARUS branding (Red, White, Black)
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontSize=24,
-            textColor=colors.HexColor('#1a1a2e'),
-            spaceAfter=30
+            fontSize=28,
+            textColor=colors.HexColor('#DC2626'),  # HAZARUS Red
+            spaceAfter=30,
+            fontName='Helvetica-Bold'
         )
 
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
-            fontSize=16,
-            textColor=colors.HexColor('#16213e'),
+            fontSize=18,
+            textColor=colors.HexColor('#000000'),  # Black
+            spaceAfter=12,
+            fontName='Helvetica-Bold'
+        )
+
+        subheading_style = ParagraphStyle(
+            'CustomSubheading',
+            parent=styles['Heading3'],
+            fontSize=14,
+            textColor=colors.HexColor('#DC2626'),  # HAZARUS Red
+            spaceAfter=10,
+            fontName='Helvetica-Bold'
+        )
+
+        body_style = ParagraphStyle(
+            'CustomBody',
+            parent=styles['Normal'],
+            fontSize=11,
+            textColor=colors.HexColor('#000000'),  # Black
             spaceAfter=12
         )
 

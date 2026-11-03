@@ -9,6 +9,7 @@ from .evidence_manager import EvidenceManager
 from .html_report import HTMLReport
 from .pdf_report import PDFReport
 from .json_report import JSONReport
+from .markdown_report import MarkdownReport
 
 __all__ = [
     "ReportEngine",
@@ -17,4 +18,5 @@ __all__ = [
     "HTMLReport",
     "PDFReport",
     "JSONReport",
+    "MarkdownReport",
 ]

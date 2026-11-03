@@ -69,7 +69,9 @@ class ReportEngine:
                 output_path = self._save_report(config.assessment_id, "json", content)
 
             elif config.format == "markdown":
-                content = self._generate_markdown(assessment_data)
+                from .markdown_report import MarkdownReport
+                generator = MarkdownReport()
+                content = await generator.generate(assessment_data)
                 output_path = self._save_report(config.assessment_id, "md", content)
 
             else:
