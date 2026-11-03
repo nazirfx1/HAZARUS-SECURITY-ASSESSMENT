@@ -1155,6 +1155,267 @@ class ToolRegistry:
                 exit_code=0
             )
         )
+        
+        # Phase 4 Advanced Analysis Tools
+        self.tools['rustscan'] = ToolMetadata(
+            name="RustScan",
+            description="Fast port discovery + Nmap integration",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="rustscan",
+                version_flag="--version",
+                version_pattern=r"rustscan ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="RustScan/RustScan",
+                asset_pattern=r"rustscan_.*_linux_amd64",
+                version="2.0+",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="rustscan --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['kismet'] = ToolMetadata(
+            name="Kismet",
+            description="Wireless discovery and monitoring",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="kismet",
+                version_flag="-h",
+                version_pattern=r"Kismet ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="kismet",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="kismet -h",
+                exit_code=0
+            )
+        )
+        
+        self.tools['bettercap'] = ToolMetadata(
+            name="Bettercap",
+            description="Network protocol assessment",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="bettercap",
+                version_flag="-version",
+                version_pattern=r"bettercap ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="bettercap",
+                version="2.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="bettercap -version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['john'] = ToolMetadata(
+            name="John the Ripper",
+            description="Password hash auditing",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="john",
+                version_flag="--version",
+                version_pattern=r"John the Ripper ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="john",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="john --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['ghidra'] = ToolMetadata(
+            name="Ghidra",
+            description="Binary reverse engineering",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="analyzeHeadless",
+                version_flag="-h",
+                version_pattern=r"Ghidra"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="ghidra",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="analyzeHeadless -h",
+                exit_code=0
+            )
+        )
+        
+        self.tools['radare2'] = ToolMetadata(
+            name="radare2",
+            description="Binary analysis and disassembly",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="r2",
+                version_flag="-v",
+                version_pattern=r"radare2 ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="radare2",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="r2 -v",
+                exit_code=0
+            )
+        )
+        
+        self.tools['gdb'] = ToolMetadata(
+            name="GDB",
+            description="Debugging and runtime analysis",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="gdb",
+                version_flag="--version",
+                version_pattern=r"GNU gdb ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="gdb",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="gdb --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['frida'] = ToolMetadata(
+            name="Frida",
+            description="Dynamic instrumentation",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="frida",
+                version_flag="--version",
+                version_pattern=r"Frida ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="frida-tools",
+                version="12.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="frida --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['mcp'] = ToolMetadata(
+            name="MCP",
+            description="Standardized AI-to-tool integration",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="mcp",
+                version_flag="--version",
+                version_pattern=r"MCP ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="mcp",
+                version="1.0+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="mcp --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['langgraph'] = ToolMetadata(
+            name="LangGraph",
+            description="Stateful AI workflow orchestration",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="python3",
+                version_flag="-c",
+                version_pattern=r"Python ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="langgraph",
+                version="0.1+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="python3 -c \"import langgraph\"",
+                exit_code=0
+            )
+        )
+        
+        self.tools['ollama'] = ToolMetadata(
+            name="Ollama",
+            description="Local model execution",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="ollama",
+                version_flag="--version",
+                version_pattern=r"ollama ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="ollama",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="ollama --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['claude'] = ToolMetadata(
+            name="Claude API",
+            description="AI-assisted analysis and reporting",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="python3",
+                version_flag="-c",
+                version_pattern=r"Python ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.PIP,
+                package="anthropic",
+                version="0.30+",
+                sudo_required=False
+            ),
+            validation=ToolValidation(
+                test_command="python3 -c \"import anthropic\"",
+                exit_code=0
+            )
+        )
     
     def _parse_tool_config(self, name: str, config: dict) -> ToolMetadata:
         """Parse tool configuration from YAML."""
