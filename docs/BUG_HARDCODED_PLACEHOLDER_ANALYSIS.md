@@ -340,19 +340,29 @@ test_command="nmap localhost",
   - Placeholders: 22
   - Hardcoded values: 30+
   - Potential bugs: 15
-- **Issues Fixed:** 8
+- **Issues Fixed:** 12
   - Source code analysis: FIXED
   - Placeholder text in scope: FIXED
   - Menu placeholder comment: FIXED
   - Nmap validation: FIXED
-  - Timeouts moved to config: IN PROGRESS (20+ values added)
+  - Timeouts moved to config: IN PROGRESS (9 modules updated)
   - Common ports added to config: FIXED
   - HTTP status codes added to config: FIXED
   - CISA KEV using config: FIXED
-- **Critical Issues Remaining:** 7
-- **High Priority Remaining:** 5
-- **Medium Priority Remaining:** 15
-- **Low Priority Remaining:** 12
+  - Wireless tools hardware detection: FIXED
+  - BloodHound credential handling: FIXED
+  - Hashcat using config: FIXED
+  - John using config: FIXED
+  - Ghidra using config: FIXED
+  - LinPEAS using config: FIXED
+  - Lynis using config: FIXED
+  - Bandit using config: FIXED
+  - Schemathesis using config: FIXED
+  - Masscan using config: FIXED
+- **Critical Issues Remaining:** 4
+- **High Priority Remaining:** 3
+- **Medium Priority Remaining:** 12
+- **Low Priority Remaining:** 8
 
 **Framework Status:** Production-ready for basic assessments with enhanced configuration management. Advanced features (exploitation, AI, reverse engineering, wireless hardware-dependent tools) require additional implementation.
 
