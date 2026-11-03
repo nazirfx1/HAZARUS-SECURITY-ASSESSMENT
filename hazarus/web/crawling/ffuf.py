@@ -56,6 +56,11 @@ class FFUFScanner:
             if proc.returncode != 0:
                 raise RuntimeError("ffuf not installed")
             
+            # Get timeout from config
+            from core.config import get_config
+            config = get_config()
+            timeout = config.get('timeouts.advanced_web', 600)
+            
             # Build command
             cmd = [
                 "ffuf",
