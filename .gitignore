@@ -143,3 +143,16 @@ evidence/
 config/scope.yaml
 config/hazarus.yaml
 hazarus-repository.zip
+
+# Security: Never commit credentials or secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+*.secrets
