@@ -377,6 +377,220 @@ class ToolRegistry:
                 exit_code=0
             )
         )
+        
+        # Additional tools used by the framework
+        self.tools['zap'] = ToolMetadata(
+            name="OWASP ZAP",
+            description="Web application security scanner",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="zap-cli",
+                version_flag="-version",
+                version_pattern=r"ZAP ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="zaproxy",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="zap-cli -version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['whatweb'] = ToolMetadata(
+            name="WhatWeb",
+            description="Web technology identification",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="whatweb",
+                version_flag="--version",
+                version_pattern=r"WhatWeb ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="whatweb",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="whatweb --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['wpscan'] = ToolMetadata(
+            name="WPScan",
+            description="WordPress security scanner",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="wpscan",
+                version_flag="--version",
+                version_pattern=r"WPScan ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="wpscan",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="wpscan --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['gobuster'] = ToolMetadata(
+            name="Gobuster",
+            description="Directory bruteforcer",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="gobuster",
+                version_flag="version",
+                version_pattern=r"([0-9.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.GITHUB,
+                repo="go-appimage/gobuster",
+                asset_pattern=r"gobuster_.*_linux_amd64\.AppImage",
+                version="3.0+",
+                sudo_required=True,
+                install_path="/usr/local/bin"
+            ),
+            validation=ToolValidation(
+                test_command="gobuster version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['sqlmap'] = ToolMetadata(
+            name="SQLMap",
+            description="SQL injection tool",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="sqlmap",
+                version_flag="--version",
+                version_pattern=r"([0-9.]+\."
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="sqlmap",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="sqlmap --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['metasploit'] = ToolMetadata(
+            name="Metasploit",
+            description="Exploitation framework",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="msfconsole",
+                version_flag="--version",
+                version_pattern=r"Framework: ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="metasploit-framework",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="msfconsole --version",
+                exit_code=0
+            )
+        )
+        
+        self.tools['p0f'] = ToolMetadata(
+            name="p0f",
+            description="OS fingerprinting tool",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="p0f",
+                version_flag="-v",
+                version_pattern=r"p0f ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="p0f",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="p0f -v",
+                exit_code=0
+            )
+        )
+        
+        self.tools['arping'] = ToolMetadata(
+            name="arping",
+            description="ARP ping tool",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="arping",
+                version_flag="-V",
+                version_pattern=r"arping ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="arping",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="arping -V",
+                exit_code=0
+            )
+        )
+        
+        self.tools['fping'] = ToolMetadata(
+            name="fping",
+            description="Fast ping tool",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="fping",
+                version_flag="-v",
+                version_pattern=r"fping: Version ([\d.]+)"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="fping",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="fping -v",
+                exit_code=0
+            )
+        )
+        
+        self.tools['atk6_inverse_lookup6'] = ToolMetadata(
+            name="atk6-inverse_lookup6",
+            description="IPv6 reverse lookup",
+            category=ToolCategory.OPTIONAL,
+            required=False,
+            detection=ToolDetection(
+                command="atk6-inverse_lookup6",
+                version_flag="-h",
+                version_pattern=r"Usage"
+            ),
+            installation=ToolInstallation(
+                type=InstallationType.APT,
+                package="thc-ipv6",
+                sudo_required=True
+            ),
+            validation=ToolValidation(
+                test_command="atk6-inverse_lookup6 -h",
+                exit_code=0
+            )
+        )
     
     def _parse_tool_config(self, name: str, config: dict) -> ToolMetadata:
         """Parse tool configuration from YAML."""
