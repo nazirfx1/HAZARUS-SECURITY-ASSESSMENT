@@ -26,6 +26,7 @@ class InstallationType(Enum):
     GITHUB = "github"
     SNAP = "snap"
     MANUAL = "manual"
+    INTERNAL = "internal"  # Built-in modules, no installation needed
 
 
 @dataclass
@@ -724,48 +725,42 @@ class ToolRegistry:
         
         self.tools['cisa_kev'] = ToolMetadata(
             name="CISA KEV",
-            description="Known exploited vulnerabilities",
+            description="Known exploited vulnerabilities (internal module)",
             category=ToolCategory.RECOMMENDED,
             required=False,
             detection=ToolDetection(
-                command="cisa-kev",
-                version_flag="--version",
-                version_pattern=r"cisa-kev ([\d.]+)"
+                command="python3",
+                version_flag="-c",
+                version_pattern=r"Python ([\d.]+)"
             ),
             installation=ToolInstallation(
-                type=InstallationType.GITHUB,
-                repo="cisagov/KEV",
-                asset_pattern=r"kev_.*_linux_amd64\.tar\.gz",
+                type=InstallationType.INTERNAL,
                 version="1.0+",
-                sudo_required=True,
-                install_path="/usr/local/bin"
+                sudo_required=False
             ),
             validation=ToolValidation(
-                test_command="cisa-kev --version",
+                test_command="python3 -c \"import hazarus.vulnerability.cisa_kev\"",
                 exit_code=0
             )
         )
         
         self.tools['cvemap'] = ToolMetadata(
             name="CVEMap",
-            description="CVE discovery and research",
+            description="CVE discovery and research (internal module)",
             category=ToolCategory.RECOMMENDED,
             required=False,
             detection=ToolDetection(
-                command="cvemap",
-                version_flag="-v",
-                version_pattern=r"cvemap ([\d.]+)"
+                command="python3",
+                version_flag="-c",
+                version_pattern=r"Python ([\d.]+)"
             ),
             installation=ToolInstallation(
-                type=InstallationType.GITHUB,
-                repo="Pwntester/CVEMap",
-                asset_pattern=r"cvemap_.*_linux_amd64\.zip",
+                type=InstallationType.INTERNAL,
                 version="3.0+",
-                sudo_required=True,
-                install_path="/usr/local/bin"
+                sudo_required=False
             ),
             validation=ToolValidation(
-                test_command="cvemap -v",
+                test_command="python3 -c \"import hazarus.vulnerability.cvemap\"",
                 exit_code=0
             )
         )

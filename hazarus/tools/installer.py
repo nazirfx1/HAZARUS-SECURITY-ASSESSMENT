@@ -136,11 +136,12 @@ class InstallationErrorCode(Enum):
 class ToolInstaller:
     """Automated installer for external tools."""
     
-    def __init__(self, registry: Optional[ToolRegistry] = None):
+    def __init__(self, registry: Optional[ToolRegistry] = None, debug: bool = False):
         """Initialize tool installer.
         
         Args:
             registry: Tool registry instance (creates default if None)
+            debug: Enable debug logging
         """
         self.registry = registry or ToolRegistry()
         self.detector = ToolDetector(registry)
@@ -150,8 +151,11 @@ class ToolInstaller:
             InstallationType.GITHUB: self._install_github,
             InstallationType.SNAP: self._install_snap,
             InstallationType.MANUAL: self._install_manual,
+            InstallationType.INTERNAL: self._install_internal,
         }
         self.current_platform = self._detect_platform()
+        self.debug = debug
+        self.debug_logger = setup_debug_logger() if debug else None
     
     def _detect_platform(self) -> str:
         """Detect the current platform.
@@ -519,7 +523,7 @@ class ToolInstaller:
         logger.warning(f"APT lock wait timeout after {max_wait_seconds}s")
         return False
     
-    async def _install_apt(self, tool: ToolMetadata, use_sudo: bool) -> bool:
+    async def _install_apt(self, tool: ToolMetadata, use_sudo: bool, debug: bool = False) -> bool:
         """Install tool via APT package manager with retry logic and timeout handling.
         
         Args:
@@ -695,7 +699,54 @@ class ToolInstaller:
         
         try:
             result = await retry_command_with_backoff(_install_package, max_retries=3)
-            return True
+            
+            # After successful APT install, verify installation using detector
+            if debug and debug_logger:
+                debug_logger.info(f"APT install command completed successfully for {tool.installation.package}")
+                debug_logger.info(f"Starting verification of tool installation...")
+            
+            # Run detector to verify installation
+            new_status = await self.detector.check_tool(tool.name)
+            
+            if debug and debug_logger:
+                debug_logger.info(f"Detector result for {tool.name}:")
+                debug_logger.info(f"  - Installed: {new_status.installed}")
+                debug_logger.info(f"  - Detection command: {new_status.detection_command}")
+                debug_logger.info(f"  - Path: {new_status.path}")
+                debug_logger.info(f"  - Compatible: {new_status.compatible}")
+            
+            if new_status.installed:
+                # Tool was successfully detected
+                if debug and debug_logger:
+                    debug_logger.info(f"Tool {tool.name} successfully verified as installed")
+                    if new_status.detection_command != tool.detection.command:
+                        debug_logger.info(f"Note: Tool detected as '{new_status.detection_command}' instead of '{tool.detection.command}'")
+                return True
+            else:
+                # APT reported success but detector couldn't find the tool
+                # This might be due to command name mismatch (e.g., zap-cli vs zaproxy)
+                if debug and debug_logger:
+                    debug_logger.warning(f"APT install succeeded but detector couldn't find {tool.name}")
+                    debug_logger.warning(f"Detector reason: {new_status.compatible_reason}")
+                
+                # Check if the package itself is installed via dpkg
+                package_installed = await self.detector._check_package_installed(tool.installation.package)
+                
+                if debug and debug_logger:
+                    debug_logger.info(f"Package '{tool.installation.package}' installed via dpkg: {package_installed}")
+                
+                if package_installed:
+                    # Package is installed but command not found - this is likely a GUI tool
+                    # or a tool with a different command name
+                    if debug and debug_logger:
+                        debug_logger.info(f"Package is installed but command not found in PATH")
+                        debug_logger.info(f"Marking as installed since APT package was successfully installed")
+                    return True
+                else:
+                    if debug and debug_logger:
+                        debug_logger.error(f"Package not found in dpkg after APT install")
+                    return False
+                
         except PermissionError:
             raise PermissionError("Permission denied installing APT package. Try with sudo.")
         except Exception as e:
@@ -797,7 +848,7 @@ class ToolInstaller:
             return True
         return False
     
-    async def _install_pip(self, tool: ToolMetadata, use_sudo: bool) -> bool:
+    async def _install_pip(self, tool: ToolMetadata, use_sudo: bool, debug: bool = False) -> bool:
         """Install tool via pip with retry logic for network operations.
         
         Args:
@@ -966,7 +1017,7 @@ class ToolInstaller:
             raise subprocess.SubprocessError(f"All pip installation methods failed. Last error: {last_error}")
         return False
     
-    async def _install_github(self, tool: ToolMetadata, use_sudo: bool) -> bool:
+    async def _install_github(self, tool: ToolMetadata, use_sudo: bool, debug: bool = False) -> bool:
         """Install tool from GitHub releases.
         
         Args:
@@ -1130,7 +1181,7 @@ class ToolInstaller:
                 raise OSError(f"Insufficient disk space for {tool.name}: {str(e)}")
             raise OSError(f"Filesystem error during installation: {str(e)}")
     
-    async def _install_snap(self, tool: ToolMetadata, use_sudo: bool) -> bool:
+    async def _install_snap(self, tool: ToolMetadata, use_sudo: bool, debug: bool = False) -> bool:
         """Install tool via Snap.
         
         Args:
@@ -1198,7 +1249,7 @@ class ToolInstaller:
         except PermissionError:
             raise PermissionError("Permission denied installing snap package. Try with sudo.")
     
-    async def _install_manual(self, tool: ToolMetadata, use_sudo: bool) -> bool:
+    async def _install_manual(self, tool: ToolMetadata, use_sudo: bool, debug: bool = False) -> bool:
         """Manual installation (placeholder).
         
         Args:
@@ -1210,6 +1261,24 @@ class ToolInstaller:
             False (manual installation requires user intervention)
         """
         return False
+    
+    async def _install_internal(self, tool: ToolMetadata, use_sudo: bool, debug: bool = False) -> bool:
+        """Internal module installation (no installation needed).
+        
+        Args:
+            tool: Tool metadata
+            use_sudo: Whether to use sudo (ignored for internal modules)
+            debug: Enable debug logging
+            
+        Returns:
+            True (internal modules are built-in)
+        """
+        if debug and debug_logger:
+            debug_logger.info(f"Internal module detected: {tool.name}")
+            debug_logger.info(f"No installation needed for internal modules")
+        print(f"  {tool.name} is an internal module (built-in)")
+        print(f"  No installation required")
+        return True
     
     async def _run_command(self, command: list, timeout: int = 300) -> subprocess.CompletedProcess:
         """Run a command asynchronously.
