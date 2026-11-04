@@ -55,7 +55,7 @@ class InteractiveMode:
 
         logo = Text(ASCII_LOGO, style="bold red", justify="center")
 
-        identity = Text()
+        identity = Text(justify="center")
         identity.append(
             "HAZARUS SECURITY ASSESSMENT FRAMEWORK\n",
             style="bold white"
