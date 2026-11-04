@@ -14,6 +14,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.layout import Layout
 from rich.text import Text
+from rich.align import Align
+from rich.box import DOUBLE
 from datetime import datetime
 from hazarus.tools.registry import ToolStatus
 
@@ -42,20 +44,47 @@ class InteractiveMode:
 
     def show_banner(self):
         """Display HAZARUS banner."""
-        banner = r"""
-[bold red]
+        ASCII_LOGO = r"""
 ██╗  ██╗ █████╗ ███████╗ █████╗ ██████╗ ██╗   ██╗███████╗
 ██║  ██║██╔══██╗╚══███╔╝██╔══██╗██╔══██╗██║   ██║██╔════╝
 ███████║███████║  ███╔╝ ███████║██████╔╝██║   ██║███████╗
 ██╔══██║██╔══██║ ███╔╝  ██╔══██║██╔══██╗██║   ██║╚════██║
 ██║  ██║██║  ██║███████╗██║  ██║██║  ██║╚██████╔╝███████║
 ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚══════╝╚══════╝
-[/bold red]
-[bold white]     HAZARUS SECURITY ASSESSMENT FRAMEWORK[/bold white]
-[bold red]              ADVANCED SECURITY PLATFORM[/bold red]
-[bold white]                 INTERACTIVE MODE ONLY[/bold white]
 """
-        self.console.print(banner, justify="center")
+
+        logo = Text(ASCII_LOGO, style="bold red", justify="center")
+
+        identity = Text()
+        identity.append(
+            "HAZARUS SECURITY ASSESSMENT FRAMEWORK\n",
+            style="bold white"
+        )
+        identity.append(
+            "ADVANCED SECURITY PLATFORM\n",
+            style="bold red"
+        )
+        identity.append(
+            "INTERACTIVE MODE ONLY",
+            style="bold white"
+        )
+
+        content = Text()
+        content.append_text(logo)
+        content.append("\n")
+        content.append_text(identity)
+
+        banner = Panel(
+            Align.center(content),
+            box=DOUBLE,
+            border_style="red",
+            padding=(1, 2),
+            expand=True
+        )
+
+        self.console.print()
+        self.console.print(banner)
+        self.console.print()
 
     def show_config(self):
         """Display configuration details."""
