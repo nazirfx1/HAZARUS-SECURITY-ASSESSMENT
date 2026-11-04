@@ -51,8 +51,7 @@ class InteractiveMode:
 ║   ╚████╔╝ ██║██║  ██║╚██████╔╝██████╔╝███████║                  ║
 ║    ╚═══╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝                  ║
 ║                                                                ║
-║         HAZARUS Security Assessment Framework v2.0              ║
-║              Advanced Reconnaissance & Security                  ║
+║              HAZARUS CYBERSECURITY ASSESSMENT                   ║
 ║                   Interactive Mode Only                          ║
 ╚════════════════════════════════════════════════════════════════╝
 """
