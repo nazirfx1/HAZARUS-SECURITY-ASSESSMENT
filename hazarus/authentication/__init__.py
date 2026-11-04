@@ -3,10 +3,10 @@ HAZARUS Authentication Module
 Password and authentication security testing.
 """
 
-from .hashcat import HashcatAuditor
-from .hydra import HydraTester
-from .kerbrute import KerbruteAuditor
-from .john import JohnAuditor
+from hazarus.authentication.hashcat import HashcatAuditor
+from hazarus.authentication.hydra import HydraTester
+from hazarus.authentication.kerbrute import KerbruteAuditor
+from hazarus.authentication.john import JohnAuditor
 
 __all__ = [
     "HashcatAuditor",

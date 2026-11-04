@@ -3,8 +3,8 @@ HAZARUS Web Crawling Module
 Content discovery and endpoint enumeration.
 """
 
-from .feroxbuster import FeroxbusterScanner
-from .ffuf import FFUFScanner
+from hazarus.web.crawling.feroxbuster import FeroxbusterScanner
+from hazarus.web.crawling.ffuf import FFUFScanner
 
 __all__ = [
     "FeroxbusterScanner",
