@@ -3,17 +3,17 @@ HAZARUS Reconnaissance Module
 Asset discovery and passive reconnaissance.
 """
 
-from .dns import DNSRecon
-from .whois import WhoisRecon
-from .subdomains import SubdomainDiscovery
-from .crtsh import CertificateTransparency
-from .passive_recon import PassiveRecon
-from .asset_inventory import AssetInventory
-from .live_hosts import LiveHostDiscovery
-from .origin_ip import OriginIPDiscovery
+from hazarus.reconnaissance.dns import DNSRecon
+from hazarus.reconnaissance.whois import WhoisRecon
+from hazarus.reconnaissance.subdomains import SubdomainDiscovery
+from hazarus.reconnaissance.crtsh import CertificateTransparency
+from hazarus.reconnaissance.passive_recon import PassiveRecon
+from hazarus.reconnaissance.asset_inventory import AssetInventory
+from hazarus.reconnaissance.live_hosts import LiveHostDiscovery
+from hazarus.reconnaissance.origin_ip import OriginIPDiscovery
 
 # Core infrastructure
-from .core import (
+from hazarus.reconnaissance.core import (
     ReconPersistence,
     AssessmentRecord,
     AssetRecord,
@@ -33,25 +33,25 @@ from .core import (
 )
 
 # Advanced tools
-from .advanced import (
+from hazarus.reconnaissance.advanced import (
     AdvancedSubdomainTools,
     AdvancedDNS,
     EnhancedPassiveRecon
 )
 
 # Security features
-from .security import (
+from hazarus.reconnaissance.security import (
     SubdomainTakeoverDetector,
     VirtualHostEnumerator
 )
 
 # Intelligence sources
-from .intelligence import (
+from hazarus.reconnaissance.intelligence import (
     APIIntelligence
 )
 
 # Asset intelligence
-from .asset import (
+from hazarus.reconnaissance.asset import (
     AssetIntelligence,
     AssetLifecycle,
     AssetRiskScoring

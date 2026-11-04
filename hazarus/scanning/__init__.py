@@ -3,9 +3,9 @@ HAZARUS Scanning Module
 Network and service scanning.
 """
 
-from .nmap import NmapScanner
-from .masscan import MasscanScanner
-from .rustscan import RustScanScanner
+from hazarus.scanning.nmap import NmapScanner
+from hazarus.scanning.masscan import MasscanScanner
+from hazarus.scanning.rustscan import RustScanScanner
 
 __all__ = [
     "NmapScanner",

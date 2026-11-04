@@ -3,10 +3,10 @@ HAZARUS Post-Assessment Module
 Privilege escalation and security auditing.
 """
 
-from .linpeas import LinPEASScanner
-from .lynis import LynisScanner
-from .winpeas import WinPEASScanner
-from .bloodhound import BloodHoundAnalyzer
+from hazarus.post_assessment.linpeas import LinPEASScanner
+from hazarus.post_assessment.lynis import LynisScanner
+from hazarus.post_assessment.winpeas import WinPEASScanner
+from hazarus.post_assessment.bloodhound import BloodHoundAnalyzer
 
 __all__ = [
     "LinPEASScanner",
