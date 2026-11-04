@@ -223,7 +223,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="nuclei",
                 version_flag="-version",
-                version_pattern=r"nuclei ([\d.]+)"
+                version_pattern=r"nuclei ([\d.]+)",
+                fallback_commands=[]
             ),
             installation=ToolInstallation(
                 type=InstallationType.GITHUB,
@@ -231,7 +232,8 @@ class ToolRegistry:
                 asset_pattern=r"nuclei_.*_linux_amd64\.zip",
                 version="3.0+",
                 sudo_required=True,
-                install_path="/usr/local/bin"
+                install_path="/usr/local/bin",
+                fallback_methods=[InstallationType.APT]
             ),
             configuration=ToolConfiguration(
                 templates_path="~/.config/nuclei/templates"
@@ -396,7 +398,7 @@ class ToolRegistry:
                 command="zap-cli",
                 version_flag="-version",
                 version_pattern=r"ZAP ([\d.]+)",
-                fallback_commands=["zap", "zaproxy"]
+                fallback_commands=["zap", "zaproxy", "zap.sh"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
@@ -459,7 +461,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="gobuster",
                 version_flag="version",
-                version_pattern=r"([0-9.]+)"
+                version_pattern=r"([0-9.]+)",
+                fallback_commands=[]
             ),
             installation=ToolInstallation(
                 type=InstallationType.GITHUB,
@@ -467,7 +470,8 @@ class ToolRegistry:
                 asset_pattern=r"gobuster_.*_linux_amd64\.AppImage",
                 version="3.0+",
                 sudo_required=True,
-                install_path="/usr/local/bin"
+                install_path="/usr/local/bin",
+                fallback_methods=[InstallationType.APT]
             ),
             validation=ToolValidation(
                 test_command="gobuster version",
@@ -483,7 +487,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="sqlmap",
                 version_flag="--version",
-                version_pattern=r"([0-9.]+\."
+                version_pattern=r"([0-9.]+)",
+                fallback_commands=[]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
@@ -504,7 +509,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="msfconsole",
                 version_flag="--version",
-                version_pattern=r"Framework: ([\d.]+)"
+                version_pattern=r"Framework: ([\d.]+)",
+                fallback_commands=["msfvenom", "msf"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
@@ -631,7 +637,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="burpsuite",
                 version_flag="--version",
-                version_pattern=r"Burp Suite ([\d.]+)"
+                version_pattern=r"Burp Suite ([\d.]+)",
+                fallback_commands=["burp"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
@@ -794,7 +801,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="masscan",
                 version_flag="-V",
-                version_pattern=r"masscan ([\d.]+)"
+                version_pattern=r"masscan ([\d.]+)",
+                fallback_commands=[]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
@@ -1019,7 +1027,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="aircrack-ng",
                 version_flag="-V",
-                version_pattern=r"([0-9.]+)"
+                version_pattern=r"([0-9.]+)",
+                fallback_commands=["airmon-ng", "airodump-ng"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
@@ -1082,7 +1091,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="hydra",
                 version_flag="-h",
-                version_pattern=r"Hydra ([\d.]+)"
+                version_pattern=r"Hydra ([\d.]+)",
+                fallback_commands=["hydra-gtk"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
@@ -1127,7 +1137,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="bloodhound-python",
                 version_flag="--version",
-                version_pattern=r"([0-9.]+)"
+                version_pattern=r"([0-9.]+)",
+                fallback_commands=["bloodhound"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.PIP,
@@ -1241,7 +1252,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="john",
                 version_flag="--version",
-                version_pattern=r"John the Ripper ([\d.]+)"
+                version_pattern=r"John the Ripper ([\d.]+)",
+                fallback_commands=["john-the-ripper"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,
@@ -1262,7 +1274,8 @@ class ToolRegistry:
             detection=ToolDetection(
                 command="analyzeHeadless",
                 version_flag="-h",
-                version_pattern=r"Ghidra"
+                version_pattern=r"Ghidra",
+                fallback_commands=["ghidraRun"]
             ),
             installation=ToolInstallation(
                 type=InstallationType.APT,

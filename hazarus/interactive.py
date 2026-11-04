@@ -37,6 +37,8 @@ class InteractiveMode:
         }
         # Track failed installations for retry functionality
         self.failed_installations = {}
+        # Debug mode for installation
+        self.debug_mode = False
 
     def show_banner(self):
         """Display HAZARUS banner."""
@@ -1700,13 +1702,14 @@ class InteractiveMode:
         
         registry = ToolRegistry()
         detector = ToolDetector(registry)
-        installer = ToolInstaller(registry)
+        installer = ToolInstaller(registry, debug=self.debug_mode)
         configurer = ToolConfigurer(registry)
         validator = ToolValidator(registry)
         
         while True:
+            debug_status = "[green]ON[/green]" if self.debug_mode else "[red]OFF[/red]"
             self.console.print(Panel(
-                """
+                f"""
 [bold cyan][1][/bold cyan] List Tools
 [bold cyan][2][/bold cyan] Check Installation Status
 [bold cyan][3][/bold cyan] Install Missing Tools
@@ -1714,13 +1717,14 @@ class InteractiveMode:
 [bold cyan][5][/bold cyan] Retry Failed Installations
 [bold cyan][6][/bold cyan] Configure Tools
 [bold cyan][7][/bold cyan] Validate Tools
+[bold cyan][8][/bold cyan] Toggle Debug Mode (Currently: {debug_status})
 [bold cyan][0][/bold cyan] Back to Main Menu
 """,
                 title="[bold red]External Tools[/bold red]",
                 border_style="red"
             ))
             
-            choice = self.console.input("\n[bold red]Select option [0-7]: [/bold red]")
+            choice = self.console.input("\n[bold red]Select option [0-8]: [/bold red]")
             
             if choice == "0":
                 break
@@ -1738,6 +1742,14 @@ class InteractiveMode:
                 await self.configure_tools(configurer)
             elif choice == "7":
                 await self.validate_tools(validator)
+            elif choice == "8":
+                self.debug_mode = not self.debug_mode
+                status = "enabled" if self.debug_mode else "disabled"
+                self.console.print(f"[green]✓ Debug mode {status}[/green]")
+                self.console.print(f"[dim]Debug logs will be saved to ~/.hazarus/logs/installation_debug.log[/dim]")
+                # Re-create installer with new debug setting
+                installer = ToolInstaller(registry, debug=self.debug_mode)
+                await asyncio.sleep(1)
     
     async def list_tools(self, detector: 'ToolDetector'):
         """List all tools with their status."""
@@ -1788,6 +1800,9 @@ class InteractiveMode:
         """Install all missing tools with per-tool progress and retry options."""
         self.console.print("\n[bold cyan]Installing Missing Tools...[/bold cyan]\n")
         
+        if self.debug_mode:
+            self.console.print(f"[yellow]⚠ Debug mode is ENABLED - logs will be saved to ~/.hazarus/logs/installation_debug.log[/yellow]\n")
+        
         # Check for sudo
         import os
         has_sudo = os.environ.get('SUDO_UID') is not None
@@ -1814,7 +1829,7 @@ class InteractiveMode:
             self.console.print(f"[dim][{idx}/{len(missing)}] Installing {tool_name}...[/dim]")
             
             with self.console.status(f"[dim]Installing {tool_name}...[/dim]", spinner="dots"):
-                status = await installer.install_tool(tool_name, sudo=has_sudo)
+                status = await installer.install_tool(tool_name, sudo=has_sudo, debug=self.debug_mode)
             
             results[tool_name] = status
             
@@ -1832,6 +1847,9 @@ class InteractiveMode:
         total = len(results)
         
         self.console.print(f"\n[green]✓ Installation Complete: {installed}/{total} tools installed[/green]\n")
+        
+        if self.debug_mode:
+            self.console.print(f"[dim]Debug logs saved to: ~/.hazarus/logs/installation_debug.log[/dim]\n")
         
         # Store failed installations for retry
         self.failed_installations = failed_tools
@@ -1857,6 +1875,9 @@ class InteractiveMode:
         if not tool_name:
             return
         
+        if self.debug_mode:
+            self.console.print(f"[yellow]⚠ Debug mode is ENABLED - logs will be saved to ~/.hazarus/logs/installation_debug.log[/yellow]\n")
+        
         # Check if tool exists in registry
         tool = installer.registry.get_tool(tool_name)
         if not tool:
@@ -1879,7 +1900,7 @@ class InteractiveMode:
         
         # Try installation with fallback
         with self.console.status(f"[dim]Installing {tool_name}...[/dim]", spinner="dots"):
-            status = await installer.install_tool(tool_name, sudo=has_sudo)
+            status = await installer.install_tool(tool_name, sudo=has_sudo, debug=self.debug_mode)
         
         if status.installed:
             method = status.installation_method.value if status.installation_method else "unknown"
@@ -1905,7 +1926,7 @@ class InteractiveMode:
                             installer_func = installer.installers.get(method)
                             if installer_func:
                                 try:
-                                    success = await installer_func(tool, has_sudo)
+                                    success = await installer_func(tool, has_sudo, debug=self.debug_mode)
                                     if success:
                                         # Verify installation
                                         new_status = await installer.detector.check_tool(tool_name)
@@ -1920,12 +1941,18 @@ class InteractiveMode:
             if not status.installed:
                 self.failed_installations[tool_name] = status
         
+        if self.debug_mode:
+            self.console.print(f"[dim]Debug logs saved to: ~/.hazarus/logs/installation_debug.log[/dim]\n")
+        
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
     
     async def retry_failed_installations(self, installer: 'ToolInstaller'):
         """Retry failed installations with alternative methods."""
         self.console.print("\n[bold cyan]Retry Failed Installations[/bold cyan]\n")
+        
+        if self.debug_mode:
+            self.console.print(f"[yellow]⚠ Debug mode is ENABLED - logs will be saved to ~/.hazarus/logs/installation_debug.log[/yellow]\n")
         
         if not self.failed_installations:
             self.console.print("[green]✓ No failed installations to retry[/green]")
@@ -1958,6 +1985,9 @@ class InteractiveMode:
         else:
             self.console.print("[red]Invalid option[/red]")
         
+        if self.debug_mode:
+            self.console.print(f"[dim]Debug logs saved to: ~/.hazarus/logs/installation_debug.log[/dim]\n")
+        
         self.console.print("\n[yellow]Press Enter to continue...[/yellow]")
         self.console.input("")
     
@@ -1972,7 +2002,7 @@ class InteractiveMode:
             self.console.print(f"[dim]Retrying {tool_name}...[/dim]")
             
             with self.console.status(f"[dim]Installing {tool_name}...[/dim]", spinner="dots"):
-                status = await installer.install_tool(tool_name, sudo=has_sudo)
+                status = await installer.install_tool(tool_name, sudo=has_sudo, debug=self.debug_mode)
             
             if status.installed:
                 method = status.installation_method.value if status.installation_method else "unknown"
@@ -2020,7 +2050,7 @@ class InteractiveMode:
                 if choice_idx == len(tool.installation.fallback_methods) + 1:
                     # Retry primary
                     with self.console.status(f"[dim]Installing via {tool.installation.type.value}...[/dim]", spinner="dots"):
-                        status = await installer.install_tool(tool_name, sudo=has_sudo)
+                        status = await installer.install_tool(tool_name, sudo=has_sudo, debug=self.debug_mode)
                 elif 1 <= choice_idx <= len(tool.installation.fallback_methods):
                     # Try specific fallback
                     method = tool.installation.fallback_methods[choice_idx - 1]
@@ -2028,7 +2058,7 @@ class InteractiveMode:
                     if installer_func:
                         with self.console.status(f"[dim]Installing via {method.value}...[/dim]", spinner="dots"):
                             try:
-                                success = await installer_func(tool, has_sudo)
+                                success = await installer_func(tool, has_sudo, debug=self.debug_mode)
                                 if success:
                                     status = await installer.detector.check_tool(tool_name)
                                 else:
