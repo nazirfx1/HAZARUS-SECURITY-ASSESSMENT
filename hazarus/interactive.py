@@ -42,20 +42,20 @@ class InteractiveMode:
 
     def show_banner(self):
         """Display HAZARUS banner."""
-        banner = """
-╔════════════════════════════════════════════════════════════════╗
-║  ██╗   ██╗██╗██████╗ ██████╗ ██████╗ ███████╗                  ║
-║  ██║   ██║██║██╔══██╗██╔═══██╗██╔══██╗██╔════╝                  ║
-║  ██║   ██║██║██████╔╝██║   ██║██║  ██║███████╗                  ║
-║  ╚██╗ ██╔╝██║██╔══██╗██║   ██║██║  ██║╚════██║                  ║
-║   ╚████╔╝ ██║██║  ██║╚██████╔╝██████╔╝███████║                  ║
-║    ╚═══╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝                  ║
-║                                                                ║
-║              HAZARUS CYBERSECURITY ASSESSMENT                   ║
-║                   Interactive Mode Only                          ║
-╚════════════════════════════════════════════════════════════════╝
+        banner = r"""
+[bold red]
+██╗  ██╗ █████╗ ███████╗ █████╗ ██████╗ ██╗   ██╗███████╗
+██║  ██║██╔══██╗╚══███╔╝██╔══██╗██╔══██╗██║   ██║██╔════╝
+███████║███████║  ███╔╝ ███████║██████╔╝██║   ██║███████╗
+██╔══██║██╔══██║ ███╔╝  ██╔══██║██╔══██╗██║   ██║╚════██║
+██║  ██║██║  ██║███████╗██║  ██║██║  ██║╚██████╔╝███████║
+╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚══════╝╚══════╝
+[/bold red]
+[bold white]     HAZARUS SECURITY ASSESSMENT FRAMEWORK[/bold white]
+[bold red]              ADVANCED SECURITY PLATFORM[/bold red]
+[bold white]                 INTERACTIVE MODE ONLY[/bold white]
 """
-        self.console.print(banner, style="bold red")
+        self.console.print(banner, justify="center")
 
     def show_config(self):
         """Display configuration details."""
