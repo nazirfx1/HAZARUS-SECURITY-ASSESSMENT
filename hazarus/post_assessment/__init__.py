@@ -1,16 +1,21 @@
 """
 HAZARUS Post-Assessment Module
-Privilege escalation and security auditing.
+
+Post-exploitation audits and validation.
 """
 
-from hazarus.post_assessment.linpeas import LinPEASScanner
-from hazarus.post_assessment.lynis import LynisScanner
-from hazarus.post_assessment.winpeas import WinPEASScanner
-from hazarus.post_assessment.bloodhound import BloodHoundAnalyzer
+from hazarus.post_assessment.credential_exposure import CredentialExposureAudit
+from hazarus.post_assessment.exfiltration_simulation import ExfiltrationSimulation
+from hazarus.post_assessment.lateral_movement_audit import LateralMovementAudit
+from hazarus.post_assessment.persistence_audit import PersistenceAudit
+from hazarus.post_assessment.privilege_audit import PrivilegeAudit
+from hazarus.post_assessment.segmentation_audit import SegmentationAudit
 
 __all__ = [
-    "LinPEASScanner",
-    "LynisScanner",
-    "WinPEASScanner",
-    "BloodHoundAnalyzer",
+    "CredentialExposureAudit",
+    "ExfiltrationSimulation",
+    "LateralMovementAudit",
+    "PersistenceAudit",
+    "PrivilegeAudit",
+    "SegmentationAudit",
 ]
