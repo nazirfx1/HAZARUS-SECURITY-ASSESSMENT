@@ -553,7 +553,7 @@ class ToolInstaller:
         APT_TIMEOUT = 600
         
         # Update package list with retry - skip if recently run
-        async def _update_package_list():
+        async def _update_package_list(debug: bool = False):
             # Skip update if it was run recently (within 1 hour)
             if self._is_apt_update_recent(max_age_hours=1):
                 logger.info("Skipping APT update (recently run)")
@@ -623,7 +623,7 @@ class ToolInstaller:
             # Continue with installation attempt even if update failed
         
         # Install package with retry
-        async def _install_package():
+        async def _install_package(debug: bool = False):
             # Wait for APT lock before installing
             if not await self._wait_for_apt_lock(max_wait_seconds=120):
                 print("  Warning: Could not acquire APT lock, attempting installation anyway")
@@ -698,7 +698,7 @@ class ToolInstaller:
             return result
         
         try:
-            result = await retry_command_with_backoff(_install_package, max_retries=3)
+            result = await retry_command_with_backoff(_install_package, max_retries=3, debug=debug)
             
             # After successful APT install, verify installation using detector
             if debug and debug_logger:
@@ -889,9 +889,6 @@ class ToolInstaller:
             """Build pip install command with appropriate flags."""
             cmd = ["pip", "install"]
             
-            # Add --skip-existing to avoid upgrading already installed packages
-            cmd.append("--skip-existing")
-            
             # Add --break-system-packages only if needed (Python 3.13+)
             if needs_break_flag and not user_install:
                 cmd.append("--break-system-packages")
@@ -906,12 +903,12 @@ class ToolInstaller:
             return cmd
         
         # Install package with retry for network errors
-        async def _install_package_with_method(method_name: str, cmd: list) -> bool:
+        async def _install_package_with_method(method_name: str, cmd: list, debug: bool = False) -> bool:
             """Install package using a specific method."""
             print(f"  Attempting pip install via {method_name}...")
             print(f"  Command: {' '.join(cmd)}")
             
-            result = await self._run_command(cmd)
+            result = await self._run_command(cmd, debug=debug)
             
             if result.returncode != 0:
                 stderr = result.stderr.strip()
@@ -970,7 +967,7 @@ class ToolInstaller:
         
         # Method 4: System-wide with --break-system-packages (if needed and not already tried)
         if needs_break_flag and not use_sudo:
-            cmd = ["pip", "install", "--break-system-packages", "--skip-existing", package_name]
+            cmd = ["pip", "install", "--break-system-packages", package_name]
             installation_methods.append(("system-wide with --break-system-packages", cmd, False))
         
         last_error = None
@@ -986,7 +983,7 @@ class ToolInstaller:
                     final_cmd.insert(0, "sudo")
                 
                 result = await retry_command_with_backoff(
-                    lambda: _install_package_with_method(method_name, final_cmd),
+                    lambda d=debug: _install_package_with_method(method_name, final_cmd, debug=d),
                     max_retries=3
                 )
                 return result
@@ -1016,6 +1013,97 @@ class ToolInstaller:
         if last_error:
             raise subprocess.SubprocessError(f"All pip installation methods failed. Last error: {last_error}")
         return False
+    
+    def _find_executable_files(self, extract_dir: Path, tool_name: str, debug: bool = False) -> List[Path]:
+        """Find executable files in extracted archive with fallback strategies.
+        
+        Args:
+            extract_dir: Path to extracted directory
+            tool_name: Name of the tool being installed
+            debug: Enable debug logging
+            
+        Returns:
+            List of executable file paths
+            
+        Raises:
+            OSError: If no executable files can be found
+        """
+        debug_logger = self.debug_logger if debug else None
+        
+        if debug and debug_logger:
+            debug_logger.info(f"Searching for executable files in {extract_dir}")
+        
+        # Strategy 1: Look for files with execute permissions
+        executables = []
+        for root, dirs, files in os.walk(extract_dir):
+            for file in files:
+                file_path = Path(root) / file
+                if os.access(file_path, os.X_OK):
+                    executables.append(file_path)
+        
+        if executables:
+            if debug and debug_logger:
+                debug_logger.info(f"Found {len(executables)} files with execute permissions")
+                for exe in executables:
+                    debug_logger.debug(f"  - {exe}")
+            return executables
+        
+        if debug and debug_logger:
+            debug_logger.info("No files with execute permissions found, trying fallback strategies")
+        
+        # Strategy 2: Look for common binary names (tool name in lowercase)
+        common_names = [tool_name.lower(), tool_name]
+        for root, dirs, files in os.walk(extract_dir):
+            for file in files:
+                file_path = Path(root) / file
+                if file.lower() in common_names:
+                    executables.append(file_path)
+                    if debug and debug_logger:
+                        debug_logger.info(f"Found binary by name: {file_path}")
+        
+        if executables:
+            return executables
+        
+        if debug and debug_logger:
+            debug_logger.info("No files matching common binary names found, checking root directory")
+        
+        # Strategy 3: Look for any file in the root of extracted directory
+        # (not in subdirectories)
+        root_files = []
+        extract_path = Path(extract_dir)
+        if extract_path.is_dir():
+            for item in extract_path.iterdir():
+                if item.is_file():
+                    root_files.append(item)
+                    if debug and debug_logger:
+                        debug_logger.debug(f"Found file in root: {item}")
+        
+        if root_files:
+            if debug and debug_logger:
+                debug_logger.info(f"Found {len(root_files)} files in root directory")
+            return root_files
+        
+        # Strategy 4: Look for any non-hidden file in the entire extraction
+        all_files = []
+        for root, dirs, files in os.walk(extract_dir):
+            for file in files:
+                # Skip hidden files and common non-executable files
+                if file.startswith('.'):
+                    continue
+                if file.lower() in ['readme', 'license', 'changelog', 'license.txt', 'readme.md']:
+                    continue
+                file_path = Path(root) / file
+                all_files.append(file_path)
+        
+        if all_files:
+            if debug and debug_logger:
+                debug_logger.info(f"Found {len(all_files)} potential executable files")
+            return all_files
+        
+        # No files found at all
+        if debug and debug_logger:
+            debug_logger.error(f"No executable files found in {extract_dir}")
+        raise OSError(f"No executable files found in extracted archive for {tool_name}")
     
     async def _install_github(self, tool: ToolMetadata, use_sudo: bool, debug: bool = False) -> bool:
         """Install tool from GitHub releases.
@@ -1093,18 +1181,8 @@ class ToolInstaller:
                 # System-wide install
                 install_path = tool.installation.install_path or "/usr/local/bin"
                 
-                # Find all executable files recursively
-                executables = []
-                for root, dirs, files in os.walk(extract_dir):
-                    for file in files:
-                        file_path = Path(root) / file
-                        if os.access(file_path, os.X_OK):
-                            executables.append(file_path)
-                
-                if not executables:
-                    if debug and debug_logger:
-                        debug_logger.error(f"No executable files found in {extract_dir}")
-                    raise OSError(f"No executable files found in extracted archive for {tool.name}")
+                # Find executable files using improved logic
+                executables = self._find_executable_files(extract_dir, tool.name, debug=debug)
                 
                 if debug and debug_logger:
                     debug_logger.info(f"Found {len(executables)} executable files")
@@ -1113,6 +1191,15 @@ class ToolInstaller:
                 
                 # Copy each executable individually
                 for exe in executables:
+                    # Set execute permissions before copying
+                    try:
+                        os.chmod(exe, 0o755)
+                        if debug and debug_logger:
+                            debug_logger.info(f"Set execute permissions on {exe}")
+                    except Exception as e:
+                        if debug and debug_logger:
+                            debug_logger.warning(f"Could not set execute permissions on {exe}: {e}")
+                    
                     cmd = ["sudo", "cp", str(exe), install_path]
                     
                     if debug and debug_logger:
@@ -1142,28 +1229,29 @@ class ToolInstaller:
                 except PermissionError:
                     raise PermissionError(f"Permission denied creating {install_path}")
                 
-                # Find all executable files recursively
-                executables = []
-                for root, dirs, files in os.walk(extract_dir):
-                    for file in files:
-                        file_path = Path(root) / file
-                        if os.access(file_path, os.X_OK):
-                            executables.append(file_path)
-                
-                if not executables:
-                    if debug and debug_logger:
-                        debug_logger.error(f"No executable files found in {extract_dir}")
-                    raise OSError(f"No executable files found in extracted archive for {tool.name}")
+                # Find executable files using improved logic
+                executables = self._find_executable_files(extract_dir, tool.name, debug=debug)
                 
                 if debug and debug_logger:
                     debug_logger.info(f"Found {len(executables)} executable files for user-space install")
                 
                 # Copy each executable
                 for exe in executables:
+                    # Set execute permissions before copying
+                    try:
+                        os.chmod(exe, 0o755)
+                        if debug and debug_logger:
+                            debug_logger.info(f"Set execute permissions on {exe}")
+                    except Exception as e:
+                        if debug and debug_logger:
+                            debug_logger.warning(f"Could not set execute permissions on {exe}: {e}")
+                    
                     if debug and debug_logger:
                         debug_logger.info(f"Copying {exe.name} to {install_path}")
                     try:
                         shutil.copy(exe, install_path / exe.name)
+                        # Ensure the copied file has execute permissions
+                        os.chmod(install_path / exe.name, 0o755)
                     except PermissionError:
                         raise PermissionError(f"Permission denied copying {exe.name} to {install_path}")
             
@@ -1273,6 +1361,7 @@ class ToolInstaller:
         Returns:
             True (internal modules are built-in)
         """
+        debug_logger = self.debug_logger if debug else None
         if debug and debug_logger:
             debug_logger.info(f"Internal module detected: {tool.name}")
             debug_logger.info(f"No installation needed for internal modules")
@@ -1280,16 +1369,22 @@ class ToolInstaller:
         print(f"  No installation required")
         return True
     
-    async def _run_command(self, command: list, timeout: int = 300) -> subprocess.CompletedProcess:
+    async def _run_command(self, command: list, timeout: int = 300, debug: bool = False) -> subprocess.CompletedProcess:
         """Run a command asynchronously.
         
         Args:
             command: Command to run as list
             timeout: Timeout in seconds
+            debug: Enable debug logging
             
         Returns:
             CompletedProcess with stdout and stderr
         """
+        debug_logger = self.debug_logger if debug else None
+        if debug and debug_logger:
+            debug_logger.info(f"Executing command: {' '.join(command)}")
+            debug_logger.info(f"Timeout: {timeout}s")
+        
         try:
             process = await asyncio.create_subprocess_exec(
                 *command,
@@ -1302,11 +1397,21 @@ class ToolInstaller:
                 timeout=timeout
             )
             
+            stdout_str = stdout.decode()
+            stderr_str = stderr.decode()
+            
+            if debug and debug_logger:
+                debug_logger.info(f"Command return code: {process.returncode}")
+                if stdout_str:
+                    debug_logger.debug(f"STDOUT:\n{stdout_str}")
+                if stderr_str:
+                    debug_logger.debug(f"STDERR:\n{stderr_str}")
+            
             return subprocess.CompletedProcess(
                 args=command,
                 returncode=process.returncode,
-                stdout=stdout.decode(),
-                stderr=stderr.decode()
+                stdout=stdout_str,
+                stderr=stderr_str
             )
         except asyncio.TimeoutError:
             if process:

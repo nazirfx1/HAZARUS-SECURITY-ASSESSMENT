@@ -341,37 +341,6 @@ class TestPipInstallation:
                     await tool_installer._install_pip(tool, use_sudo=False)
 
 
-class TestSkipExistingFlag:
-    """Tests for --skip-existing flag usage."""
-    
-    @pytest.mark.asyncio
-    async def test_skip_existing_flag_in_command(self, tool_installer):
-        """Test that --skip-existing flag is included in pip command."""
-        tool = ToolMetadata(
-            name="test-package",
-            description="Test package",
-            category=ToolCategory.OPTIONAL,
-            installation=ToolInstallation(
-                type=InstallationType.PIP,
-                package="test-package",
-                sudo_required=False
-            )
-        )
-        
-        commands_run = []
-        
-        async def mock_run(cmd):
-            commands_run.append(cmd)
-            return Mock(returncode=0, stdout="", stderr="")
-        
-        with patch.object(tool_installer, '_is_package_installed', return_value=(False, 'not_installed')):
-            with patch.object(tool_installer, '_run_command', side_effect=mock_run):
-                await tool_installer._install_pip(tool, use_sudo=False)
-                
-                # Check that --skip-existing is in the command
-                assert any('--skip-existing' in cmd for cmd in commands_run)
-
-
 class TestRetryLogic:
     """Tests for retry logic with network errors."""
     
