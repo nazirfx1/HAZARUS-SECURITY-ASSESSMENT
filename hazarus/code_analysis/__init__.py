@@ -3,14 +3,16 @@ HAZARUS Code Analysis Module
 Source code security analysis.
 """
 
-from hazarus.code_analysis.semgrep import SemgrepScanner
-from hazarus.code_analysis.gitleaks import GitleaksScanner
-from hazarus.code_analysis.trivy import TrivyScanner
-from hazarus.code_analysis.bandit import BanditScanner
+from .semgrep import SemgrepAnalyzer
+from .gitleaks import GitleaksScanner
+from .trivy import TrivyScanner
+from .dependency_audit import DependencyAudit
+from .secret_analysis import SecretAnalysis
 
 __all__ = [
-    "SemgrepScanner",
+    "SemgrepAnalyzer",
     "GitleaksScanner",
     "TrivyScanner",
-    "BanditScanner",
+    "DependencyAudit",
+    "SecretAnalysis",
 ]
