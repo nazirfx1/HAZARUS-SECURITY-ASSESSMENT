@@ -54,8 +54,47 @@ set_database(db)
 logger.info("Database initialized and auth data migrated")
 
 
-# In-memory storage (in production, use database)
+# Use database for persistent storage
 assessments: Dict[str, Dict[str, Any]] = {}
+
+# Helper functions to use database
+def get_assessments_from_db() -> List[Dict[str, Any]]:
+    """Get all assessments from database."""
+    try:
+        conn = db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM assessments ORDER BY created_at DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"Failed to get assessments: {e}")
+        return []
+
+def save_assessment_to_db(assessment: Dict[str, Any]) -> bool:
+    """Save assessment to database."""
+    try:
+        conn = db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO assessments 
+            (assessment_id, target, status, start_time, end_time, findings_count, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            assessment.get('assessment_id'),
+            assessment.get('target'),
+            assessment.get('status'),
+            assessment.get('start_time'),
+            assessment.get('end_time'),
+            assessment.get('findings_count', 0),
+            datetime.now(UTC).isoformat()
+        ))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save assessment: {e}")
+        return False
 
 
 class Assessment(BaseModel):
