@@ -4,7 +4,7 @@ version = "2.0.0"
 description = "HAZARUS Security Assessment Framework - Interactive menu-driven security assessment platform for Parrot Security OS"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "HAZARUS Security Team", email = "security@hazarus.org"}
 ]

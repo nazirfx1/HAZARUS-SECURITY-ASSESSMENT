@@ -18,10 +18,10 @@ from rich.align import Align
 from rich.box import DOUBLE
 from datetime import datetime
 from hazarus.tools.registry import ToolStatus
-from vulnerability.nikto import NiktoScanner
-from vulnerability.nuclei import NucleiScanner
-from scanning.masscan import MasscanScanner
-from scanning.rustscan import RustScanScanner
+from hazarus.vulnerability.nikto import NiktoScanner
+from hazarus.vulnerability.nuclei import NucleiScanner
+from hazarus.scanning.masscan import MasscanScanner
+from hazarus.scanning.rustscan import RustScanScanner
 
 
 class InteractiveMode:
@@ -454,7 +454,7 @@ class InteractiveMode:
         self.console.print(f"[cyan]Adding target: {target}[/cyan]")
         # Import and call actual scope add function
         try:
-            from security import ScopeManager
+            from hazarus.security import ScopeManager
             import yaml
             
             scope_file = Path.cwd() / "config" / "scope.yaml"
@@ -507,7 +507,7 @@ class InteractiveMode:
         """Delete target from scope."""
         self.console.print(f"[cyan]Deleting target: {target}[/cyan]")
         try:
-            from security import ScopeManager
+            from hazarus.security import ScopeManager
             import yaml
             
             scope_file = Path.cwd() / "config" / "scope.yaml"
@@ -568,7 +568,7 @@ class InteractiveMode:
         """List all targets in scope."""
         self.console.print("[cyan]Listing targets...[/cyan]")
         try:
-            from security import ScopeManager
+            from hazarus.security import ScopeManager
             scope_file = Path.cwd() / "config" / "scope.yaml"
             scope_manager = ScopeManager(str(scope_file))
             await scope_manager.load_scope()
@@ -597,7 +597,7 @@ class InteractiveMode:
         """Validate scope configuration."""
         self.console.print("[cyan]Validating scope...[/cyan]")
         try:
-            from security import ScopeManager
+            from hazarus.security import ScopeManager
             scope_file = Path.cwd() / "config" / "scope.yaml"
             scope_manager = ScopeManager(str(scope_file))
             loaded = await scope_manager.load_scope()
@@ -643,12 +643,12 @@ class InteractiveMode:
         
         # Import and call actual recon logic
         try:
-            from reconnaissance.dns import DNSRecon
-            from reconnaissance.whois import WhoisRecon
-            from reconnaissance.subdomains import SubdomainDiscovery
-            from reconnaissance.origin_ip import OriginIPDiscovery
-            from reconnaissance.advanced import AdvancedSubdomainTools, AdvancedDNS, EnhancedLiveHostDiscovery, EnhancedOriginIPDiscovery
-            from reconnaissance.security import SubdomainTakeoverDetector, VirtualHostEnumerator
+            from hazarus.reconnaissance.dns import DNSRecon
+            from hazarus.reconnaissance.whois import WhoisRecon
+            from hazarus.reconnaissance.subdomains import SubdomainDiscovery
+            from hazarus.reconnaissance.origin_ip import OriginIPDiscovery
+            from hazarus.reconnaissance.advanced import AdvancedSubdomainTools, AdvancedDNS, EnhancedLiveHostDiscovery, EnhancedOriginIPDiscovery
+            from hazarus.reconnaissance.security import SubdomainTakeoverDetector, VirtualHostEnumerator
             
             # DNS Reconnaissance
             self.console.print("[yellow][1/8] DNS Enumeration...[/yellow]")
@@ -852,7 +852,7 @@ class InteractiveMode:
         
         # Import and call actual scan logic
         try:
-            from scanning.nmap import NmapScanner
+            from hazarus.scanning.nmap import NmapScanner
             import socket
             
             nmap = NmapScanner()
@@ -986,7 +986,7 @@ class InteractiveMode:
                 self.console.print("[yellow]Compiling Findings...[/yellow]")
             elif mode == "live":
                 self.console.print("[yellow][1/1] Live Host Discovery...[/yellow]")
-                from reconnaissance.live_hosts import LiveHostDiscovery
+                from hazarus.reconnaissance.live_hosts import LiveHostDiscovery
                 live = LiveHostDiscovery()
                 result = await live.discover_hosts(target)
                 
@@ -1144,8 +1144,8 @@ class InteractiveMode:
         
         # Import and call actual web logic
         try:
-            from scanning.http_scanner import HTTPScanner
-            from scanning.web_tools import AdvancedWebTools
+            from hazarus.scanning.http_scanner import HTTPScanner
+            from hazarus.scanning.web_tools import AdvancedWebTools
 
             self.console.print("[yellow][1/6] HTTP Security Scan...[/yellow]")
             self.console.print(f"  [dim]Target: {target}[/dim]")
@@ -1329,9 +1329,9 @@ class InteractiveMode:
             self.console.print(f"[yellow][Phase {phases.index('privacy') + 1}/{len(phases)}] Privacy Check...[/yellow]")
             self.console.print(f"  [dim]Checking: Anonsurf, Tor, DNS Leak, IPv6[/dim]")
             try:
-                from anonymity.anonsurf import AnonsurfManager
-                from anonymity.dns_leak import DNSLeakChecker
-                from anonymity.ipv6_check import IPv6Checker
+                from hazarus.anonymity.anonsurf import AnonsurfManager
+                from hazarus.anonymity.dns_leak import DNSLeakChecker
+                from hazarus.anonymity.ipv6_check import IPv6Checker
                 
                 anonsurf = AnonsurfManager()
                 dns_checker = DNSLeakChecker()
@@ -1369,13 +1369,13 @@ class InteractiveMode:
             else:
                 self.console.print(f"  [dim]Steps: DNS, Amass, crt.sh, Brute Force, WHOIS, Origin IP[/dim]")
             try:
-                from reconnaissance.dns import DNSRecon
-                from reconnaissance.whois import WhoisRecon
-                from reconnaissance.subdomains import SubdomainDiscovery
-                from reconnaissance.origin_ip import OriginIPDiscovery
-                from reconnaissance.advanced import AdvancedSubdomainTools, AdvancedDNS, EnhancedLiveHostDiscovery, EnhancedOriginIPDiscovery
-                from reconnaissance.security import SubdomainTakeoverDetector
-                from reconnaissance.osint import TheHarvester
+                from hazarus.reconnaissance.dns import DNSRecon
+                from hazarus.reconnaissance.whois import WhoisRecon
+                from hazarus.reconnaissance.subdomains import SubdomainDiscovery
+                from hazarus.reconnaissance.origin_ip import OriginIPDiscovery
+                from hazarus.reconnaissance.advanced import AdvancedSubdomainTools, AdvancedDNS, EnhancedLiveHostDiscovery, EnhancedOriginIPDiscovery
+                from hazarus.reconnaissance.security import SubdomainTakeoverDetector
+                from hazarus.reconnaissance.osint import TheHarvester
                 
                 dns_recon = DNSRecon()
                 dns_result = await dns_recon.enumerate_records(target)
@@ -1517,7 +1517,7 @@ class InteractiveMode:
             self.console.print(f"[yellow][Phase {phases.index('scan') + 1}/{len(phases)}] Network Scanning...[/yellow]")
             self.console.print(f"  [dim]Steps: Command build, Execute, Parse, Extract[/dim]")
             try:
-                from scanning.nmap import NmapScanner
+                from hazarus.scanning.nmap import NmapScanner
                 
                 nmap = NmapScanner()
                 if aggressive:
@@ -1572,8 +1572,8 @@ class InteractiveMode:
             self.console.print(f"[yellow][Phase {phases.index('web') + 1}/{len(phases)}] Web Assessment...[/yellow]")
             self.console.print(f"  [dim]Steps: HTTP Scan, Headers, Cookies, Vulns, Advanced Tools[/dim]")
             try:
-                from scanning.http_scanner import HTTPScanner
-                from scanning.web_tools import AdvancedWebTools
+                from hazarus.scanning.http_scanner import HTTPScanner
+                from hazarus.scanning.web_tools import AdvancedWebTools
                 
                 scanner = HTTPScanner(timeout=30, skip_advanced=False)
                 web_result = await scanner.scan(target)
@@ -1639,7 +1639,7 @@ class InteractiveMode:
                 self.console.print(f"[yellow][Phase {phases.index('api') + 1}/{len(phases)}] API Assessment...[/yellow]")
                 self.console.print(f"  [dim]Steps: REST endpoints, GraphQL, Security scan[/dim]")
                 try:
-                    from scanning.api_discovery import APIDiscovery
+                    from hazarus.scanning.api_discovery import APIDiscovery
                     api_discovery = APIDiscovery()
                     
                     # REST endpoint discovery
@@ -1671,7 +1671,7 @@ class InteractiveMode:
                 self.console.print(f"[yellow][Phase {phases.index('research') + 1}/{len(phases)}] Vulnerability Research...[/yellow]")
                 self.console.print(f"  [dim]Steps: Search ExploitDB, NVD API, CISA KEV, CVEMap[/dim]")
                 try:
-                    from vulnerability import ExploitIntelligence, NVDClient, CISAKEVClient, CVEMapScanner
+                    from hazarus.vulnerability import ExploitIntelligence, NVDClient, CISAKEVClient, CVEMapScanner
                     exploitdb = ExploitIntelligence()
                     nvd_client = NVDClient()
                     cisa_client = CISAKEVClient()
@@ -1710,7 +1710,7 @@ class InteractiveMode:
                 self.console.print(f"[yellow][Phase {phases.index('exploit') + 1}/{len(phases)}] Exploit Listing...[/yellow]")
                 self.console.print(f"  [dim]Steps: Query exploit registry, List available exploits[/dim]")
                 try:
-                    from exploitation.exploit_registry import ExploitRegistry
+                    from hazarus.exploitation.exploit_registry import ExploitRegistry
                     registry = ExploitRegistry()
                     exploits = registry.list_exploits()
                     self.console.print(f"  Total exploits in registry: {len(exploits)}")
@@ -1725,8 +1725,8 @@ class InteractiveMode:
                 self.console.print(f"[yellow][Phase {phases.index('post_audit') + 1}/{len(phases)}] Post-Assessment Audit...[/yellow]")
                 self.console.print(f"  [dim]Steps: Privilege audit, Persistence check[/dim]")
                 try:
-                    from post_assessment.privilege_audit import PrivilegeAudit
-                    from post_assessment.persistence_audit import PersistenceAudit
+                    from hazarus.post_assessment.privilege_audit import PrivilegeAudit
+                    from hazarus.post_assessment.persistence_audit import PersistenceAudit
                     
                     privilege_audit = PrivilegeAudit()
                     privilege_result = await privilege_audit.audit(target)
@@ -1750,7 +1750,7 @@ class InteractiveMode:
                 self.console.print(f"[yellow][Phase {phases.index('lateral') + 1}/{len(phases)}] Lateral Movement Audit...[/yellow]")
                 self.console.print(f"  [dim]Steps: Credential cache, Service checks, Network paths[/dim]")
                 try:
-                    from post_assessment.lateral_movement_audit import LateralMovementAudit
+                    from hazarus.post_assessment.lateral_movement_audit import LateralMovementAudit
                     
                     lateral_audit = LateralMovementAudit()
                     lateral_result = await lateral_audit.audit(target)
@@ -1769,7 +1769,10 @@ class InteractiveMode:
                 self.console.print(f"[yellow][Phase {phases.index('code') + 1}/{len(phases)}] Source Code Analysis...[/yellow]")
                 self.console.print(f"  [dim]Steps: Semgrep, Gitleaks, Trivy, Bandit[/dim]")
                 try:
-                    from code_analysis import SemgrepScanner, GitleaksScanner, TrivyScanner, BanditScanner
+                    from hazarus.code_analysis.semgrep import SemgrepScanner
+                    from hazarus.code_analysis.gitleaks import GitleaksScanner
+                    from hazarus.code_analysis.trivy import TrivyScanner
+                    from hazarus.code_analysis.bandit import BanditScanner
                     
                     # Check if code path is provided in target
                     code_path = target if target and os.path.exists(target) else None
@@ -1853,7 +1856,7 @@ class InteractiveMode:
         
         # Generate report
         try:
-            from reporting import ReportGenerator
+            from hazarus.reporting import ReportGenerator
             from pathlib import Path
             
             report_dir = self.hazarus_dir / "reports"
@@ -2914,7 +2917,7 @@ class InteractiveMode:
         self.console.print(f"[cyan]Running {mode} API assessment on {target}...[/cyan]")
         
         try:
-            from scanning.api_discovery import APIDiscovery
+            from hazarus.scanning.api_discovery import APIDiscovery
             api_discovery = APIDiscovery()
             
             if mode == "rest":
@@ -2937,7 +2940,7 @@ class InteractiveMode:
         self.console.print(f"[cyan]Running {mode} vulnerability research on {target}...[/cyan]")
         
         try:
-            from vulnerability.exploitdb import ExploitDB
+            from hazarus.vulnerability.exploitdb import ExploitDB
             
             if mode == "cve":
                 self.console.print("\n[cyan]CVE Search[/cyan]")
@@ -2952,7 +2955,7 @@ class InteractiveMode:
                 result = await exploitdb.search(target)
                 self.console.print(f"[green]✓ Exploits found: {len(result.exploits)}[/green]")
             elif mode == "registry":
-                from exploitation.exploit_registry import ExploitRegistry
+                from hazarus.exploitation.exploit_registry import ExploitRegistry
                 registry = ExploitRegistry()
                 exploits = registry.list_exploits()
                 self.console.print(f"[green]✓ Total exploits in registry: {len(exploits)}[/green]")
@@ -2976,7 +2979,7 @@ class InteractiveMode:
         self.console.print("[yellow]Note: Actual exploitation requires lab verification[/yellow]")
         
         try:
-            from exploitation.exploit_registry import ExploitRegistry
+            from hazarus.exploitation.exploit_registry import ExploitRegistry
             
             if mode == "list":
                 registry = ExploitRegistry()
@@ -3019,22 +3022,22 @@ class InteractiveMode:
         
         try:
             if mode == "privilege":
-                from post_assessment.privilege_audit import PrivilegeAudit
+                from hazarus.post_assessment.privilege_audit import PrivilegeAudit
                 audit = PrivilegeAudit()
                 result = await audit.audit(target)
                 self.console.print(f"[green]✓ Privilege findings: {len(result.findings)}[/green]")
             elif mode == "persistence":
-                from post_assessment.persistence_audit import PersistenceAudit
+                from hazarus.post_assessment.persistence_audit import PersistenceAudit
                 audit = PersistenceAudit()
                 result = await audit.audit(target)
                 self.console.print(f"[green]✓ Persistence mechanisms: {len(result.mechanisms)}[/green]")
             elif mode == "lateral":
-                from post_assessment.lateral_movement_audit import LateralMovementAudit
+                from hazarus.post_assessment.lateral_movement_audit import LateralMovementAudit
                 audit = LateralMovementAudit()
                 result = await audit.audit(target)
                 self.console.print(f"[green]✓ Lateral paths: {len(result.paths)}[/green]")
             elif mode == "segmentation":
-                from post_assessment.segmentation_audit import SegmentationAudit
+                from hazarus.post_assessment.segmentation_audit import SegmentationAudit
                 audit = SegmentationAudit()
                 result = await audit.audit(target)
                 self.console.print(f"[green]✓ Segmentation findings: {len(result.findings)}[/green]")
@@ -3050,22 +3053,22 @@ class InteractiveMode:
         
         try:
             if mode == "semgrep":
-                from code_analysis.semgrep import SemgrepScanner
+                from hazarus.code_analysis.semgrep import SemgrepScanner
                 scanner = SemgrepScanner()
                 self.console.print("[yellow]Semgrep scan - Running...[/yellow]")
                 self.console.print("[green]✓ Semgrep scan complete[/green]")
             elif mode == "gitleaks":
-                from code_analysis.gitleaks import GitleaksScanner
+                from hazarus.code_analysis.gitleaks import GitleaksScanner
                 scanner = GitleaksScanner()
                 self.console.print("[yellow]Gitleaks scan - Running...[/yellow]")
                 self.console.print("[green]✓ Gitleaks scan complete[/green]")
             elif mode == "trivy":
-                from code_analysis.trivy import TrivyScanner
+                from hazarus.code_analysis.trivy import TrivyScanner
                 scanner = TrivyScanner()
                 self.console.print("[yellow]Trivy scan - Running...[/yellow]")
                 self.console.print("[green]✓ Trivy scan complete[/green]")
             elif mode == "dependency":
-                from code_analysis.dependency_audit import DependencyAudit
+                from hazarus.code_analysis.dependency_audit import DependencyAudit
                 audit = DependencyAudit()
                 self.console.print("[yellow]Dependency audit - Running...[/yellow]")
                 self.console.print("[green]✓ Dependency audit complete[/green]")
@@ -3080,7 +3083,7 @@ class InteractiveMode:
         self.console.print("[cyan]Loading recent assessments...[/cyan]")
         
         try:
-            from reconnaissance.core import ReconPersistence
+            from hazarus.reconnaissance.core import ReconPersistence
             
             persistence = ReconPersistence()
             recent = await persistence.get_recent_assessments(limit=10)
@@ -3110,7 +3113,8 @@ class InteractiveMode:
         self.console.print(f"[cyan]Generating {mode} report...[/cyan]")
         
         try:
-            from reconnaissance.core import ReconPersistence, ReconReportGenerator
+            from hazarus.reconnaissance.core import ReconPersistence, ReconReportGenerator
+            from hazarus.reconnaissance.core import ReconReport
             from dataclasses import asdict
             
             persistence = ReconPersistence()
@@ -3125,7 +3129,6 @@ class InteractiveMode:
             assets = await persistence.load_assets(assessment.assessment_id)
             findings = await persistence.load_findings(assessment.assessment_id)
             
-            from reconnaissance.core import ReconReport
             report = ReconReport(
                 assessment_id=assessment.assessment_id,
                 target=assessment.target,
@@ -3181,32 +3184,32 @@ class InteractiveMode:
         
         try:
             if mode == "subdomains":
-                from reconnaissance.advanced import AdvancedSubdomainTools
+                from hazarus.reconnaissance.advanced import AdvancedSubdomainTools
                 tools = AdvancedSubdomainTools()
                 result = await tools.discover_all(target)
                 self.console.print(f"[green]✓ Subdomains found: {result.total_found}[/green]")
             elif mode == "doh":
-                from reconnaissance.advanced import AdvancedDNS
+                from hazarus.reconnaissance.advanced import AdvancedDNS
                 dns = AdvancedDNS()
                 result = await dns.query_doh(target, "A")
                 self.console.print(f"[green]✓ DoH records: {len(result.records)}[/green]")
             elif mode == "dot":
-                from reconnaissance.advanced import AdvancedDNS
+                from hazarus.reconnaissance.advanced import AdvancedDNS
                 dns = AdvancedDNS()
                 result = await dns.query_dot(target, "A")
                 self.console.print(f"[green]✓ DoT records: {len(result.records)}[/green]")
             elif mode == "nsec":
-                from reconnaissance.advanced import AdvancedDNS
+                from hazarus.reconnaissance.advanced import AdvancedDNS
                 dns = AdvancedDNS()
                 result = await dns.nsec_walk(target)
                 self.console.print(f"[green]✓ NSEC subdomains: {len(result.subdomains)}[/green]")
             elif mode == "live_hosts":
-                from reconnaissance.advanced import EnhancedLiveHostDiscovery
+                from hazarus.reconnaissance.advanced import EnhancedLiveHostDiscovery
                 live = EnhancedLiveHostDiscovery()
                 result = await live.discover_enhanced(target)
                 self.console.print(f"[green]✓ Live hosts: {len(result.hosts)}[/green]")
             elif mode == "origin_ip":
-                from reconnaissance.advanced import EnhancedOriginIPDiscovery
+                from hazarus.reconnaissance.advanced import EnhancedOriginIPDiscovery
                 origin = EnhancedOriginIPDiscovery()
                 result = await origin.discover_enhanced(target)
                 self.console.print(f"[green]✓ Origin IPs: {result.total_ips}[/green]")
@@ -3221,8 +3224,8 @@ class InteractiveMode:
         self.console.print(f"[cyan]Running asset intelligence: {mode}[/cyan]")
         
         try:
-            from reconnaissance.core import ReconPersistence
-            from reconnaissance.asset import AssetIntelligence, AssetLifecycle, AssetRiskScoring
+            from hazarus.reconnaissance.core import ReconPersistence
+            from hazarus.reconnaissance.asset import AssetIntelligence, AssetLifecycle, AssetRiskScoring
             
             persistence = ReconPersistence()
             recent = await persistence.get_recent_assessments(limit=1)
@@ -3283,7 +3286,7 @@ class InteractiveMode:
                 
                 # Try to use post_assessment tools if available
                 try:
-                    from post_assessment.linpeas import LinPEASScanner
+                    from hazarus.post_assessment.linpeas import LinPEASScanner
                     linpeas = LinPEASScanner()
                     result = await linpeas.scan(target)
                     self.console.print(f"[green]✓ LinPEAS scan complete[/green]")
@@ -3292,7 +3295,7 @@ class InteractiveMode:
                     self.console.print("[dim]Install LinPEAS for comprehensive Linux enumeration[/dim]")
                 
                 try:
-                    from post_assessment.winpeas import WinPEASScanner
+                    from hazarus.post_assessment.winpeas import WinPEASScanner
                     winpeas = WinPEASScanner()
                     result = await winpeas.scan(target)
                     self.console.print(f"[green]✓ WinPEAS scan complete[/green]")
@@ -3310,7 +3313,7 @@ class InteractiveMode:
                 
                 # Use LinPEAS/WinPEAS for privilege escalation
                 try:
-                    from post_assessment.linpeas import LinPEASScanner
+                    from hazarus.post_assessment.linpeas import LinPEASScanner
                     linpeas = LinPEASScanner()
                     result = await linpeas.scan(target)
                     self.console.print(f"[green]✓ LinPEAS privilege audit complete[/green]")
@@ -3319,7 +3322,7 @@ class InteractiveMode:
                     self.console.print("[dim]Install LinPEAS for comprehensive Linux privilege escalation[/dim]")
                 
                 try:
-                    from post_assessment.winpeas import WinPEASScanner
+                    from hazarus.post_assessment.winpeas import WinPEASScanner
                     winpeas = WinPEASScanner()
                     result = await winpeas.scan(target)
                     self.console.print(f"[green]✓ WinPEAS privilege audit complete[/green]")
@@ -3337,7 +3340,7 @@ class InteractiveMode:
                 
                 # Use BloodHound for lateral movement analysis
                 try:
-                    from post_assessment.bloodhound import BloodHoundAnalyzer
+                    from hazarus.post_assessment.bloodhound import BloodHoundAnalyzer
                     bloodhound = BloodHoundAnalyzer()
                     result = await bloodhound.analyze(target)
                     self.console.print(f"[green]✓ BloodHound analysis complete[/green]")
@@ -3354,7 +3357,7 @@ class InteractiveMode:
                 self.console.print("  - Compliance check")
                 
                 try:
-                    from post_assessment.lynis import LynisScanner
+                    from hazarus.post_assessment.lynis import LynisScanner
                     lynis = LynisScanner()
                     result = await lynis.scan(target)
                     self.console.print(f"[green]✓ Lynis scan complete[/green]")
@@ -3554,7 +3557,7 @@ class InteractiveMode:
                 self.console.print("  - Dictionary attack testing")
                 
                 try:
-                    from wireless.aircrack import AircrackScanner
+                    from hazarus.wireless.aircrack import AircrackScanner
                     aircrack = AircrackScanner()
                     result = await aircrack.scan(target)
                     self.console.print(f"[green]✓ Aircrack scan complete[/green]")
@@ -3573,7 +3576,7 @@ class InteractiveMode:
                 self.console.print("  - Beacon frame analysis")
                 
                 try:
-                    from wireless.bettercap import BettercapScanner
+                    from hazarus.wireless.bettercap import BettercapScanner
                     bettercap = BettercapScanner()
                     result = await bettercap.scan(target)
                     self.console.print(f"[green]✓ Bettercap scan complete[/green]")
@@ -3591,7 +3594,7 @@ class InteractiveMode:
                 self.console.print("  - Encryption assessment")
                 
                 try:
-                    from wireless.wireshark import WiresharkScanner
+                    from hazarus.wireless.wireshark import WiresharkScanner
                     wireshark = WiresharkScanner()
                     result = await wireshark.scan(target)
                     self.console.print(f"[green]✓ Wireshark scan complete[/green]")
@@ -3609,7 +3612,7 @@ class InteractiveMode:
                 self.console.print("  - Security configuration review")
                 
                 try:
-                    from wireless.kismet import KismetScanner
+                    from hazarus.wireless.kismet import KismetScanner
                     kismet = KismetScanner()
                     result = await kismet.scan(target)
                     self.console.print(f"[green]✓ Kismet scan complete[/green]")
