@@ -88,7 +88,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["hazarus*", "core", "security", "anonymity", "reconnaissance", "scanning", "vulnerability", "exploitation", "post_assessment", "code_analysis", "reporting", "dashboard", "integrations"]
+include = ["hazarus*", "core", "security", "anonymity", "reconnaissance", "scanning", "vulnerability", "exploitation", "post_assessment", "code_analysis", "reporting", "dashboard"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml", "*.json"]

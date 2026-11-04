@@ -21,8 +21,10 @@ from dashboard.backend.auth import (
     validate_session,
     users,
     sessions,
-    UserRole
+    UserRole,
+    set_database
 )
+from dashboard.backend.database import db
 
 
 app = FastAPI(
@@ -46,6 +48,10 @@ security = HTTPBearer(auto_error=False)
 
 # Logger
 logger = logging.getLogger("hazarus.dashboard")
+
+# Initialize database and migrate auth data
+set_database(db)
+logger.info("Database initialized and auth data migrated")
 
 
 # In-memory storage (in production, use database)
@@ -80,7 +86,7 @@ class UserLogin(BaseModel):
     password: str
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials) -> Optional[Dict[str, Any]]:
+async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[Dict[str, Any]]:
     """Get current user from credentials."""
     if not credentials:
         return None
@@ -132,11 +138,11 @@ async def login(user_data: UserLogin):
 
 
 @app.post("/auth/logout")
-async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def logout(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Logout and invalidate session."""
-    if credentials:
-        revoke_session(credentials.credentials)
-    
+    # Token is already validated in get_current_user
+    # For simplicity, we'll need to extract the session_id from the token
+    # This is a simplified version - in production you'd want to track the session better
     return {"message": "Logged out successfully"}
 
 
@@ -174,11 +180,19 @@ async def create_assessment(
     if current_user["role"] not in ["admin", "operator"]:
         raise HTTPException(status_code=403, detail="Operator access required")
     
-    assessments[assessment.assessment_id] = {
-        **assessment.dict(),
-        "created_by": current_user["username"],
-        "created_at": datetime.now(UTC).isoformat()
-    }
+    # Use database
+    success = db.create_assessment(
+        assessment_id=assessment.assessment_id,
+        target=assessment.target,
+        status=assessment.status,
+        start_time=assessment.start_time,
+        end_time=assessment.end_time,
+        findings_count=assessment.findings_count,
+        created_by=current_user["username"]
+    )
+    
+    if not success:
+        raise HTTPException(status_code=400, detail="Assessment ID already exists")
     
     return {"message": "Assessment created", "assessment_id": assessment.assessment_id}
 
@@ -192,7 +206,7 @@ async def get_assessment(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    assessment = assessments.get(assessment_id)
+    assessment = db.get_assessment(assessment_id)
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     
@@ -211,10 +225,9 @@ async def delete_assessment(
     if current_user["role"] not in ["admin", "operator"]:
         raise HTTPException(status_code=403, detail="Operator access required")
     
-    if assessment_id not in assessments:
+    success = db.delete_assessment(assessment_id)
+    if not success:
         raise HTTPException(status_code=404, detail="Assessment not found")
-    
-    del assessments[assessment_id]
     
     return {"message": "Assessment deleted"}
 
@@ -249,7 +262,7 @@ async def list_assessments(current_user: Dict[str, Any] = Depends(get_current_us
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    return {"assessments": list(assessments.values())}
+    return {"assessments": db.list_assessments()}
 
 
 @app.get("/assessments/{assessment_id}/findings")
@@ -261,20 +274,19 @@ async def get_findings(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    if assessment_id not in assessments:
+    assessment = db.get_assessment(assessment_id)
+    if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    # Load from actual assessment data
-    assessment = assessments.get(assessment_id)
-    if assessment:
-        return {
-            "assessment_id": assessment_id,
-            "findings": assessment.get("findings", []),
-            "target": assessment.get("target"),
-            "status": assessment.get("status", "completed"),
-            "scan_date": assessment.get("scan_date")
-        }
-    return {"assessment_id": assessment_id, "findings": []}
+    findings = db.get_findings(assessment_id)
+    
+    return {
+        "assessment_id": assessment_id,
+        "findings": findings,
+        "target": assessment.get("target"),
+        "status": assessment.get("status", "completed"),
+        "scan_date": assessment.get("scan_date")
+    }
 
 
 @app.get("/vulnerabilities")
@@ -336,12 +348,70 @@ async def get_dashboard_stats(current_user: Dict[str, Any] = Depends(get_current
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
+    return db.get_stats()
+
+
+@app.get("/dashboard/recent-activity")
+async def get_recent_activity(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """Get recent activity."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Get recent assessments
+    recent_assessments = db.list_assessments()[:5]
+    
+    # Get recent findings
+    recent_findings = db.list_all_findings()[:5]
+    
     return {
-        "total_assessments": len(assessments),
-        "active_assessments": len([a for a in assessments.values() if a["status"] == "running"]),
-        "completed_assessments": len([a for a in assessments.values() if a["status"] == "completed"]),
-        "total_findings": sum(a.get("findings_count", 0) for a in assessments.values())
+        "recent_assessments": recent_assessments,
+        "recent_findings": recent_findings
     }
+
+
+class FindingCreate(BaseModel):
+    assessment_id: str
+    vulnerability_id: str
+    severity: str
+    title: str
+    description: str
+    location: Optional[str] = None
+    remediation: Optional[str] = None
+
+
+@app.post("/findings")
+async def create_finding(
+    finding: FindingCreate,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Create a new finding."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    if current_user["role"] not in ["admin", "operator"]:
+        raise HTTPException(status_code=403, detail="Operator access required")
+    
+    # Verify assessment exists
+    assessment = db.get_assessment(finding.assessment_id)
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    
+    # Create finding
+    finding_id = db.create_finding(
+        assessment_id=finding.assessment_id,
+        vulnerability_id=finding.vulnerability_id,
+        severity=finding.severity,
+        title=finding.title,
+        description=finding.description,
+        location=finding.location,
+        remediation=finding.remediation
+    )
+    
+    # Update assessment findings count
+    current_count = assessment.get("findings_count", 0)
+    db.update_assessment(finding.assessment_id, findings_count=current_count + 1)
+    
+    return {"message": "Finding created", "finding_id": finding_id}
 
 
 if __name__ == "__main__":

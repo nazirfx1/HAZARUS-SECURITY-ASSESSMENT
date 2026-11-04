@@ -18,6 +18,10 @@ from rich.align import Align
 from rich.box import DOUBLE
 from datetime import datetime
 from hazarus.tools.registry import ToolStatus
+from vulnerability.nikto import NiktoScanner
+from vulnerability.nuclei import NucleiScanner
+from scanning.masscan import MasscanScanner
+from scanning.rustscan import RustScanScanner
 
 
 class InteractiveMode:
@@ -173,17 +177,13 @@ class InteractiveMode:
             elif choice in ["4", "04"]:
                 await self.web_api_pentesting_menu()
             elif choice in ["5", "05"]:
-                self.console.print("[yellow]⚠ Host & Infrastructure Pentesting not yet implemented[/yellow]")
-                await asyncio.sleep(1)
+                await self.host_infrastructure_menu()
             elif choice in ["6", "06"]:
-                self.console.print("[yellow]⚠ Mobile Application Pentesting not yet implemented[/yellow]")
-                await asyncio.sleep(1)
+                await self.mobile_pentesting_menu()
             elif choice in ["7", "07"]:
-                self.console.print("[yellow]⚠ Digital Forensics & Incident Response not yet implemented[/yellow]")
-                await asyncio.sleep(1)
+                await self.forensics_menu()
             elif choice in ["8", "08"]:
-                self.console.print("[yellow]⚠ Wireless Security Assessment not yet implemented[/yellow]")
-                await asyncio.sleep(1)
+                await self.wireless_menu()
             elif choice in ["9", "09"]:
                 await self.vulnerability_exploitation_menu()
             elif choice in ["10"]:
@@ -288,9 +288,11 @@ class InteractiveMode:
             self.console.print("[2] Quick Scan (Common Ports)")
             self.console.print("[3] Deep Scan (All Ports)")
             self.console.print("[4] Advanced Scan (With Scripts)")
+            self.console.print("[5] Masscan (High-Performance Port Scan)")
+            self.console.print("[6] RustScan (Fast Port Discovery)")
             self.console.print("[0] Back to Main Menu")
 
-            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+            choice = self.console.input("\n[bold red]Select option [0-6]: [/bold red]")
 
             if choice == "0":
                 self.console.clear()
@@ -310,6 +312,20 @@ class InteractiveMode:
                 }[choice]
                 
                 await self.run_scan(target, mode)
+            elif choice == "5":
+                target = self.console.input("Enter target (IP/CIDR): ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                await self.run_masscan(target)
+            elif choice == "6":
+                target = self.console.input("Enter target (IP/CIDR): ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                await self.run_rustscan(target)
 
     async def web_assessment_menu(self):
         """Web assessment submenu."""
@@ -1031,6 +1047,89 @@ class InteractiveMode:
         self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
         self.console.input("")
 
+    async def run_masscan(self, target: str):
+        """Run Masscan high-performance port scan."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]MASSCAN HIGH-PERFORMANCE PORT SCAN[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+
+        try:
+            self.console.print("[cyan]Running Masscan scan...[/cyan]\n")
+            
+            with self.console.status("[dim]Scanning with Masscan...[/dim]", spinner="dots"):
+                scanner = MasscanScanner()
+                result = await scanner.scan(target, ports="1-65535", rate=1000)
+
+            self.console.print(f"[green]✓ Open ports found: {len(result.open_ports)}[/green]")
+            
+            if result.open_ports:
+                self.console.print("\n[bold cyan]Open Ports:[/bold cyan]")
+                for port in result.open_ports[:20]:
+                    service = result.port_services.get(port, "unknown")
+                    self.console.print(f"  [green]{port}/tcp[/green] [dim]({service})[/dim]")
+                if len(result.open_ports) > 20:
+                    self.console.print(f"  [dim]... and {len(result.open_ports) - 20} more[/dim]")
+
+            self.console.print(f"\n{'='*80}")
+            self.console.print(f"[bold green]SCAN COMPLETE[/bold green]")
+            self.console.print(f"{'='*80}")
+            self.console.print(f"[dim]Total Open Ports: {len(result.open_ports)}[/dim]")
+            self.console.print(f"[dim]Scan Duration: {result.scan_duration:.2f}s[/dim]")
+            self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+            self.console.print(f"{'='*80}\n")
+
+        except Exception as e:
+            self.console.print(f"\n[red]✗ Masscan scan failed: {e}[/red]")
+            import traceback
+            self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
+
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
+
+    async def run_rustscan(self, target: str):
+        """Run RustScan fast port discovery."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]RUSTSCAN FAST PORT DISCOVERY[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+
+        try:
+            self.console.print("[cyan]Running RustScan scan...[/cyan]\n")
+            
+            with self.console.status("[dim]Scanning with RustScan...[/dim]", spinner="dots"):
+                scanner = RustScanScanner()
+                result = await scanner.scan(target, ports="1-65535")
+
+            self.console.print(f"[green]✓ Open ports found: {len(result.open_ports)}[/green]")
+            
+            if result.open_ports:
+                self.console.print("\n[bold cyan]Open Ports:[/bold cyan]")
+                for port in result.open_ports[:20]:
+                    self.console.print(f"  [green]{port}/tcp[/green]")
+                if len(result.open_ports) > 20:
+                    self.console.print(f"  [dim]... and {len(result.open_ports) - 20} more[/dim]")
+
+            self.console.print(f"\n{'='*80}")
+            self.console.print(f"[bold green]SCAN COMPLETE[/bold green]")
+            self.console.print(f"{'='*80}")
+            self.console.print(f"[dim]Total Open Ports: {len(result.open_ports)}[/dim]")
+            self.console.print(f"[dim]Scan Duration: {result.scan_duration:.2f}s[/dim]")
+            self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+            self.console.print(f"{'='*80}\n")
+
+        except Exception as e:
+            self.console.print(f"\n[red]✗ RustScan scan failed: {e}[/red]")
+            import traceback
+            self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
+
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
+
     async def run_web(self, target: str, mode: str):
         """Run web assessment with detailed debug and findings."""
         self.console.print(f"\n{'='*80}")
@@ -1047,25 +1146,25 @@ class InteractiveMode:
         try:
             from scanning.http_scanner import HTTPScanner
             from scanning.web_tools import AdvancedWebTools
-            
-            self.console.print("[yellow][1/4] HTTP Security Scan...[/yellow]")
+
+            self.console.print("[yellow][1/6] HTTP Security Scan...[/yellow]")
             self.console.print(f"  [dim]Target: {target}[/dim]")
             self.console.print(f"  [dim]Timeout: {self.config.get('timeouts.http_scan', 30)}s[/dim]")
             self.console.print(f"  [dim]Checks: Headers, Cookies, Vulns[/dim]")
-            
+
             with self.console.status("[dim]Scanning HTTP security...[/dim]", spinner="dots"):
                 scanner = HTTPScanner(timeout=30)
                 result = await scanner.scan(target)
-            
+
             self.console.print(f"[green]✓ Security headers: {len(result.security_headers)}[/green]")
             self.console.print(f"[green]✓ Cookies: {len(result.cookies)}[/green]")
             self.console.print(f"[green]✓ Vulnerabilities: {len(result.vulnerabilities)}[/green]")
-            
+
             if result.security_headers:
                 self.console.print("\n[bold cyan]Security Headers:[/bold cyan]")
                 for header in result.security_headers:
                     self.console.print(f"  [cyan]{header.name}:[/cyan] [green]{header.value or 'Not Present'}[/green] [dim]({header.severity})[/dim]")
-            
+
             if result.cookies:
                 self.console.print("\n[bold cyan]Cookies:[/bold cyan]")
                 for cookie in result.cookies[:10]:
@@ -1074,12 +1173,63 @@ class InteractiveMode:
                     self.console.print(f"  [green]{cookie_name}[/green] [dim]({cookie_domain})[/dim]")
                 if len(result.cookies) > 10:
                     self.console.print(f"  [dim]... and {len(result.cookies) - 10} more[/dim]")
-            
+
+            # Nikto Web Server Scan
+            self.console.print(f"\n[yellow][2/6] Nikto Web Server Scan...[/yellow]")
+            self.console.print(f"  [dim]Target: {target}[/dim]")
+            self.console.print(f"  [dim]Checks: Known vulnerabilities, misconfigurations[/dim]")
+            try:
+                nikto_scanner = NiktoScanner()
+                nikto_installed = await nikto_scanner.check_installed()
+                if nikto_installed:
+                    with self.console.status("[dim]Running Nikto scan...[/dim]", spinner="dots"):
+                        nikto_result = await nikto_scanner.scan(target, timeout=300)
+                    self.console.print(f"[green]✓ Nikto findings: {len(nikto_result.findings)}[/green]")
+                    if nikto_result.server_header:
+                        self.console.print(f"[dim]  Server: {nikto_result.server_header}[/dim]")
+                    if nikto_result.findings:
+                        self.console.print("\n[bold cyan]Nikto Findings:[/bold cyan]")
+                        for finding in nikto_result.findings[:10]:
+                            self.console.print(f"  [yellow]{finding.id}:[/yellow] {finding.message[:80]}")
+                        if len(nikto_result.findings) > 10:
+                            self.console.print(f"  [dim]... and {len(nikto_result.findings) - 10} more[/dim]")
+                else:
+                    self.console.print("[yellow]⚠ Nikto not installed - skipping scan[/yellow]")
+            except Exception as e:
+                self.console.print(f"[yellow]⚠ Nikto scan failed: {e}[/yellow]")
+
+            # Nuclei Vulnerability Scan
+            self.console.print(f"\n[yellow][3/6] Nuclei Vulnerability Scan...[/yellow]")
+            self.console.print(f"  [dim]Target: {target}[/dim]")
+            self.console.print(f"  [dim]Checks: CVEs, exposures, misconfigurations[/dim]")
+            try:
+                nuclei_scanner = NucleiScanner()
+                nuclei_installed = await nuclei_scanner.check_installed()
+                if nuclei_installed:
+                    with self.console.status("[dim]Running Nuclei scan...[/dim]", spinner="dots"):
+                        nuclei_result = await nuclei_scanner.scan(target, timeout=300)
+                    self.console.print(f"[green]✓ Nuclei findings: {len(nuclei_result.findings)}[/green]")
+                    if nuclei_result.severity_summary:
+                        self.console.print("[dim]  Severity breakdown:[/dim]")
+                        for severity, count in nuclei_result.severity_summary.items():
+                            self.console.print(f"    [dim]{severity}: {count}[/dim]")
+                    if nuclei_result.findings:
+                        self.console.print("\n[bold cyan]Nuclei Findings:[/bold cyan]")
+                        for finding in nuclei_result.findings[:10]:
+                            sev_color = "red" if finding.severity.lower() in ["critical", "high"] else "yellow" if finding.severity.lower() == "medium" else "green"
+                            self.console.print(f"  [{sev_color}]{finding.severity}:[/{sev_color}] {finding.info.get('name', finding.template_id)[:60]}")
+                        if len(nuclei_result.findings) > 10:
+                            self.console.print(f"  [dim]... and {len(nuclei_result.findings) - 10} more[/dim]")
+                else:
+                    self.console.print("[yellow]⚠ Nuclei not installed - skipping scan[/yellow]")
+            except Exception as e:
+                self.console.print(f"[yellow]⚠ Nuclei scan failed: {e}[/yellow]")
+
             if mode in ["aggressive", "wpscan", "gobuster", "whatweb"]:
                 web_tools = AdvancedWebTools()
                 
                 if mode == "whatweb":
-                    self.console.print(f"\n[yellow][2/4] Technology Detection...[/yellow]")
+                    self.console.print(f"\n[yellow][4/6] Technology Detection...[/yellow]")
                     whatweb_result = await web_tools.whatweb_scan(target)
                     technologies = getattr(whatweb_result, 'technologies', [])
                     self.console.print(f"[green]✓ Technologies: {len(technologies)}[/green]")
@@ -1088,7 +1238,7 @@ class InteractiveMode:
                         for tech in technologies[:15]:
                             self.console.print(f"  [green]{tech}[/green]")
                 elif mode == "gobuster":
-                    self.console.print(f"\n[yellow][2/4] Directory Enumeration...[/yellow]")
+                    self.console.print(f"\n[yellow][4/6] Directory Enumeration...[/yellow]")
                     gobuster_result = await web_tools.gobuster_scan(target)
                     total_found = getattr(gobuster_result, 'total_found', 0)
                     directories = getattr(gobuster_result, 'directories', [])
@@ -1098,7 +1248,7 @@ class InteractiveMode:
                         for dir in directories[:15]:
                             self.console.print(f"  [green]{dir}[/green]")
                 elif mode == "wpscan":
-                    self.console.print(f"\n[yellow][2/4] WordPress Security Scan...[/yellow]")
+                    self.console.print(f"\n[yellow][4/6] WordPress Security Scan...[/yellow]")
                     wpscan_result = await web_tools.wpscan_scan(target)
                     is_wordpress = getattr(wpscan_result, 'is_wordpress', False)
                     version = getattr(wpscan_result, 'version', None)
@@ -1114,6 +1264,9 @@ class InteractiveMode:
             self.console.print(f"{'='*80}")
             self.console.print(f"[dim]Security Headers: {len(result.security_headers)}[/dim]")
             self.console.print(f"[dim]Cookies: {len(result.cookies)}[/dim]")
+            self.console.print(f"[dim]HTTP Vulnerabilities: {len(result.vulnerabilities)}[/dim]")
+            self.console.print(f"[dim]Nikto Findings: {len(nikto_result.findings) if 'nikto_result' in locals() else 0}[/dim]")
+            self.console.print(f"[dim]Nuclei Findings: {len(nuclei_result.findings) if 'nuclei_result' in locals() else 0}[/dim]")
             self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
             self.console.print(f"{'='*80}\n")
             
@@ -2620,6 +2773,141 @@ class InteractiveMode:
                 
                 await self.run_asset_intelligence(mode)
 
+    async def host_infrastructure_menu(self):
+        """Host & Infrastructure Pentesting submenu."""
+        self.console.clear()
+        while True:
+            self.console.print("\n" + "="*80)
+            self.console.print(Panel("[bold]Host & Infrastructure Pentesting[/bold]", border_style="red"))
+            self.console.print("[1] Host Enumeration")
+            self.console.print("[2] Privilege Escalation Audit")
+            self.console.print("[3] Lateral Movement Audit")
+            self.console.print("[4] System Hardening Check")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                self.console.clear()
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter target (IP/hostname): ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "enumeration",
+                    "2": "privilege",
+                    "3": "lateral",
+                    "4": "hardening"
+                }[choice]
+                
+                await self.run_host_infrastructure(target, mode)
+
+    async def mobile_pentesting_menu(self):
+        """Mobile Application Pentesting submenu."""
+        self.console.clear()
+        while True:
+            self.console.print("\n" + "="*80)
+            self.console.print(Panel("[bold]Mobile Application Pentesting[/bold]", border_style="red"))
+            self.console.print("[1] Static Analysis (APK/IPA)")
+            self.console.print("[2] Dynamic Analysis (Runtime)")
+            self.console.print("[3] Traffic Analysis (Network)")
+            self.console.print("[4] API Security Testing")
+            self.console.print("[yellow]Note: Requires additional tools (MobSF, Frida, Burp Suite)[/yellow]")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                self.console.clear()
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter mobile app path/package: ")
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "static",
+                    "2": "dynamic",
+                    "3": "traffic",
+                    "4": "api"
+                }[choice]
+                
+                await self.run_mobile_pentesting(target, mode)
+
+    async def forensics_menu(self):
+        """Digital Forensics & Incident Response submenu."""
+        self.console.clear()
+        while True:
+            self.console.print("\n" + "="*80)
+            self.console.print(Panel("[bold]Digital Forensics & Incident Response[/bold]", border_style="red"))
+            self.console.print("[1] Memory Analysis")
+            self.console.print("[2] Disk Analysis")
+            self.console.print("[3] Log Analysis")
+            self.console.print("[4] Malware Analysis")
+            self.console.print("[yellow]Note: Requires additional tools (Volatility, Autopsy, Sleuth Kit)[/yellow]")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                self.console.clear()
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter evidence path/image: ")
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "memory",
+                    "2": "disk",
+                    "3": "log",
+                    "4": "malware"
+                }[choice]
+                
+                await self.run_forensics(target, mode)
+
+    async def wireless_menu(self):
+        """Wireless Security Assessment submenu."""
+        self.console.clear()
+        while True:
+            self.console.print("\n" + "="*80)
+            self.console.print(Panel("[bold]Wireless Security Assessment[/bold]", border_style="red"))
+            self.console.print("[1] WEP/WPA Cracking")
+            self.console.print("[2] Rogue AP Detection")
+            self.console.print("[3] Traffic Analysis")
+            self.console.print("[4] Wireless Audit")
+            self.console.print("[yellow]Note: Requires wireless adapter in monitor mode[/yellow]")
+            self.console.print("[0] Back to Main Menu")
+
+            choice = self.console.input("\n[bold red]Select option [0-4]: [/bold red]")
+
+            if choice == "0":
+                self.console.clear()
+                break
+            elif choice in ["1", "2", "3", "4"]:
+                target = self.console.input("Enter target (BSSID/interface): ") if not self.current_target else self.current_target
+                if not target:
+                    self.console.print("[red]No target specified.[/red]")
+                    await asyncio.sleep(1)
+                    continue
+                
+                mode = {
+                    "1": "cracking",
+                    "2": "rogue",
+                    "3": "traffic",
+                    "4": "audit"
+                }[choice]
+                
+                await self.run_wireless(target, mode)
+
     # Implementation methods for submenus
     async def run_api(self, target: str, mode: str):
         """Run API assessment."""
@@ -2973,6 +3261,377 @@ class InteractiveMode:
             self.console.print(f"[red]✗ Asset intelligence failed: {e}[/red]")
         
         self.console.input("\nPress Enter to continue...")
+
+    async def run_host_infrastructure(self, target: str, mode: str):
+        """Run host & infrastructure pentesting."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]HOST & INFRASTRUCTURE PENTESTING[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Mode: {mode}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        try:
+            if mode == "enumeration":
+                self.console.print("[cyan]Host Enumeration[/cyan]")
+                self.console.print("[yellow]Performing host enumeration...[/yellow]")
+                self.console.print("  - System information gathering")
+                self.console.print("  - User and group enumeration")
+                self.console.print("  - Process and service enumeration")
+                self.console.print("  - Network configuration analysis")
+                
+                # Try to use post_assessment tools if available
+                try:
+                    from post_assessment.linpeas import LinPEASScanner
+                    linpeas = LinPEASScanner()
+                    result = await linpeas.scan(target)
+                    self.console.print(f"[green]✓ LinPEAS scan complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ LinPEAS not available: {e}[/yellow]")
+                    self.console.print("[dim]Install LinPEAS for comprehensive Linux enumeration[/dim]")
+                
+                try:
+                    from post_assessment.winpeas import WinPEASScanner
+                    winpeas = WinPEASScanner()
+                    result = await winpeas.scan(target)
+                    self.console.print(f"[green]✓ WinPEAS scan complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ WinPEAS not available: {e}[/yellow]")
+                    self.console.print("[dim]Install WinPEAS for comprehensive Windows enumeration[/dim]")
+                
+            elif mode == "privilege":
+                self.console.print("[cyan]Privilege Escalation Audit[/cyan]")
+                self.console.print("[yellow]Performing privilege escalation audit...[/yellow]")
+                self.console.print("  - SUID/GUID binary analysis")
+                self.console.print("  - Cron job analysis")
+                self.console.print("  - Capabilities analysis")
+                self.console.print("  - Kernel vulnerability check")
+                
+                # Use LinPEAS/WinPEAS for privilege escalation
+                try:
+                    from post_assessment.linpeas import LinPEASScanner
+                    linpeas = LinPEASScanner()
+                    result = await linpeas.scan(target)
+                    self.console.print(f"[green]✓ LinPEAS privilege audit complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ LinPEAS not available: {e}[/yellow]")
+                    self.console.print("[dim]Install LinPEAS for comprehensive Linux privilege escalation[/dim]")
+                
+                try:
+                    from post_assessment.winpeas import WinPEASScanner
+                    winpeas = WinPEASScanner()
+                    result = await winpeas.scan(target)
+                    self.console.print(f"[green]✓ WinPEAS privilege audit complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ WinPEAS not available: {e}[/yellow]")
+                    self.console.print("[dim]Install WinPEAS for comprehensive Windows privilege escalation[/dim]")
+                
+            elif mode == "lateral":
+                self.console.print("[cyan]Lateral Movement Audit[/cyan]")
+                self.console.print("[yellow]Performing lateral movement audit...[/yellow]")
+                self.console.print("  - Credential cache analysis")
+                self.console.print("  - Service account enumeration")
+                self.console.print("  - Network path discovery")
+                self.console.print("  - Trust relationship analysis")
+                
+                # Use BloodHound for lateral movement analysis
+                try:
+                    from post_assessment.bloodhound import BloodHoundAnalyzer
+                    bloodhound = BloodHoundAnalyzer()
+                    result = await bloodhound.analyze(target)
+                    self.console.print(f"[green]✓ BloodHound analysis complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ BloodHound not available: {e}[/yellow]")
+                    self.console.print("[dim]Install BloodHound for AD lateral movement analysis[/dim]")
+                
+            elif mode == "hardening":
+                self.console.print("[cyan]System Hardening Check[/cyan]")
+                self.console.print("[yellow]Performing system hardening check...[/yellow]")
+                self.console.print("  - Configuration audit")
+                self.console.print("  - Patch level verification")
+                self.console.print("  - Security baseline comparison")
+                self.console.print("  - Compliance check")
+                
+                try:
+                    from post_assessment.lynis import LynisScanner
+                    lynis = LynisScanner()
+                    result = await lynis.scan(target)
+                    self.console.print(f"[green]✓ Lynis scan complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Lynis not available: {e}[/yellow]")
+                    self.console.print("[dim]Install Lynis for comprehensive security auditing[/dim]")
+            
+            # Summary
+            self.console.print(f"\n{'='*80}")
+            self.console.print(f"[bold green]HOST & INFRASTRUCTURE PENTESTING COMPLETE[/bold green]")
+            self.console.print(f"{'='*80}")
+            self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+            self.console.print(f"{'='*80}\n")
+            
+        except Exception as e:
+            self.console.print(f"\n[red]✗ Host & infrastructure pentesting failed: {e}[/red]")
+            import traceback
+            self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
+        
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
+
+    async def run_mobile_pentesting(self, target: str, mode: str):
+        """Run mobile application pentesting."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]MOBILE APPLICATION PENTESTING[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Mode: {mode}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        self.console.print("[cyan]Mobile Application Pentesting[/cyan]")
+        self.console.print("[yellow]This feature requires additional mobile security tools:[/yellow]")
+        
+        if mode == "static":
+            self.console.print("\n[cyan]Static Analysis[/cyan]")
+            self.console.print("  - APK/IPA decompilation")
+            self.console.print("  - Source code review")
+            self.console.print("  - Manifest analysis")
+            self.console.print("  - Certificate validation")
+            self.console.print("  - API endpoint discovery")
+            self.console.print("\n[dim]Required tools:[/dim]")
+            self.console.print("  [dim]- MobSF (Mobile Security Framework)[/dim]")
+            self.console.print("  [dim]- APKTool / JADX (for Android)[/dim]")
+            self.console.print("  [dim]- Class-dump / Hopper (for iOS)[/dim]")
+            
+        elif mode == "dynamic":
+            self.console.print("\n[cyan]Dynamic Analysis[/cyan]")
+            self.console.print("  - Runtime instrumentation")
+            self.console.print("  - Hooking and interception")
+            self.console.print("  - Data storage analysis")
+            self.console.print("  - IPC analysis")
+            self.console.print("  - Activity/service enumeration")
+            self.console.print("\n[dim]Required tools:[/dim]")
+            self.console.print("  [dim]- Frida (Dynamic instrumentation)[/dim]")
+            self.console.print("  [dim]- Xposed (Android framework)[/dim]")
+            self.console.print("  [dim]- Cycript (iOS runtime)[/dim]")
+            
+        elif mode == "traffic":
+            self.console.print("\n[cyan]Traffic Analysis[/cyan]")
+            self.console.print("  - Network traffic interception")
+            self.console.print("  - SSL/TLS inspection")
+            self.console.print("  - API request/response analysis")
+            self.console.print("  - Protocol analysis")
+            self.console.print("  - Data leakage detection")
+            self.console.print("\n[dim]Required tools:[/dim]")
+            self.console.print("  [dim]- Burp Suite (HTTP proxy)[/dim]")
+            self.console.print("  [dim]- mitmproxy (HTTPS interception)[/dim]")
+            self.console.print("  [dim]- Wireshark (Network analysis)[/dim]")
+            
+        elif mode == "api":
+            self.console.print("\n[cyan]API Security Testing[/cyan]")
+            self.console.print("  - API endpoint discovery")
+            self.console.print("  - Authentication testing")
+            self.console.print("  - Authorization testing")
+            self.console.print("  - Input validation")
+            self.console.print("  - Rate limiting test")
+            self.console.print("\n[dim]Required tools:[/dim]")
+            self.console.print("  [dim]- Postman / Insomnia (API testing)[/dim]")
+            self.console.print("  [dim]- OWASP ZAP (Security testing)[/dim]")
+            self.console.print("  [dim]- MobSF (Automated API analysis)[/dim]")
+        
+        self.console.print("\n[yellow]⚠ Mobile pentesting requires emulator/device setup[/yellow]")
+        self.console.print("[dim]Implementation: Will integrate with MobSF, Frida, and Burp Suite[/dim]")
+        
+        # Summary
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold green]MOBILE APPLICATION PENTESTING COMPLETE[/bold green]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
+
+    async def run_forensics(self, target: str, mode: str):
+        """Run digital forensics & incident response."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]DIGITAL FORENSICS & INCIDENT RESPONSE[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Mode: {mode}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        self.console.print("[cyan]Digital Forensics & Incident Response[/cyan]")
+        self.console.print("[yellow]This feature requires additional forensics tools:[/yellow]")
+        
+        if mode == "memory":
+            self.console.print("\n[cyan]Memory Analysis[/cyan]")
+            self.console.print("  - Process memory extraction")
+            self.console.print("  - Password recovery")
+            self.console.print("  - Network connection analysis")
+            self.console.print("  - Malware artifact detection")
+            self.console.print("  - Clipboard content extraction")
+            self.console.print("\n[dim]Required tools:[/dim]")
+            self.console.print("  [dim]- Volatility (Memory forensics framework)[/dim]")
+            self.console.print("  [dim]- Volatility3 (Next generation)[/dim]")
+            self.console.print("  [dim]- Rekall (Memory analysis)[/dim]")
+            
+        elif mode == "disk":
+            self.console.print("\n[cyan]Disk Analysis[/cyan]")
+            self.console.print("  - File system carving")
+            self.console.print("  - Deleted file recovery")
+            self.console.print("  - Metadata extraction")
+            self.console.print("  - Timeline reconstruction")
+            self.console.print("  - Unallocated space analysis")
+            self.console.print("\n[dim]Required tools:[/dim]")
+            self.console.print("  [dim]- Autopsy (Digital forensics platform)[/dim]")
+            self.console.print("  [dim]- Sleuth Kit (File system analysis)[/dim]")
+            self.console.print("  [dim]- Foremost (File carving)[/dim]")
+            self.console.print("  [dim]- Bulk Extractor (Data extraction)[/dim]")
+            
+        elif mode == "log":
+            self.console.print("\n[cyan]Log Analysis[/cyan]")
+            self.console.print("  - System log parsing")
+            self.console.print("  - Event correlation")
+            self.console.print("  - Timeline construction")
+            self.console.print("  - Attack pattern detection")
+            self.console.print("  - Evidence chain validation")
+            self.console.print("\n[dim]Required tools:[/dim]")
+            self.console.print("  [dim]- Plaso (Log2Timeline)[/dim]")
+            self.console.print("  [dim]- LogAnalysis (Log parsing)[/dim]")
+            self.console.print("  [dim]- Splunk/ELK (Log management)[/dim]")
+            
+        elif mode == "malware":
+            self.console.print("\n[cyan]Malware Analysis[/cyan]")
+            self.console.print("  - Static malware analysis")
+            self.console.print("  - Dynamic malware analysis")
+            self.console.print("  - Behavior monitoring")
+            self.console.print("  - Network traffic analysis")
+            self.console.print("  - IOC extraction")
+            self.console.print("\n[dim]Required tools:[/dim]")
+            self.console.print("  [dim]- Cuckoo Sandbox (Malware analysis)[/dim]")
+            self.console.print("  [dim]- Ghidra (Reverse engineering)[/dim]")
+            self.console.print("  [dim]- IDA Pro (Disassembler)[/dim]")
+            self.console.print("  [dim]- Wireshark (Network analysis)[/dim]")
+        
+        self.console.print("\n[yellow]⚠ Forensics requires evidence images and proper chain of custody[/yellow]")
+        self.console.print("[dim]Implementation: Will integrate with Volatility, Autopsy, and Sleuth Kit[/dim]")
+        
+        # Summary
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold green]DIGITAL FORENSICS & INCIDENT RESPONSE COMPLETE[/bold green]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
+
+    async def run_wireless(self, target: str, mode: str):
+        """Run wireless security assessment."""
+        self.console.print(f"\n{'='*80}")
+        self.console.print(f"[bold cyan]WIRELESS SECURITY ASSESSMENT[/bold cyan]")
+        self.console.print(f"{'='*80}")
+        self.console.print(f"[dim]Target: {target}[/dim]")
+        self.console.print(f"[dim]Mode: {mode}[/dim]")
+        self.console.print(f"[dim]Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+        self.console.print(f"{'='*80}\n")
+        
+        # Check for wireless capabilities
+        import os
+        is_sudo = os.environ.get('SUDO_UID') is not None
+        if not is_sudo:
+            self.console.print("[yellow]⚠ Wireless assessment requires sudo privileges[/yellow]")
+            self.console.print("[yellow]⚠ Some features will be limited[/yellow]\n")
+        
+        try:
+            if mode == "cracking":
+                self.console.print("[cyan]WEP/WPA Cracking[/cyan]")
+                self.console.print("[yellow]Performing wireless security audit...[/yellow]")
+                self.console.print("  - WEP vulnerability assessment")
+                self.console.print("  - WPA/WPA2 handshake capture")
+                self.console.print("  - WPS vulnerability check")
+                self.console.print("  - Dictionary attack testing")
+                
+                try:
+                    from wireless.aircrack import AircrackScanner
+                    aircrack = AircrackScanner()
+                    result = await aircrack.scan(target)
+                    self.console.print(f"[green]✓ Aircrack scan complete[/green]")
+                    self.console.print(f"[dim]Networks found: {len(result.networks) if hasattr(result, 'networks') else 'N/A'}[/dim]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Aircrack not available: {e}[/yellow]")
+                    self.console.print("[dim]Install aircrack-ng for wireless security testing[/dim]")
+                    self.console.print("[dim]Command: sudo apt install aircrack-ng[/dim]")
+                
+            elif mode == "rogue":
+                self.console.print("[cyan]Rogue AP Detection[/cyan]")
+                self.console.print("[yellow]Performing rogue access point detection...[/yellow]")
+                self.console.print("  - AP spoofing detection")
+                self.console.print("  - Evil twin detection")
+                self.console.print("  - Karma attack detection")
+                self.console.print("  - Beacon frame analysis")
+                
+                try:
+                    from wireless.bettercap import BettercapScanner
+                    bettercap = BettercapScanner()
+                    result = await bettercap.scan(target)
+                    self.console.print(f"[green]✓ Bettercap scan complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Bettercap not available: {e}[/yellow]")
+                    self.console.print("[dim]Install bettercap for rogue AP detection[/dim]")
+                    self.console.print("[dim]Command: sudo apt install bettercap[/dim]")
+                
+            elif mode == "traffic":
+                self.console.print("[cyan]Traffic Analysis[/cyan]")
+                self.console.print("[yellow]Performing wireless traffic analysis...[/yellow]")
+                self.console.print("  - Packet capture")
+                self.console.print("  - Protocol analysis")
+                self.console.print("  - Data extraction")
+                self.console.print("  - Encryption assessment")
+                
+                try:
+                    from wireless.wireshark import WiresharkScanner
+                    wireshark = WiresharkScanner()
+                    result = await wireshark.scan(target)
+                    self.console.print(f"[green]✓ Wireshark scan complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Wireshark not available: {e}[/yellow]")
+                    self.console.print("[dim]Install wireshark for traffic analysis[/dim]")
+                    self.console.print("[dim]Command: sudo apt install wireshark[/dim]")
+                
+            elif mode == "audit":
+                self.console.print("[cyan]Wireless Audit[/cyan]")
+                self.console.print("[yellow]Performing comprehensive wireless audit...[/yellow]")
+                self.console.print("  - Network discovery")
+                self.console.print("  - Signal strength analysis")
+                self.console.print("  - Channel utilization")
+                self.console.print("  - Security configuration review")
+                
+                try:
+                    from wireless.kismet import KismetScanner
+                    kismet = KismetScanner()
+                    result = await kismet.scan(target)
+                    self.console.print(f"[green]✓ Kismet scan complete[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Kismet not available: {e}[/yellow]")
+                    self.console.print("[dim]Install kismet for wireless auditing[/dim]")
+                    self.console.print("[dim]Command: sudo apt install kismet[/dim]")
+            
+            # Summary
+            self.console.print(f"\n{'='*80}")
+            self.console.print(f"[bold green]WIRELESS SECURITY ASSESSMENT COMPLETE[/bold green]")
+            self.console.print(f"{'='*80}")
+            self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
+            self.console.print(f"{'='*80}\n")
+            
+        except Exception as e:
+            self.console.print(f"\n[red]✗ Wireless security assessment failed: {e}[/red]")
+            import traceback
+            self.console.print(f"[dim]{traceback.format_exc()}[/dim]")
+        
+        self.console.print("[yellow]Press Enter to continue (output will be preserved)...[/yellow]")
+        self.console.input("")
 
 
 def main():
