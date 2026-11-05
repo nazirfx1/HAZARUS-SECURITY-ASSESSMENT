@@ -95,6 +95,7 @@ class AssessmentConfig:
     window: dict = field(default_factory=lambda: {"start": "00:00", "end": "23:59"})
     wordlists: dict = field(default_factory=lambda: {"subdomains": "", "directories": "", "passwords": "", "usernames": ""})
     privacy_mode: str = "standard"
+    timeout: int = 30
 
 
 @dataclass
