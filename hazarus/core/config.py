@@ -96,6 +96,21 @@ class AssessmentConfig:
     wordlists: dict = field(default_factory=lambda: {"subdomains": "", "directories": "", "passwords": "", "usernames": ""})
     privacy_mode: str = "standard"
     timeout: int = 30
+    
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.intensity = kwargs.get("intensity", "normal")
+        self.rate_limit = kwargs.get("rate_limit", 100)
+        self.request_limit = kwargs.get("request_limit", 10000)
+        self.max_threads = kwargs.get("max_threads", 10)
+        self.window = kwargs.get("window", {"start": "00:00", "end": "23:59"})
+        self.wordlists = kwargs.get("wordlists", {"subdomains": "", "directories": "", "passwords": "", "usernames": ""})
+        self.privacy_mode = kwargs.get("privacy_mode", "standard")
+        self.timeout = kwargs.get("timeout", 30)
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
 
 
 @dataclass
