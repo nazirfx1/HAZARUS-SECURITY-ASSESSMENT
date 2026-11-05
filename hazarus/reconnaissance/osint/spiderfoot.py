@@ -11,7 +11,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from core.config import get_config
+from hazarus.core.config import get_config
 config = get_config()
 
 

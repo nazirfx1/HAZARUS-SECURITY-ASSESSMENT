@@ -1,21 +1,20 @@
 """
 HAZARUS Post-Assessment Module
-
-Post-exploitation audits and validation.
+Post-exploitation security audits.
 """
 
-from hazarus.post_assessment.credential_exposure import CredentialExposureAudit
-from hazarus.post_assessment.exfiltration_simulation import ExfiltrationSimulation
-from hazarus.post_assessment.lateral_movement_audit import LateralMovementAudit
-from hazarus.post_assessment.persistence_audit import PersistenceAudit
-from hazarus.post_assessment.privilege_audit import PrivilegeAudit
-from hazarus.post_assessment.segmentation_audit import SegmentationAudit
+from .privilege_audit import PrivilegeAudit
+from .credential_exposure import CredentialExposure
+from .lateral_movement_audit import LateralMovementAudit
+from .persistence_audit import PersistenceAudit
+from .exfiltration_simulation import ExfiltrationSimulation
+from .segmentation_audit import SegmentationAudit
 
 __all__ = [
-    "CredentialExposureAudit",
-    "ExfiltrationSimulation",
+    "PrivilegeAudit",
+    "CredentialExposure",
     "LateralMovementAudit",
     "PersistenceAudit",
-    "PrivilegeAudit",
+    "ExfiltrationSimulation",
     "SegmentationAudit",
 ]

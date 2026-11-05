@@ -8,6 +8,7 @@ import logging
 import dns.resolver
 import dns.message
 import dns.query
+import httpx
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -175,7 +176,7 @@ class DNSRecon:
         domain: str,
         wordlist: Optional[List[str]] = None
     ) -> List[str]:
-        """Brute force subdomain discovery."""
+        """Brute force subdomain discovery with DNS validation."""
         if wordlist is None:
             # Common subdomain wordlist
             wordlist = [
@@ -192,14 +193,213 @@ class DNSRecon:
         for subdomain in wordlist:
             full_domain = f"{subdomain}.{domain}"
             try:
-                await self._query_records(full_domain, 'A')
-                found_subdomains.append(full_domain)
-                self.logger.debug(f"Found subdomain: {full_domain}")
-            except Exception:
+                # Use DNS resolver to check if subdomain resolves
+                loop = asyncio.get_event_loop()
+                answer = await loop.run_in_executor(
+                    None,
+                    lambda: self.resolver.resolve(full_domain, 'A')
+                )
+                if answer and len(answer) > 0:
+                    found_subdomains.append(full_domain)
+                    self.logger.debug(f"Found subdomain: {full_domain}")
+            except Exception as e:
+                # Subdomain doesn't resolve or DNS error
+                self.logger.debug(f"Subdomain {full_domain} not found: {e}")
                 pass
 
         self.logger.info(f"Found {len(found_subdomains)} subdomains")
         return found_subdomains
+
+    async def query_amass(self, domain: str) -> List[str]:
+        """Query Amass for comprehensive subdomain enumeration if available."""
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "which", "amass",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await proc.communicate()
+
+            if proc.returncode != 0:
+                self.logger.info("Amass not installed, skipping")
+                return []
+
+            # Run Amass enumeration with multiple modes
+            # Passive enumeration (DNS data sources, CT logs)
+            proc = await asyncio.create_subprocess_exec(
+                "amass", "enum", "-passive", "-d", domain,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+
+            if proc.returncode != 0:
+                self.logger.warning(f"Amass enum failed: {stderr.decode()}")
+                return []
+
+            subdomains = stdout.decode().strip().split('\n')
+            return [s for s in subdomains if s and domain in s]
+
+        except Exception as e:
+            self.logger.warning(f"Amass query failed: {e}")
+            return []
+
+    async def query_amass_advanced(self, domain: str, active: bool = False, timeout: int = 300) -> Dict[str, Any]:
+        """Query Amass for advanced OSINT capabilities (v5.0.0 compatible).
+
+        Args:
+            domain: Target domain
+            active: Enable active enumeration (slower but more thorough)
+            timeout: Timeout in seconds for Amass commands
+        """
+        result = {
+            "subdomains": [],
+            "dns_records": {},
+            "asn_info": [],
+            "certificates": [],
+            "related_domains": [],
+            "infrastructure": []
+        }
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "which", "amass",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await proc.communicate()
+
+            if proc.returncode != 0:
+                self.logger.info("Amass not installed, skipping advanced query")
+                return result
+
+            # 1. Subdomain enumeration (passive by default, optional active)
+            mode = "passive + active" if active else "passive"
+            self.logger.info(f"Running Amass {mode} enumeration for {domain}")
+
+            if active:
+                cmd = ["amass", "enum", "-passive", "-active", "-d", domain]
+            else:
+                cmd = ["amass", "enum", "-passive", "-d", domain]
+
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                self.logger.warning(f"Amass enumeration timed out after {timeout}s")
+                return result
+
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
+
+            self.logger.debug(f"Amass enum stdout: {stdout_text[:500]}")
+            self.logger.debug(f"Amass enum stderr: {stderr_text[:500]}")
+
+            if proc.returncode != 0:
+                self.logger.warning(f"Amass enum failed with exit code {proc.returncode}: {stderr_text}")
+            else:
+                subdomains = stdout_text.strip().split('\n')
+                result["subdomains"] = [s for s in subdomains if s and domain in s]
+                self.logger.info(f"Amass found {len(result['subdomains'])} subdomains")
+
+            # 2. Intel/WHOIS for domain information (fast)
+            self.logger.info(f"Running Amass intel for {domain}")
+            proc = await asyncio.create_subprocess_exec(
+                "amass", "intel", "-whois", "-d", domain,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=60  # Shorter timeout for intel
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                self.logger.warning("Amass intel timed out")
+            else:
+                stdout_text = stdout.decode()
+                stderr_text = stderr.decode()
+
+                self.logger.debug(f"Amass intel stdout: {stdout_text[:500]}")
+                self.logger.debug(f"Amass intel stderr: {stderr_text[:500]}")
+
+                if proc.returncode == 0 and stdout_text:
+                    # Parse intel output for related domains/infrastructure
+                    lines = stdout_text.strip().split('\n')
+                    result["infrastructure"] = [line for line in lines if line and domain in line]
+
+            # Note: Amass v5.0.0 changed significantly:
+            # - intel -asn: Now takes ASN as input, not output
+            # - cert: Command removed, use enum -active for certificate enumeration
+            # - intel -nw: Flag removed
+            # - intel -infra: Flag removed
+            # New subcommands: subs, viz, track for asset database analysis
+
+            self.logger.info(f"Amass advanced query complete for {domain}")
+
+        except Exception as e:
+            self.logger.warning(f"Amass advanced query failed: {e}")
+
+        return result
+
+    async def query_crtsh(self, domain: str, max_retries: int = 3) -> List[str]:
+        """Query crt.sh for subdomain enumeration with retry logic."""
+        for attempt in range(max_retries):
+            try:
+                import httpx
+                import urllib.parse
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    # Use proper crt.sh API format with URL encoding
+                    query = f"%.{domain}"
+                    encoded_query = urllib.parse.quote(query)
+                    response = await client.get(
+                        f"https://crt.sh/?q={encoded_query}&output=json"
+                    )
+
+                    if response.status_code == 200:
+                        import json
+                        data = response.json()
+                        subdomains = set()
+
+                        for cert in data:
+                            name_value = cert.get('name_value', '')
+                            # Split by newlines if multiple names
+                            for name in name_value.split('\n'):
+                                name = name.strip()
+                                if name and domain in name and not name.startswith('*'):
+                                    subdomains.add(name)
+
+                        return list(subdomains)
+                    elif response.status_code in [502, 503, 504]:
+                        self.logger.warning(f"crt.sh returned status {response.status_code}, retrying...")
+                        await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                        continue
+                    elif response.status_code == 404:
+                        self.logger.warning(f"crt.sh returned 404 (Not Found) - no certificates for domain")
+                        return []
+                    else:
+                        self.logger.warning(f"crt.sh returned status {response.status_code}")
+                        return []
+
+            except Exception as e:
+                self.logger.warning(f"crt.sh query failed (attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                return []
+        
+        return []
 
     async def zone_transfer(self, domain: str, nameserver: str) -> bool:
         """Attempt DNS zone transfer."""

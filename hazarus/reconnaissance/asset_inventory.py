@@ -7,7 +7,7 @@ import asyncio
 import logging
 from typing import Dict, Any, List, Set
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from .dns import DNSRecon
 from .subdomains import SubdomainDiscovery
 from .whois import WhoisRecon
@@ -21,7 +21,7 @@ class Asset:
     value: str
     confidence: float  # 0.0 to 1.0
     metadata: Dict[str, Any] = field(default_factory=dict)
-    discovered_at: datetime = field(default_factory=datetime.utcnow)
+    discovered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass

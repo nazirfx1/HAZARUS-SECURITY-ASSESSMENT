@@ -101,7 +101,7 @@ class SubdomainTakeoverDetector:
         Returns:
             TakeoverFinding with result
         """
-        finding = TakeoverFinding(subdomain=subdomain)
+        finding = TakeoverFinding(subdomain=subdomain, vulnerable=False)
 
         try:
             async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:

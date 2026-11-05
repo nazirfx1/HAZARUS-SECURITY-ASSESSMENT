@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 import subprocess
+import os
 
 
 @dataclass
@@ -51,21 +52,62 @@ class NmapScanner:
 
     def __init__(self):
         self.logger = logging.getLogger("hazarus.nmap_scanner")
+        # Check for root privileges (works with sudo)
+        self.is_root = self._check_root()
+
+    def _check_root(self) -> bool:
+        """Check if running with root privileges (works with sudo)."""
+        try:
+            # Method 1: Check effective user ID
+            if hasattr(os, 'geteuid'):
+                if os.geteuid() == 0:
+                    self.logger.info("Running with root privileges (detected via geteuid)")
+                    return True
+
+            # Method 2: Check SUDO_UID environment variable
+            if os.environ.get('SUDO_UID') is not None:
+                self.logger.info("Running with root privileges (detected via SUDO_UID)")
+                return True
+
+            # Method 3: Check if we can write to /root (requires root)
+            try:
+                with open('/root/.hazarus_root_test', 'w') as f:
+                    f.write('test')
+                os.remove('/root/.hazarus_root_test')
+                self.logger.info("Running with root privileges (detected via /root write test)")
+                return True
+            except (PermissionError, IOError):
+                pass
+
+            self.logger.info("Not running with root privileges")
+            return False
+        except Exception as e:
+            self.logger.warning(f"Error checking root privileges: {e}")
+            return False
 
     async def scan(
         self,
         targets: List[str],
-        ports: str = "1-1000",
-        scan_type: str = "sT",  # sT (TCP connect), sS (SYN)
+        ports: str = "1-65535",
+        scan_type: str = None,  # Auto-detect based on root
         service_detection: bool = True,
-        os_detection: bool = False,
+        os_detection: bool = True,
         aggressive: bool = False,
-        timeout: int = 300
+        timeout: int = 600
     ) -> NmapResult:
-        """Scan targets with Nmap."""
+        """Scan targets with Nmap (defaults to advanced settings)."""
         self.logger.info(f"Scanning {len(targets)} targets, ports {ports}")
 
         result = NmapResult(targets=targets, scan_start=datetime.utcnow())
+
+        # Auto-detect scan type based on root privileges
+        if scan_type is None:
+            if self.is_root:
+                scan_type = "sS"  # SYN scan (faster, requires root)
+                self.logger.info("Running as root, using SYN scan (-sS)")
+            else:
+                scan_type = "sT"  # TCP connect scan (no root required)
+                self.logger.info("Not running as root, using TCP connect scan (-sT)")
 
         # Build nmap command
         command = self._build_command(
@@ -82,9 +124,8 @@ class NmapScanner:
 
         try:
             # Execute nmap
-            loop = asyncio.get_event_loop()
             process = await asyncio.create_subprocess_exec(
-                *command.split(),
+                *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -123,7 +164,7 @@ class NmapScanner:
         service_detection: bool,
         os_detection: bool,
         aggressive: bool
-    ) -> str:
+    ) -> List[str]:
         """Build nmap command."""
         cmd = ["nmap"]
 
@@ -134,19 +175,24 @@ class NmapScanner:
             cmd.append("-sT")  # Default to TCP connect (no root required)
 
         # Port specification
-        cmd.append(f"-p{ports}")
+        cmd.append("-p")
+        cmd.append(ports)
 
         # Service detection
         if service_detection:
             cmd.append("-sV")
 
-        # OS detection
-        if os_detection:
+        # OS detection (requires root)
+        if os_detection and self.is_root:
             cmd.append("-O")
+        elif os_detection and not self.is_root:
+            self.logger.warning("OS detection requires root privileges, skipping -O")
 
-        # Aggressive scan
-        if aggressive:
+        # Aggressive scan (requires root for some features)
+        if aggressive and self.is_root:
             cmd.append("-A")
+        elif aggressive and not self.is_root:
+            self.logger.warning("Aggressive scan requires root privileges, skipping -A")
 
         # XML output
         cmd.append("-oX")
@@ -155,7 +201,7 @@ class NmapScanner:
         # Add targets
         cmd.extend(targets)
 
-        return " ".join(cmd)
+        return cmd
 
     def _parse_xml(self, xml_data: str) -> List[Host]:
         """Parse Nmap XML output."""
@@ -239,12 +285,17 @@ class NmapScanner:
         """Quick scan for open ports."""
         self.logger.info(f"Quick scanning {target}")
 
-        command = f"nmap -sT --open -oX - {target}"
+        # Auto-detect scan type based on root privileges
+        if self.is_root:
+            scan_type = "-sS"  # SYN scan (requires root)
+        else:
+            scan_type = "-sT"  # TCP connect scan (no root required)
+
+        command = ["nmap", scan_type, "--open", "-oX", "-", target]
 
         try:
-            loop = asyncio.get_event_loop()
             process = await asyncio.create_subprocess_exec(
-                *command.split(),
+                *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -260,6 +311,169 @@ class NmapScanner:
             self.logger.error(f"Quick scan failed: {e}")
 
         return []
+
+    async def advanced_scan(
+        self,
+        targets: List[str],
+        ports: str = "1-65535",
+        tcp_scan: bool = True,
+        udp_scan: bool = False,
+        service_detection: bool = True,
+        os_detection: bool = True,
+        script_scan: bool = True,
+        vuln_scan: bool = True,
+        traceroute: bool = True,
+        aggressive: bool = False,
+        timing: int = 4,
+        timeout: int = 900  # Increased from 600 to 900 for comprehensive scans
+    ) -> NmapResult:
+        """Advanced deep scan with comprehensive enumeration."""
+        self.logger.info(f"Advanced scanning {len(targets)} targets, ports {ports}")
+
+        result = NmapResult(targets=targets, scan_start=datetime.utcnow())
+
+        # Build advanced nmap command
+        command = self._build_advanced_command(
+            targets,
+            ports,
+            tcp_scan,
+            udp_scan,
+            service_detection,
+            os_detection,
+            script_scan,
+            vuln_scan,
+            traceroute,
+            aggressive,
+            timing
+        )
+
+        result.command = command
+        self.logger.debug(f"Nmap advanced command: {command}")
+
+        try:
+            # Execute nmap
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=timeout
+            )
+
+            result.exit_status = process.returncode
+            result.scan_end = datetime.utcnow()
+
+            # Parse XML output
+            if process.returncode == 0:
+                xml_output = stdout.decode()
+                result.hosts = self._parse_xml(xml_output)
+                self.logger.info(f"Advanced scan complete: {len(result.hosts)} hosts scanned")
+            else:
+                self.logger.error(f"Nmap advanced scan failed with status {process.returncode}")
+                self.logger.error(f"stderr: {stderr.decode()}")
+
+        except asyncio.TimeoutError:
+            self.logger.error("Nmap advanced scan timed out")
+            result.exit_status = -1
+        except Exception as e:
+            self.logger.error(f"Nmap advanced scan failed: {e}")
+            result.exit_status = -1
+
+        return result
+
+    def _build_advanced_command(
+        self,
+        targets: List[str],
+        ports: str,
+        tcp_scan: bool,
+        udp_scan: bool,
+        service_detection: bool,
+        os_detection: bool,
+        script_scan: bool,
+        vuln_scan: bool,
+        traceroute: bool,
+        aggressive: bool,
+        timing: int
+    ) -> List[str]:
+        """Build advanced nmap command."""
+        cmd = ["nmap"]
+
+        # Scan types - auto-detect based on root privileges
+        if tcp_scan and udp_scan:
+            if self.is_root:
+                cmd.append("-sS")  # SYN scan for TCP (requires root)
+            else:
+                cmd.append("-sT")  # TCP connect scan (no root required)
+            cmd.append("-sU")  # UDP scan
+        elif tcp_scan:
+            if self.is_root:
+                cmd.append("-sS")  # SYN scan (requires root)
+            else:
+                cmd.append("-sT")  # TCP connect scan (no root required)
+        elif udp_scan:
+            cmd.append("-sU")  # UDP scan only
+
+        # Port specification - limit to prevent segfault on full port range
+        if ports == "1-65535" and not aggressive:
+            cmd.append("-p")
+            cmd.append("1-1000,3389,5432,5900,6379,8080,8443")  # Common ports only
+        else:
+            cmd.append("-p")
+            cmd.append(ports)
+
+        # Service detection
+        if service_detection:
+            cmd.append("-sV")
+            cmd.append("--version-intensity")
+            cmd.append("5")  # Reduced from 7 to prevent crashes
+
+        # OS detection (requires root)
+        if os_detection and self.is_root:
+            cmd.append("-O")
+            cmd.append("--osscan-limit")  # Add this to limit OS detection
+        elif os_detection and not self.is_root:
+            self.logger.warning("OS detection requires root privileges, skipping -O")
+
+        # Script scanning - separate vuln scan to prevent crashes
+        if script_scan:
+            if vuln_scan and aggressive:
+                # Only run vuln scripts in aggressive mode
+                cmd.append("--script")
+                cmd.append("vuln")
+            else:
+                # Default safe scripts
+                cmd.append("--script")
+                cmd.append("default,safe")
+
+        # Traceroute (disable in non-aggressive mode to prevent issues)
+        if traceroute and aggressive:
+            cmd.append("--traceroute")
+
+        # Aggressive scan
+        if aggressive:
+            cmd.append("-A")
+
+        # Timing template (0-5, 4 is normal)
+        cmd.append(f"-T{timing}")
+
+        # Add rate limiting to prevent connection resets and segfaults
+        cmd.append("--max-rate")
+        cmd.append("1000")  # Limit packets per second
+
+        # XML output
+        cmd.append("-oX")
+        cmd.append("-")  # stdout
+
+        # Verbosity
+        cmd.append("-v")
+
+        # Add targets
+        cmd.extend(targets)
+
+        return cmd
 
     def to_dict(self, result: NmapResult) -> Dict[str, Any]:
         """Convert NmapResult to dictionary."""
@@ -289,6 +503,6 @@ class NmapScanner:
             ],
             "scan_start": result.scan_start.isoformat() if result.scan_start else None,
             "scan_end": result.scan_end.isoformat() if result.scan_end else None,
-            "command": result.command,
+            "command": " ".join(result.command) if isinstance(result.command, list) else result.command,
             "exit_status": result.exit_status
         }

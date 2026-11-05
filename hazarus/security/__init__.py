@@ -1,19 +1,27 @@
 """
 HAZARUS Security Module
-
-Security controls, authorization, and safety gates.
+Scope management, authorization, safety gates, and policy enforcement.
 """
 
-from hazarus.security.audit_logger import AuditLogger
-from hazarus.security.authorization import AuthorizationManager
-from hazarus.security.policy_engine import PolicyEngine
-from hazarus.security.safety_gate import SafetyGate
-from hazarus.security.scope import ScopeValidator
+from .scope import ScopeManager, ScopeConfig, ScopeError, TargetType
+from .authorization import AuthorizationManager, AuthorizationRecord, AuthStatus
+from .safety_gate import SafetyGate, SafetyError
+from .audit_logger import AuditLogger, AuditEvent
+from .policy_engine import PolicyEngine, PolicyDecision, PolicyResult
 
 __all__ = [
-    "AuditLogger",
+    "ScopeManager",
+    "ScopeConfig",
+    "ScopeError",
+    "TargetType",
     "AuthorizationManager",
-    "PolicyEngine",
+    "AuthorizationRecord",
+    "AuthStatus",
     "SafetyGate",
-    "ScopeValidator",
+    "SafetyError",
+    "AuditLogger",
+    "AuditEvent",
+    "PolicyEngine",
+    "PolicyDecision",
+    "PolicyResult",
 ]

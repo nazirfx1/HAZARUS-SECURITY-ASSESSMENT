@@ -1,19 +1,18 @@
 """
-HAZARUS Advanced Reconnaissance Module
-
-Advanced asset discovery features.
+HAZARUS Advanced Reconnaissance Tools
+Advanced subdomain discovery, DNS features, and passive recon.
 """
 
-from hazarus.reconnaissance.advanced.dns import AdvancedDNS
-from hazarus.reconnaissance.advanced.subdomains import AdvancedSubdomainTools
-from hazarus.reconnaissance.advanced.live_hosts import EnhancedLiveHostDiscovery
-from hazarus.reconnaissance.advanced.origin_ip import EnhancedOriginIPDiscovery
-from hazarus.reconnaissance.advanced.passive import EnhancedPassiveRecon
+from .subdomains import AdvancedSubdomainTools
+from .dns import AdvancedDNS
+from .passive import EnhancedPassiveRecon
+from .live_hosts import EnhancedLiveHostDiscovery
+from .origin_ip import EnhancedOriginIPDiscovery
 
 __all__ = [
-    "AdvancedDNS",
     "AdvancedSubdomainTools",
+    "AdvancedDNS",
+    "EnhancedPassiveRecon",
     "EnhancedLiveHostDiscovery",
     "EnhancedOriginIPDiscovery",
-    "EnhancedPassiveRecon",
 ]

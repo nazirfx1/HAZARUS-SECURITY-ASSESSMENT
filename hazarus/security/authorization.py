@@ -4,7 +4,7 @@ Manages operator and client authorization records.
 """
 
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
@@ -30,7 +30,7 @@ class AuthorizationRecord:
     client_id: str
     targets: List[str]
     status: AuthStatus = AuthStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     approved_at: Optional[datetime] = None
     approved_by: Optional[str] = None
     expires_at: Optional[datetime] = None
@@ -42,7 +42,7 @@ class AuthorizationRecord:
         if self.status != AuthStatus.APPROVED:
             return False
 
-        if self.expires_at and datetime.utcnow() > self.expires_at:
+        if self.expires_at and datetime.now(UTC) > self.expires_at:
             return False
 
         return True
@@ -126,7 +126,7 @@ class AuthorizationManager:
 
         expires_at = None
         if expires_in_days:
-            expires_at = datetime.utcnow() + datetime.timedelta(days=expires_in_days)
+            expires_at = datetime.now(UTC) + timedelta(days=expires_in_days)
 
         record = AuthorizationRecord(
             auth_id=auth_id,
@@ -145,7 +145,7 @@ class AuthorizationManager:
 
     def _generate_auth_id(self, operator_id: str, client_id: str) -> str:
         """Generate a unique authorization ID."""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         data = f"{operator_id}:{client_id}:{timestamp}"
         return hashlib.sha256(data.encode()).hexdigest()[:16]
 
@@ -156,7 +156,7 @@ class AuthorizationManager:
 
         record = self._records[auth_id]
         record.status = AuthStatus.APPROVED
-        record.approved_at = datetime.utcnow()
+        record.approved_at = datetime.now(UTC)
         record.approved_by = approved_by
 
         self._save_record(record)
@@ -210,7 +210,7 @@ class AuthorizationManager:
     def cleanup_expired(self) -> int:
         """Remove expired authorization records."""
         removed = 0
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         for auth_id, record in list(self._records.items()):
             if record.expires_at and now > record.expires_at:

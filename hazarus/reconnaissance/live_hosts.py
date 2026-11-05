@@ -6,6 +6,7 @@ ARP, ICMP, and IPv6 host discovery tools.
 import asyncio
 import logging
 import re
+import os
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -99,14 +100,20 @@ class LiveHostDiscovery:
                 self.logger.info("arping not available, skipping ARP discovery")
                 return hosts
 
-            self.logger.info(f"Running arping (aggressive) for {target}")
+            self.logger.info(f"Running arping for {target}")
 
-            # Run arping with aggressive settings (requires sudo)
-            # -c 3: Send 3 ARP packets for reliability
-            # -w 2: Wait 2 seconds for response
-            # -b: Broadcast mode
+            # Detect if already running as root
+            is_root = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
+
+            # Build command without sudo if already root
+            if is_root:
+                cmd = ["arping", "-c", "3", "-w", "2", target]
+            else:
+                cmd = ["sudo", "arping", "-c", "3", "-w", "2", target]
+
+            # Run arping without broadcast mode (works on more interfaces)
             proc = await asyncio.create_subprocess_exec(
-                "sudo", "arping", "-c", "3", "-w", "2", "-b", target,
+                *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -168,16 +175,19 @@ class LiveHostDiscovery:
                 self.logger.info("fping not available, skipping ICMP discovery")
                 return hosts
 
-            self.logger.info(f"Running fping (aggressive) for {target}")
+            self.logger.info(f"Running fping for {target}")
 
-            # Run fping with aggressive settings (requires sudo)
-            # -a: Show only alive hosts
-            # -c 3: Send 3 packets for reliability
-            # -i 10: Interval 10ms between packets
-            # -t 500: Timeout 500ms
-            # -O: Show min/avg/max latency
+            # Check if already running as root
+            is_root = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
+
+            # Build command without -O flag (use simpler output)
+            if is_root:
+                cmd = ["fping", "-a", "-c", "3", "-i", "10", "-t", "500", target]
+            else:
+                cmd = ["sudo", "fping", "-a", "-c", "3", "-i", "10", "-t", "500", target]
+
             proc = await asyncio.create_subprocess_exec(
-                "sudo", "fping", "-a", "-c", "3", "-i", "10", "-t", "500", "-O", target,
+                *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -200,9 +210,13 @@ class LiveHostDiscovery:
                 return hosts
 
             # Parse fping output
-            # Format: "192.168.1.1 is alive (0.23 ms)"
+            # Format: "192.168.1.1 is alive (0.23 ms)" or "192.168.1.1 : xmt/rcv/%loss = 3/3/0%, min/avg/max = 0.23/0.25/0.28 ms"
             for line in output.split('\n'):
+                # Try both formats
                 match = re.search(r'(\S+) is alive \(([\d.]+) ms\)', line)
+                if not match:
+                    match = re.search(r'(\S+) :.*min/avg/max = ([\d.]+)/', line)
+                
                 if match:
                     ip = match.group(1)
                     response_time = float(match.group(2))
@@ -237,12 +251,19 @@ class LiveHostDiscovery:
                 self.logger.info("inverse_lookup6 not available, skipping IPv6 discovery")
                 return hosts
 
-            self.logger.info(f"Running inverse_lookup6 (aggressive) for {target}")
+            self.logger.info(f"Running inverse_lookup6 for {target}")
 
-            # Run inverse_lookup6 with aggressive settings (requires sudo)
-            # Use more comprehensive scanning options
+            # Check if already running as root
+            is_root = os.geteuid() == 0 if hasattr(os, 'geteuid') else False
+
+            # Build command without -v flag (may not be supported)
+            if is_root:
+                cmd = ["atk6-inverse_lookup6", target]
+            else:
+                cmd = ["sudo", "atk6-inverse_lookup6", target]
+
             proc = await asyncio.create_subprocess_exec(
-                "sudo", "atk6-inverse_lookup6", "-v", target,
+                *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
