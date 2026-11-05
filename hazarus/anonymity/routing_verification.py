@@ -12,11 +12,11 @@ import asyncio
 import subprocess
 import socket
 
-from anonymity.anonsurf import AnonsurfManager
-from anonymity.tor_check import TorChecker
-from anonymity.dns_leak import DNSLeakChecker
-from anonymity.ipv6_check import IPv6Checker
-from anonymity.proxy_validation import ProxyValidator
+from hazarus.anonymity.anonsurf import AnonsurfManager
+from hazarus.anonymity.tor_check import TorChecker
+from hazarus.anonymity.dns_leak import DNSLeakChecker
+from hazarus.anonymity.ipv6_check import IPv6Checker
+from hazarus.anonymity.proxy_validation import ProxyValidator
 
 
 class RoutingMode(str, Enum):
