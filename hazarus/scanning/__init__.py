@@ -11,7 +11,7 @@ from .tls_analysis import TLSAnalysis
 from .http_scanner import HTTPScanner
 from .web_crawler import WebCrawler
 from .api_discovery import APIDiscovery
-from .web_tools import WebTools
+from .web_tools import AdvancedWebTools
 
 __all__ = [
     "NmapScanner",
@@ -22,5 +22,5 @@ __all__ = [
     "HTTPScanner",
     "WebCrawler",
     "APIDiscovery",
-    "WebTools",
+    "AdvancedWebTools",
 ]
