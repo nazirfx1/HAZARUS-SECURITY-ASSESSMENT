@@ -810,13 +810,12 @@ class InteractiveMode:
             self.console.print(f"[dim]Total DNS Records: {len(result.records)}[/dim]")
             self.console.print(f"[dim]Total Nameservers: {len(result.nameservers)}[/dim]")
             self.console.print(f"[dim]Total Subdomains: {len(subdomain_list)}[/dim]")
-            if mode == "advanced":
+            if mode in ["full", "advanced"]:
                 self.console.print(f"[dim]Advanced Tools Used: Yes[/dim]")
                 self.console.print(f"[dim]DoH/DoT: Yes[/dim]")
                 self.console.print(f"[dim]Enhanced Live Hosts: Yes[/dim]")
                 self.console.print(f"[dim]Takeover Detection: Yes[/dim]")
-            if mode in ["full", "advanced"]:
-                origin_ips_count = len(origin_ips) if mode == "full" else origin_result.total_ips if mode == "advanced" else 0
+                origin_ips_count = len(origin_ips) if 'origin_ips' in locals() else (origin_result.total_ips if 'origin_result' in locals() else 0)
                 self.console.print(f"[dim]Total Origin IPs: {origin_ips_count}[/dim]")
             self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
             self.console.print(f"{'='*80}\n")
