@@ -651,7 +651,7 @@ class InteractiveMode:
             from hazarus.reconnaissance.security import SubdomainTakeoverDetector, VirtualHostEnumerator
             
             # DNS Reconnaissance
-            self.console.print("[yellow][1/8] DNS Enumeration...[/yellow]")
+            self.console.print("[yellow][1/9] DNS Enumeration...[/yellow]")
             self.console.print(f"  [dim]Querying: A, AAAA, MX, TXT, NS, SOA, CNAME, SRV[/dim]")
             with self.console.status("[dim]Performing DNS queries...[/dim]", spinner="dots"):
                 dns_recon = DNSRecon()
@@ -675,7 +675,7 @@ class InteractiveMode:
             
             # WHOIS (for full/advanced modes)
             if mode in ["full", "advanced"]:
-                self.console.print(f"\n[yellow][2/8] WHOIS Query...[/yellow]")
+                self.console.print(f"\n[yellow][2/9] WHOIS Query...[/yellow]")
                 self.console.print(f"  [dim]Querying WHOIS database for {target}[/dim]")
                 with self.console.status("[dim]Performing WHOIS lookup...[/dim]", spinner="dots"):
                     whois_recon = WhoisRecon()
@@ -690,7 +690,7 @@ class InteractiveMode:
             
             # Basic Subdomain Discovery
             if mode in ["full", "advanced"]:
-                self.console.print(f"\n[yellow][3/8] Basic Subdomain Discovery...[/yellow]")
+                self.console.print(f"\n[yellow][3/9] Basic Subdomain Discovery...[/yellow]")
             else:
                 self.console.print(f"\n[yellow][2/4] Basic Subdomain Discovery...[/yellow]")
             self.console.print(f"  [dim]Methods: crt.sh, brute force[/dim]")
@@ -710,7 +710,7 @@ class InteractiveMode:
             
             # Advanced Subdomain Tools (for full/advanced modes)
             if mode in ["full", "advanced"]:
-                self.console.print(f"\n[yellow][4/8] Advanced Subdomain Discovery...[/yellow]")
+                self.console.print(f"\n[yellow][4/9] Advanced Subdomain Discovery...[/yellow]")
                 try:
                     advanced_tools = AdvancedSubdomainTools()
                     tools_to_use = ["subfinder", "amass"]
@@ -726,7 +726,7 @@ class InteractiveMode:
             
             # DNS over HTTPS (for full/advanced modes)
             if mode in ["full", "advanced"]:
-                self.console.print(f"\n[yellow][5/8] DNS over HTTPS...[/yellow]")
+                self.console.print(f"\n[yellow][5/9] DNS over HTTPS...[/yellow]")
                 try:
                     advanced_dns = AdvancedDNS()
                     doh_result = await advanced_dns.query_doh(target, "A")
@@ -736,7 +736,7 @@ class InteractiveMode:
             
             # Enhanced Live Host Discovery (for full/advanced modes)
             if mode in ["full", "advanced"]:
-                self.console.print(f"\n[yellow][6/8] Enhanced Live Host Discovery...[/yellow]")
+                self.console.print(f"\n[yellow][6/9] Enhanced Live Host Discovery...[/yellow]")
                 try:
                     enhanced_live = EnhancedLiveHostDiscovery()
                     live_result = await enhanced_live.discover_enhanced(target)
@@ -766,9 +766,28 @@ class InteractiveMode:
                 except Exception as e:
                     self.console.print(f"[yellow]⚠ Takeover detection failed: {e}[/yellow]")
             
+            # Virtual Host Enumeration (for full/advanced modes)
+            if mode in ["full", "advanced"]:
+                self.console.print(f"\n[yellow][8/9] Virtual Host Enumeration...[/yellow]")
+                try:
+                    virtual_host = VirtualHostEnumerator()
+                    # Get origin IPs to scan
+                    scan_ips = origin_ips[:3] if origin_ips else []
+                    if scan_ips:
+                        vhost_result = await virtual_host.enumerate(scan_ips[0], subdomain_list[:10])
+                        self.console.print(f"[green]✓ Virtual hosts: {len(vhost_result.findings)}[/green]")
+                        if vhost_result.findings:
+                            self.console.print("\n[bold cyan]Virtual Hosts Found:[/bold cyan]")
+                            for finding in vhost_result.findings[:5]:
+                                self.console.print(f"  [green]{finding.hostname}[/green] [dim]({finding.status_code})[/dim]")
+                    else:
+                        self.console.print("[yellow]⚠ No IPs available for virtual host enumeration[/yellow]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Virtual host enumeration failed: {e}[/yellow]")
+            
             # Origin IP Discovery
             if mode in ["full", "advanced"]:
-                self.console.print(f"\n[yellow][8/8] Enhanced Origin IP Discovery...[/yellow]")
+                self.console.print(f"\n[yellow][9/9] Enhanced Origin IP Discovery...[/yellow]")
                 try:
                     enhanced_origin = EnhancedOriginIPDiscovery()
                     origin_result = await enhanced_origin.discover_enhanced(target)
@@ -818,6 +837,7 @@ class InteractiveMode:
                 self.console.print(f"[dim]DoH/DoT: Yes[/dim]")
                 self.console.print(f"[dim]Enhanced Live Hosts: Yes[/dim]")
                 self.console.print(f"[dim]Takeover Detection: Yes[/dim]")
+                self.console.print(f"[dim]Virtual Host Enumeration: Yes[/dim]")
                 origin_ips_count = len(origin_ips) if 'origin_ips' in locals() else (origin_result.total_ips if 'origin_result' in locals() else 0)
                 self.console.print(f"[dim]Total Origin IPs: {origin_ips_count}[/dim]")
             else:
@@ -1238,7 +1258,7 @@ class InteractiveMode:
                 web_tools = AdvancedWebTools()
                 
                 # Technology Detection with WhatWeb
-                self.console.print(f"\n[yellow][4/6] Technology Detection (WhatWeb)...[/yellow]")
+                self.console.print(f"\n[yellow][4/7] Technology Detection (WhatWeb)...[/yellow]")
                 try:
                     whatweb_result = await web_tools.whatweb_scan(target)
                     technologies = getattr(whatweb_result, 'technologies', [])
@@ -1251,7 +1271,7 @@ class InteractiveMode:
                     self.console.print(f"[yellow]⚠ WhatWeb scan failed: {e}[/yellow]")
                 
                 # Directory Enumeration with Gobuster
-                self.console.print(f"\n[yellow][5/6] Directory Enumeration (Gobuster)...[/yellow]")
+                self.console.print(f"\n[yellow][5/7] Directory Enumeration (Gobuster)...[/yellow]")
                 try:
                     gobuster_result = await web_tools.gobuster_scan(target)
                     total_found = getattr(gobuster_result, 'total_found', 0)
@@ -1265,7 +1285,7 @@ class InteractiveMode:
                     self.console.print(f"[yellow]⚠ Gobuster scan failed: {e}[/yellow]")
                 
                 # WordPress Security Scan with WPScan
-                self.console.print(f"\n[yellow][6/6] WordPress Security Scan (WPScan)...[/yellow]")
+                self.console.print(f"\n[yellow][6/7] WordPress Security Scan (WPScan)...[/yellow]")
                 try:
                     wpscan_result = await web_tools.wpscan_scan(target, aggressive=True)
                     is_wordpress = getattr(wpscan_result, 'is_wordpress', False)
@@ -1281,6 +1301,27 @@ class InteractiveMode:
                                 self.console.print(f"  [green]{plugin}[/green]")
                 except Exception as e:
                     self.console.print(f"[yellow]⚠ WPScan scan failed: {e}[/yellow]")
+                
+                # OWASP ZAP Scan (if available)
+                self.console.print(f"\n[yellow][7/7] OWASP ZAP Scan...[/yellow]")
+                try:
+                    from hazarus.vulnerability.owasp_zap import ZAPScanner
+                    # Check if ZAP is running
+                    zap_scanner = ZAPScanner(api_key="placeholder")
+                    zap_installed = await zap_scanner.check_installed()
+                    if zap_installed:
+                        with self.console.status("[dim]Running ZAP scan...[/dim]", spinner="dots"):
+                            zap_result = await zap_scanner.scan(target)
+                        self.console.print(f"[green]✓ ZAP alerts: {len(zap_result.alerts)}[/green]")
+                        if zap_result.alerts:
+                            self.console.print("\n[bold cyan]ZAP Alerts:[/bold cyan]")
+                            for alert in zap_result.alerts[:10]:
+                                self.console.print(f"  [red]{alert.risk}:[/red] {alert.alert} - {alert.url}")
+                    else:
+                        self.console.print("[yellow]⚠ OWASP ZAP not running - skipping scan[/yellow]")
+                        self.console.print("[dim]  Start ZAP with: zaproxy -daemon -port 8080[/dim]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ ZAP scan failed: {e}[/yellow]")
             
             # Individual tool modes
             elif mode in ["wpscan", "gobuster", "whatweb"]:
