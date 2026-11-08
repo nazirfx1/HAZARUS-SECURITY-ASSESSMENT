@@ -705,8 +705,8 @@ class InteractiveMode:
                 if len(subdomain_list) > 15:
                     self.console.print(f"  [dim]... and {len(subdomain_list) - 15} more[/dim]")
             
-            # Advanced Subdomain Tools (for advanced mode)
-            if mode == "advanced":
+            # Advanced Subdomain Tools (for full/advanced modes)
+            if mode in ["full", "advanced"]:
                 self.console.print(f"\n[yellow][4/8] Advanced Subdomain Discovery...[/yellow]")
                 try:
                     advanced_tools = AdvancedSubdomainTools()
@@ -721,8 +721,8 @@ class InteractiveMode:
                 except Exception as e:
                     self.console.print(f"[yellow]⚠ Advanced subdomain discovery failed: {e}[/yellow]")
             
-            # DNS over HTTPS (for advanced mode)
-            if mode == "advanced":
+            # DNS over HTTPS (for full/advanced modes)
+            if mode in ["full", "advanced"]:
                 self.console.print(f"\n[yellow][5/8] DNS over HTTPS...[/yellow]")
                 try:
                     advanced_dns = AdvancedDNS()
@@ -731,8 +731,8 @@ class InteractiveMode:
                 except Exception as e:
                     self.console.print(f"[yellow]⚠ DoH query failed: {e}[/yellow]")
             
-            # Enhanced Live Host Discovery (for advanced mode)
-            if mode == "advanced":
+            # Enhanced Live Host Discovery (for full/advanced modes)
+            if mode in ["full", "advanced"]:
                 self.console.print(f"\n[yellow][6/8] Enhanced Live Host Discovery...[/yellow]")
                 try:
                     enhanced_live = EnhancedLiveHostDiscovery()
@@ -748,8 +748,8 @@ class InteractiveMode:
                 except Exception as e:
                     self.console.print(f"[yellow]⚠ Enhanced live host discovery failed: {e}[/yellow]")
             
-            # Subdomain Takeover Detection (for advanced mode)
-            if mode == "advanced":
+            # Subdomain Takeover Detection (for full/advanced modes)
+            if mode in ["full", "advanced"]:
                 self.console.print(f"\n[yellow][7/8] Subdomain Takeover Detection...[/yellow]")
                 try:
                     takeover_detector = SubdomainTakeoverDetector()
@@ -764,7 +764,7 @@ class InteractiveMode:
                     self.console.print(f"[yellow]⚠ Takeover detection failed: {e}[/yellow]")
             
             # Origin IP Discovery
-            if mode == "advanced":
+            if mode in ["full", "advanced"]:
                 self.console.print(f"\n[yellow][8/8] Enhanced Origin IP Discovery...[/yellow]")
                 try:
                     enhanced_origin = EnhancedOriginIPDiscovery()
@@ -785,7 +785,7 @@ class InteractiveMode:
                 except Exception as e:
                     self.console.print(f"[yellow]⚠ Enhanced origin IP discovery failed: {e}[/yellow]")
             else:
-                # Basic origin IP for full mode
+                # Basic origin IP for basic mode
                 self.console.print(f"\n[yellow][4/4] Origin IP Discovery...[/yellow]")
                 origin_discovery = OriginIPDiscovery()
                 origin_result = await origin_discovery.discover(target)
@@ -1222,10 +1222,63 @@ class InteractiveMode:
                             self.console.print(f"  [dim]... and {len(nuclei_result.findings) - 10} more[/dim]")
                 else:
                     self.console.print("[yellow]⚠ Nuclei not installed - skipping scan[/yellow]")
+                    self.console.print("[dim]  Install with: sudo apt install nuclei[/dim]")
             except Exception as e:
                 self.console.print(f"[yellow]⚠ Nuclei scan failed: {e}[/yellow]")
+                self.console.print("[dim]  Ensure nuclei is installed and templates are updated[/dim]")
+                self.console.print("[dim]  Update templates: nuclei -update-templates[/dim]")
 
-            if mode in ["aggressive", "wpscan", "gobuster", "whatweb"]:
+            # Advanced Web Tools (for aggressive mode)
+            if mode == "aggressive":
+                web_tools = AdvancedWebTools()
+                
+                # Technology Detection with WhatWeb
+                self.console.print(f"\n[yellow][4/6] Technology Detection (WhatWeb)...[/yellow]")
+                try:
+                    whatweb_result = await web_tools.whatweb_scan(target)
+                    technologies = getattr(whatweb_result, 'technologies', [])
+                    self.console.print(f"[green]✓ Technologies: {len(technologies)}[/green]")
+                    if technologies:
+                        self.console.print("\n[bold cyan]Technologies Detected:[/bold cyan]")
+                        for tech in technologies[:15]:
+                            self.console.print(f"  [green]{tech}[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ WhatWeb scan failed: {e}[/yellow]")
+                
+                # Directory Enumeration with Gobuster
+                self.console.print(f"\n[yellow][5/6] Directory Enumeration (Gobuster)...[/yellow]")
+                try:
+                    gobuster_result = await web_tools.gobuster_scan(target)
+                    total_found = getattr(gobuster_result, 'total_found', 0)
+                    directories = getattr(gobuster_result, 'directories', [])
+                    self.console.print(f"[green]✓ Directories: {total_found}[/green]")
+                    if directories:
+                        self.console.print("\n[bold cyan]Directories Found:[/bold cyan]")
+                        for dir in directories[:15]:
+                            self.console.print(f"  [green]{dir}[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ Gobuster scan failed: {e}[/yellow]")
+                
+                # WordPress Security Scan with WPScan
+                self.console.print(f"\n[yellow][6/6] WordPress Security Scan (WPScan)...[/yellow]")
+                try:
+                    wpscan_result = await web_tools.wpscan_scan(target, aggressive=True)
+                    is_wordpress = getattr(wpscan_result, 'is_wordpress', False)
+                    version = getattr(wpscan_result, 'version', None)
+                    plugins = getattr(wpscan_result, 'plugins', [])
+                    self.console.print(f"[green]✓ WordPress: {is_wordpress}[/green]")
+                    if is_wordpress:
+                        self.console.print(f"[dim]  Version: {version or 'Unknown'}[/dim]")
+                        self.console.print(f"[dim]  Plugins: {len(plugins)}[/dim]")
+                        if plugins:
+                            self.console.print("\n[bold cyan]WordPress Plugins:[/bold cyan]")
+                            for plugin in plugins[:10]:
+                                self.console.print(f"  [green]{plugin}[/green]")
+                except Exception as e:
+                    self.console.print(f"[yellow]⚠ WPScan scan failed: {e}[/yellow]")
+            
+            # Individual tool modes
+            elif mode in ["wpscan", "gobuster", "whatweb"]:
                 web_tools = AdvancedWebTools()
                 
                 if mode == "whatweb":
