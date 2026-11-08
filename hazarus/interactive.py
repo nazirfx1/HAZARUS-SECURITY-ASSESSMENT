@@ -1207,8 +1207,9 @@ class InteractiveMode:
                 nikto_scanner = NiktoScanner()
                 nikto_installed = await nikto_scanner.check_installed()
                 if nikto_installed:
+                    nikto_aggressive = (mode == "aggressive")
                     with self.console.status("[dim]Running Nikto scan...[/dim]", spinner="dots"):
-                        nikto_result = await nikto_scanner.scan(target, timeout=300)
+                        nikto_result = await nikto_scanner.scan(target, timeout=300, aggressive=nikto_aggressive)
                     self.console.print(f"[green]✓ Nikto findings: {len(nikto_result.findings)}[/green]")
                     if nikto_result.server_header:
                         self.console.print(f"[dim]  Server: {nikto_result.server_header}[/dim]")
@@ -1231,8 +1232,9 @@ class InteractiveMode:
                 nuclei_scanner = NucleiScanner()
                 nuclei_installed = await nuclei_scanner.check_installed()
                 if nuclei_installed:
+                    nuclei_aggressive = (mode == "aggressive")
                     with self.console.status("[dim]Running Nuclei scan...[/dim]", spinner="dots"):
-                        nuclei_result = await nuclei_scanner.scan(target, timeout=300)
+                        nuclei_result = await nuclei_scanner.scan(target, timeout=300, aggressive=nuclei_aggressive)
                     self.console.print(f"[green]✓ Nuclei findings: {len(nuclei_result.findings)}[/green]")
                     if nuclei_result.severity_summary:
                         self.console.print("[dim]  Severity breakdown:[/dim]")
