@@ -16,6 +16,15 @@ class LabConfig:
     cidr_ranges: list = field(default_factory=lambda: ["192.168.100.0/24", "10.0.100.0/24"])
     targets: list = field(default_factory=list)
 
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.cidr_ranges = kwargs.get("cidr_ranges", ["192.168.100.0/24", "10.0.100.0/24"])
+        self.targets = kwargs.get("targets", [])
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
 
 @dataclass
 class TimeoutConfig:
@@ -41,6 +50,33 @@ class TimeoutConfig:
     post_assessment: int = 600
     kev_due_days: int = 30
 
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.default = kwargs.get("default", 30)
+        self.quick = kwargs.get("quick", 10)
+        self.long = kwargs.get("long", 600)
+        self.exploitation = kwargs.get("exploitation", 300)
+        self.code_analysis = kwargs.get("code_analysis", 300)
+        self.subdomain_discovery = kwargs.get("subdomain_discovery", 300)
+        self.advanced_subdomain = kwargs.get("advanced_subdomain", 600)
+        self.live_discovery = kwargs.get("live_discovery", 60)
+        self.dns = kwargs.get("dns", 30)
+        self.ssl = kwargs.get("ssl", 30)
+        self.api = kwargs.get("api", 30)
+        self.http_scan = kwargs.get("http_scan", 30)
+        self.advanced_web = kwargs.get("advanced_web", 600)
+        self.password_cracking = kwargs.get("password_cracking", 3600)
+        self.reverse_engineering = kwargs.get("reverse_engineering", 300)
+        self.wireless = kwargs.get("wireless", 300)
+        self.ai = kwargs.get("ai", 300)
+        self.download = kwargs.get("download", 300)
+        self.post_assessment = kwargs.get("post_assessment", 600)
+        self.kev_due_days = kwargs.get("kev_due_days", 30)
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
 
 @dataclass
 class PortConfig:
@@ -54,6 +90,21 @@ class PortConfig:
     common_ports: list = field(default_factory=lambda: [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 5900, 6379, 8080, 8443])
     success_status_codes: list = field(default_factory=lambda: [200, 301, 302, 304, 307, 308])
 
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.dashboard = kwargs.get("dashboard", 8000)
+        self.zap = kwargs.get("zap", 8080)
+        self.ssl = kwargs.get("ssl", 443)
+        self.http = kwargs.get("http", 80)
+        self.https = kwargs.get("https", 443)
+        self.ssh = kwargs.get("ssh", 22)
+        self.common_ports = kwargs.get("common_ports", [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 5900, 6379, 8080, 8443])
+        self.success_status_codes = kwargs.get("success_status_codes", [200, 301, 302, 304, 307, 308])
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
 
 @dataclass
 class APIEndpointsConfig:
@@ -66,6 +117,20 @@ class APIEndpointsConfig:
     nvd: str = "https://services.nvd.nist.gov/rest/json/cves/2.0"
     ssllabs: str = "https://api.ssllabs.com/api/v3"
 
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.securitytrails = kwargs.get("securitytrails", "https://api.securitytrails.com/v1")
+        self.shodan = kwargs.get("shodan", "https://api.shodan.io/shodan")
+        self.censys = kwargs.get("censys", "https://search.censys.io/api/v2")
+        self.virustotal = kwargs.get("virustotal", "https://www.virustotal.com/api/v3")
+        self.github = kwargs.get("github", "https://api.github.com")
+        self.nvd = kwargs.get("nvd", "https://services.nvd.nist.gov/rest/json/cves/2.0")
+        self.ssllabs = kwargs.get("ssllabs", "https://api.ssllabs.com/api/v3")
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
 
 @dataclass
 class PathsConfig:
@@ -75,6 +140,17 @@ class PathsConfig:
     cron_dir: str = "/var/spool/cron/crontabs/"
     screenshot_dir: str = "/tmp/hazarus/screenshots"
 
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.temp = kwargs.get("temp", "/tmp/hazarus")
+        self.backup_dirs = kwargs.get("backup_dirs", ["/backup", "/db", "/sql", "/uploads", "/files", "/tmp"])
+        self.cron_dir = kwargs.get("cron_dir", "/var/spool/cron/crontabs/")
+        self.screenshot_dir = kwargs.get("screenshot_dir", "/tmp/hazarus/screenshots")
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
 
 @dataclass
 class DashboardConfig:
@@ -83,6 +159,17 @@ class DashboardConfig:
     port: int = 8000
     cors_origins: list = field(default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"])
     session_timeout: int = 60
+
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.host = kwargs.get("host", "127.0.0.1")
+        self.port = kwargs.get("port", 8000)
+        self.cors_origins = kwargs.get("cors_origins", ["http://localhost:3000", "http://127.0.0.1:3000"])
+        self.session_timeout = kwargs.get("session_timeout", 60)
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
 
 
 @dataclass
@@ -121,6 +208,17 @@ class PrivacyConfig:
     block_on_ipv6_exposure: bool = True
     require_tor: bool = False
 
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.require_anonsurf = kwargs.get("require_anonsurf", True)
+        self.block_on_dns_leak = kwargs.get("block_on_dns_leak", True)
+        self.block_on_ipv6_exposure = kwargs.get("block_on_ipv6_exposure", True)
+        self.require_tor = kwargs.get("require_tor", False)
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
 
 @dataclass
 class LoggingConfig:
@@ -129,6 +227,17 @@ class LoggingConfig:
     file: str = "~/.hazarus/hazarus.log"
     max_size: int = 100
     backup_count: int = 5
+
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.level = kwargs.get("level", "INFO")
+        self.file = kwargs.get("file", "~/.hazarus/hazarus.log")
+        self.max_size = kwargs.get("max_size", 100)
+        self.backup_count = kwargs.get("backup_count", 5)
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
 
 
 @dataclass
@@ -139,6 +248,17 @@ class ReportingConfig:
     include_detailed_findings: bool = True
     include_asset_inventory: bool = True
 
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.default_format = kwargs.get("default_format", "markdown")
+        self.include_screenshots = kwargs.get("include_screenshots", True)
+        self.include_detailed_findings = kwargs.get("include_detailed_findings", True)
+        self.include_asset_inventory = kwargs.get("include_asset_inventory", True)
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
 
 @dataclass
 class VirtualizationConfig:
@@ -147,6 +267,17 @@ class VirtualizationConfig:
     vmware: dict = field(default_factory=dict)
     virtualbox: dict = field(default_factory=dict)
     libvirt: dict = field(default_factory=dict)
+
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.platform = kwargs.get("platform", "none")
+        self.vmware = kwargs.get("vmware", {})
+        self.virtualbox = kwargs.get("virtualbox", {})
+        self.libvirt = kwargs.get("libvirt", {})
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
 
 
 @dataclass
@@ -158,6 +289,18 @@ class MetasploitConfig:
     ssl: bool = False
     token: str = ""
 
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.host = kwargs.get("host", "127.0.0.1")
+        self.port = kwargs.get("port", 55553)
+        self.uri = kwargs.get("uri", "/api/")
+        self.ssl = kwargs.get("ssl", False)
+        self.token = kwargs.get("token", "")
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
 
 @dataclass
 class AdvancedConfig:
@@ -167,6 +310,18 @@ class AdvancedConfig:
     verbose: bool = False
     max_retries: int = 3
     retry_delay: int = 5
+
+    def __init__(self, **kwargs):
+        # Initialize with defaults, then update with provided kwargs
+        self.enable_experimental = kwargs.get("enable_experimental", False)
+        self.debug = kwargs.get("debug", False)
+        self.verbose = kwargs.get("verbose", False)
+        self.max_retries = kwargs.get("max_retries", 3)
+        self.retry_delay = kwargs.get("retry_delay", 5)
+        # Store any extra fields to avoid errors
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
 
 
 @dataclass
