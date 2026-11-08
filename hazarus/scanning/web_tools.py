@@ -81,7 +81,8 @@ class AdvancedWebTools:
             self.logger.info(f"Running WPScan for {target}")
 
             # Build wpscan command with improved error handling
-            cmd = ["wpscan", "--url", target, "--no-update", "--no-banner", "--disable-tls-checks"]
+            # Remove --no-update to allow database update if needed
+            cmd = ["wpscan", "--url", target, "--no-banner", "--disable-tls-checks"]
             
             if aggressive:
                 cmd.extend(["--enumerate", "--plugins-detection", "aggressive", "--themes-detection", "aggressive"])
