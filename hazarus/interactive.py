@@ -791,8 +791,8 @@ class InteractiveMode:
                 # Basic origin IP for basic mode
                 self.console.print(f"\n[yellow][4/4] Origin IP Discovery...[/yellow]")
                 origin_discovery = OriginIPDiscovery()
-                origin_result = await origin_discovery.discover(target)
-                origin_ips = getattr(origin_result, 'origin_ips', [])
+                basic_origin_result = await origin_discovery.discover(target)
+                origin_ips = getattr(basic_origin_result, 'origin_ips', [])
                 self.console.print(f"[green]✓ Origin IPs: {len(origin_ips)}[/green]")
                 
                 if origin_ips:
@@ -819,6 +819,9 @@ class InteractiveMode:
                 self.console.print(f"[dim]Enhanced Live Hosts: Yes[/dim]")
                 self.console.print(f"[dim]Takeover Detection: Yes[/dim]")
                 origin_ips_count = len(origin_ips) if 'origin_ips' in locals() else (origin_result.total_ips if 'origin_result' in locals() else 0)
+                self.console.print(f"[dim]Total Origin IPs: {origin_ips_count}[/dim]")
+            else:
+                origin_ips_count = len(origin_ips) if 'origin_ips' in locals() else 0
                 self.console.print(f"[dim]Total Origin IPs: {origin_ips_count}[/dim]")
             self.console.print(f"[dim]Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/dim]")
             self.console.print(f"{'='*80}\n")
