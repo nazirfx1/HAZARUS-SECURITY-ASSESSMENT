@@ -1308,7 +1308,7 @@ class InteractiveMode:
                     from hazarus.vulnerability.owasp_zap import ZAPScanner
                     # Check if ZAP is running
                     zap_scanner = ZAPScanner(api_key="placeholder")
-                    zap_installed = await zap_scanner.check_installed()
+                    zap_installed = await zap_scanner.check_connection()
                     if zap_installed:
                         with self.console.status("[dim]Running ZAP scan...[/dim]", spinner="dots"):
                             zap_result = await zap_scanner.scan(target)
