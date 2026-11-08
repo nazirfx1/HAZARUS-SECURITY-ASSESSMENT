@@ -8,6 +8,7 @@ from .gitleaks import GitleaksScanner
 from .trivy import TrivyScanner
 from .dependency_audit import DependencyAudit
 from .secret_analysis import SecretAnalysis
+from .bandit import BanditScanner
 
 __all__ = [
     "SemgrepAnalyzer",
@@ -15,4 +16,5 @@ __all__ = [
     "TrivyScanner",
     "DependencyAudit",
     "SecretAnalysis",
+    "BanditScanner",
 ]
