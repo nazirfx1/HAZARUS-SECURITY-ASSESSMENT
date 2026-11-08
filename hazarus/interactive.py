@@ -689,7 +689,10 @@ class InteractiveMode:
                     self.console.print("[yellow]⚠ WHOIS data not found[/yellow]")
             
             # Basic Subdomain Discovery
-            self.console.print(f"\n[yellow][3/8] Basic Subdomain Discovery...[/yellow]")
+            if mode in ["full", "advanced"]:
+                self.console.print(f"\n[yellow][3/8] Basic Subdomain Discovery...[/yellow]")
+            else:
+                self.console.print(f"\n[yellow][2/4] Basic Subdomain Discovery...[/yellow]")
             self.console.print(f"  [dim]Methods: crt.sh, brute force[/dim]")
             with self.console.status("[dim]Discovering subdomains...[/dim]", spinner="dots"):
                 subdomain_discovery = SubdomainDiscovery()
