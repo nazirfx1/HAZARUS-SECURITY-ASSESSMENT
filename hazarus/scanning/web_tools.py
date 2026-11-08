@@ -168,7 +168,21 @@ class AdvancedWebTools:
             cmd = ["whatweb", "--log-json", "/dev/stdout", target]
             
             if aggressive:
-                cmd.append("-a")  # Aggressive mode
+                # Aggressive mode: maximum aggression, verbose, recursive, follow redirects
+                cmd.extend([
+                    "-a", "3",  # Maximum aggression level
+                    "-v",  # Verbose output
+                    "-r",  # Recursive scanning
+                    "--max-redirects", "10",  # Follow up to 10 redirects
+                    "--follow-redirects",  # Follow all redirects
+                    "--color=never"  # Disable color codes for clean JSON
+                ])
+            else:
+                # Basic mode: moderate aggression
+                cmd.extend([
+                    "-a", "1",  # Moderate aggression
+                    "--color=never"
+                ])
 
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
