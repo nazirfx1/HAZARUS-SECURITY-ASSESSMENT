@@ -81,12 +81,12 @@ class AdvancedWebTools:
             self.logger.info(f"Running WPScan for {target}")
 
             # Build wpscan command with improved error handling
-            cmd = ["wpscan", "--url", target, "--no-update", "--enumerate", "--no-banner"]
+            cmd = ["wpscan", "--url", target, "--no-update", "--no-banner", "--disable-tls-checks"]
             
             if aggressive:
-                cmd.extend(["--plugins-detection", "aggressive", "--themes-detection", "aggressive"])
+                cmd.extend(["--enumerate", "--plugins-detection", "aggressive", "--themes-detection", "aggressive"])
             else:
-                cmd.extend(["--plugins-detection", "vp", "--themes-detection", "vt"])
+                cmd.extend(["--enumerate", "--plugins-detection", "vp", "--themes-detection", "vt"])
 
             # Add timeout and rate limiting
             cmd.extend(["--request-timeout", "30"])  # 30 second timeout per request
