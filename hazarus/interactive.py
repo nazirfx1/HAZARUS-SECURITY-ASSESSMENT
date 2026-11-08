@@ -1769,7 +1769,7 @@ class InteractiveMode:
                 self.console.print(f"[yellow][Phase {phases.index('code') + 1}/{len(phases)}] Source Code Analysis...[/yellow]")
                 self.console.print(f"  [dim]Steps: Semgrep, Gitleaks, Trivy, Bandit[/dim]")
                 try:
-                    from hazarus.code_analysis.semgrep import SemgrepScanner
+                    from hazarus.code_analysis.semgrep import SemgrepAnalyzer
                     from hazarus.code_analysis.gitleaks import GitleaksScanner
                     from hazarus.code_analysis.trivy import TrivyScanner
                     from hazarus.code_analysis.bandit import BanditScanner
@@ -1782,7 +1782,7 @@ class InteractiveMode:
                         
                         # Semgrep
                         try:
-                            semgrep = SemgrepScanner()
+                            semgrep = SemgrepAnalyzer()
                             semgrep_result = await semgrep.scan(code_path)
                             self.console.print(f"  Semgrep issues: {semgrep_result.total_issues}")
                         except Exception as e:
@@ -1856,7 +1856,7 @@ class InteractiveMode:
         
         # Generate report
         try:
-            from hazarus.reporting import ReportGenerator
+            from hazarus.reporting import ReportEngine
             from pathlib import Path
             
             report_dir = self.hazarus_dir / "reports"
@@ -2940,7 +2940,7 @@ class InteractiveMode:
         self.console.print(f"[cyan]Running {mode} vulnerability research on {target}...[/cyan]")
         
         try:
-            from hazarus.vulnerability.exploitdb import ExploitDB
+            from hazarus.vulnerability.exploitdb import ExploitIntelligence
             
             if mode == "cve":
                 self.console.print("\n[cyan]CVE Search[/cyan]")
@@ -3054,7 +3054,7 @@ class InteractiveMode:
         try:
             if mode == "semgrep":
                 from hazarus.code_analysis.semgrep import SemgrepScanner
-                scanner = SemgrepScanner()
+                scanner = SemgrepAnalyzer()
                 self.console.print("[yellow]Semgrep scan - Running...[/yellow]")
                 self.console.print("[green]✓ Semgrep scan complete[/green]")
             elif mode == "gitleaks":
@@ -3576,8 +3576,8 @@ class InteractiveMode:
                 self.console.print("  - Beacon frame analysis")
                 
                 try:
-                    from hazarus.wireless.bettercap import BettercapScanner
-                    bettercap = BettercapScanner()
+                    from hazarus.wireless.bettercap import BettercapAnalyzer
+                    bettercap = BettercapAnalyzer()
                     result = await bettercap.scan(target)
                     self.console.print(f"[green]✓ Bettercap scan complete[/green]")
                 except Exception as e:
@@ -3594,8 +3594,8 @@ class InteractiveMode:
                 self.console.print("  - Encryption assessment")
                 
                 try:
-                    from hazarus.wireless.wireshark import WiresharkScanner
-                    wireshark = WiresharkScanner()
+                    from hazarus.wireless.wireshark import WiresharkAnalyzer
+                    wireshark = WiresharkAnalyzer()
                     result = await wireshark.scan(target)
                     self.console.print(f"[green]✓ Wireshark scan complete[/green]")
                 except Exception as e:
